@@ -396,16 +396,9 @@
         
         // Verificar se usuário está logado (simulação)
         window.addEventListener('load', function() {
-            // Em uma aplicação real, isso verificaria o token de autenticação
-            const usuarioSalvo = localStorage.getItem('sgmrp_usuario');
-            if (!usuarioSalvo) {
-                alert('Sessão expirada. Redirecionando para login.');
-                window.location.href = 'login.html';
-                return;
-            }
-
+            // Usuário já está autenticado via sessão Flask
             // Atualizar informações do usuário na interface
-            document.getElementById('usuario-nome').textContent = usuarioSalvo || 'Usuário';
+            document.getElementById('usuario-nome').textContent = '{{ usuario_nome }}' || 'Usuário';
             
             // Definir mês anterior como padrão no filtro
             setDefaultPreviousMonth();

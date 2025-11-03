@@ -1,3 +1,10 @@
+# Funções auxiliares movidas de main.py
+import os
+import json
+import calendar
+from datetime import datetime
+from functions.firestore_utils import criar_documento, ler_documento, atualizar_documento, deletar_documento, ler_colecao, filtrar_documentos
+
 # Função para calcular conformidade do lote (migrada de main.py)
 def calcular_conformidade_lote(lote, mapas=None):
 	"""
@@ -89,12 +96,6 @@ def filtro_mapa(m, lote_id, unidades_list, data_inicio, data_fim):
 		if not any(data_inicio <= d <= data_fim for d in datas_iso):
 			return False
 	return True
-# Funções auxiliares movidas de main.py
-import os
-import json
-import calendar
-from datetime import datetime
-from .firestore_utils import carregar_firestore, salvar_firestore
 
 def carregar_dados_json(arquivo):
 	DADOS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'dados')
@@ -123,7 +124,7 @@ def carregar_usuarios():
 	"""
 	Carrega todos os usuários da coleção 'usuarios' do Firestore.
 	"""
-	return carregar_firestore('usuarios')
+	return ler_colecao('usuarios')
 
 def salvar_usuarios(usuarios):
 	"""
@@ -138,15 +139,27 @@ def salvar_usuarios(usuarios):
 	for doc in colecao_ref.stream():
 		colecao_ref.document(doc.id).delete()
 	# Insere todos os usuários
-	return salvar_firestore('usuarios', usuarios)
+	# Salva cada usuário individualmente e retorna lista de IDs
+	ids = []
+	for usuario in usuarios:
+		ids.append(criar_documento('usuarios', usuario))
+	return ids
 
 def carregar_lotes():
-	dados = carregar_dados_json('lotes.json')
-	return dados.get('lotes', [])
+		lotes = ler_colecao('lotes')
+		for lote in lotes:
+			if 'id' in lote:
+				try:
+					lote['id'] = int(lote['id'])
+				except (ValueError, TypeError):
+					lote['id'] = 0
+		return lotes
 
 def carregar_unidades():
-	dados = carregar_dados_json('unidades.json')
-	return dados.get('unidades', [])
+	"""
+	Carrega todas as unidades da coleção 'unidades' do Firestore.
+	"""
+	return ler_colecao('unidades')
 
 def gerar_datas_do_mes(mes, ano):
 	dias_no_mes = calendar.monthrange(ano, mes)[1]
@@ -364,17 +377,12 @@ def carregar_mapas():
 	return mapas_atualizados
 
 def obter_unidades_do_lote(lote_id):
-	lotes = carregar_lotes()
-	unidades = carregar_unidades()
-	lote = next((l for l in lotes if l['id'] == lote_id), None)
-	if not lote:
-		return []
-	unidades_do_lote = []
-	for unidade_id in lote.get('unidades', []):
-		unidade = next((u for u in unidades if u['id'] == unidade_id), None)
-		if unidade:
-			unidades_do_lote.append(unidade['nome'])
-	return unidades_do_lote
+	"""
+	Retorna todas as unidades que possuem o lote_id informado, usando Firestore.
+	"""
+	unidades_do_lote = filtrar_documentos('unidades', 'lote_id', lote_id)
+	# Retorna lista de nomes das unidades
+	return [u.get('nome') for u in unidades_do_lote]
 
 def obter_mapas_do_lote(lote_id, mes=None, ano=None):
 	mapas = carregar_mapas()
@@ -410,9 +418,9 @@ def adicionar_usuario(dados_usuario):
 		'acesso': False
 	}
 	# Salva diretamente no Firestore
-	ids = salvar_firestore('usuarios', novo_usuario)
-	if ids:
-		novo_usuario['firestore_id'] = ids[0]
+	firestore_id = criar_documento('usuarios', novo_usuario)
+	if firestore_id:
+		novo_usuario['firestore_id'] = firestore_id
 		return novo_usuario
 	return None
 

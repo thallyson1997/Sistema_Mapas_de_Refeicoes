@@ -1445,26 +1445,31 @@
 
         // Função para definir setembro/2025 como padrão (dados disponíveis)
         function setDefaultPreviousMonth() {
-            // Definir setembro de 2025 (mês com dados disponíveis)
-            const dataInicio = new Date(2025, 8, 1); // Setembro = mês 8 (0-indexed)
-            const dataFim = new Date(2025, 8, 30); // 30 de setembro
-            
-            // Definir valores nos inputs de data
+            // Calcular mês anterior ao atual
+            const now = new Date();
+            let ano = now.getFullYear();
+            let mes = now.getMonth(); // 0 = janeiro, 10 = novembro
+            if (mes === 0) {
+                mes = 11; // dezembro
+                ano--;
+            } else {
+                mes--;
+            }
+            // Primeiro dia do mês anterior
+            const dataInicio = new Date(ano, mes, 1);
+            // Último dia do mês anterior
+            const dataFim = new Date(ano, mes + 1, 0);
+            const dataInicioStr = dataInicio.toISOString().split('T')[0];
+            const dataFimStr = dataFim.toISOString().split('T')[0];
             const dataInicioInput = document.getElementById('data-inicio');
             const dataFimInput = document.getElementById('data-fim');
-            
             if (dataInicioInput && dataFimInput) {
-                const dataInicioStr = dataInicio.toISOString().split('T')[0];
-                const dataFimStr = dataFim.toISOString().split('T')[0];
-                
                 dataInicioInput.value = dataInicioStr;
                 dataFimInput.value = dataFimStr;
-                
-                // Definir filtros ativos
                 filtrosAtivos.dataInicio = dataInicioStr;
                 filtrosAtivos.dataFim = dataFimStr;
-                
                 atualizarDisplayPeriodo();
+                aplicarFiltros();
             }
         }
 

@@ -2404,12 +2404,10 @@
             // Gerar linhas para cada dia do mês
             for (let dia = 1; dia <= diasNoMes; dia++) {
                 const tr = document.createElement('tr');
-                
                 // Formatar data como DD/MM/AAAA
                 const dataFormatada = `${dia.toString().padStart(2, '0')}/${mes.toString().padStart(2, '0')}/${ano}`;
-                
                 tr.innerHTML = `
-                    <td class="data-column">${dataFormatada}</td>
+                    <td class="data-column"><input type="text" class="input-data" value="${dataFormatada}" data-col="data" data-dia="${dia}" style="width: 100px; text-align: center;"></td>
                     <td><input type="number" min="0" placeholder="0" data-col="cafe-int" data-dia="${dia}"></td>
                     <td><input type="number" min="0" placeholder="0" data-col="cafe-func" data-dia="${dia}"></td>
                     <td><input type="number" min="0" placeholder="0" data-col="almoco-int" data-dia="${dia}"></td>
@@ -2419,7 +2417,6 @@
                     <td><input type="number" min="0" placeholder="0" data-col="jantar-int" data-dia="${dia}"></td>
                     <td><input type="number" min="0" placeholder="0" data-col="jantar-func" data-dia="${dia}"></td>
                 `;
-                
                 tbody.appendChild(tr);
             }
             
@@ -2506,10 +2503,14 @@
         function colarDadosTabulares(data, startInput, startIndex) {
             const lines = data.trim().split('\n');
             const inputs = document.querySelectorAll('#tabela-entrada-manual input');
-            const inputsPerRow = 8; // 8 colunas de dados (sem contar a coluna de data)
+            const inputsPerRow = 9; // Agora são 9 colunas (incluindo data)
             const table = document.getElementById('tabela-entrada-manual');
             const rows = table.querySelectorAll('tbody tr');
-            
+
+            // Descobrir a linha e coluna inicial a partir do input clicado
+            const startRowIndex = Math.floor(startIndex / inputsPerRow);
+            const startColIndex = startIndex % inputsPerRow; // 0 = coluna de data
+
             lines.forEach((line, rowOffset) => {
                 // Detectar separador (TAB tem prioridade sobre espaços)
                 let values;
@@ -2519,59 +2520,47 @@
                     // Para espaços, dividir por múltiplos espaços ou espaços simples
                     values = line.split(/\s+/).filter(v => v.trim() !== '');
                 }
-                
+
                 // Calcular linha de destino baseada na posição inicial
-                const targetRowIndex = Math.floor(startIndex / inputsPerRow) + rowOffset;
+                const targetRowIndex = startRowIndex + rowOffset;
                 if (targetRowIndex >= rows.length) return; // Não ultrapassar o número de linhas
-                
+
                 const targetRow = rows[targetRowIndex];
-                
+                const targetInputs = targetRow.querySelectorAll('input');
+
+                // Colar valores a partir da coluna do input clicado
                 values.forEach((value, colOffset) => {
-                    if (colOffset === 0) {
-                        // Primeira coluna: preencher a célula de data (não é input, é texto)
-                        const dataCell = targetRow.querySelector('.data-column');
-                        if (dataCell && value.trim() !== '') {
-                            dataCell.textContent = value.trim();
-                            // Adicionar efeito visual na célula de data
-                            dataCell.style.backgroundColor = '#d4edda';
-                            dataCell.style.transition = 'background-color 1s ease-out';
-                            setTimeout(() => {
-                                dataCell.style.backgroundColor = '';
-                            }, 1000);
-                        }
-                    } else {
-                        // Demais colunas: preencher inputs de dados
-                        const inputIndexInRow = colOffset - 1; // Ajustar índice (primeira coluna é data)
-                        if (inputIndexInRow < inputsPerRow) {
-                            const targetInputs = targetRow.querySelectorAll('input');
-                            const targetInput = targetInputs[inputIndexInRow];
-                            
-                            if (targetInput) {
-                                // Limpar valor e inserir novo (apenas números para colunas de dados)
+                    const inputIndexInRow = startColIndex + colOffset;
+                    if (inputIndexInRow < inputsPerRow) {
+                        const targetInput = targetInputs[inputIndexInRow];
+                        if (targetInput) {
+                            // Se for a coluna de data (primeira), aceita texto, senão só números
+                            if (inputIndexInRow === 0) {
+                                targetInput.value = value.trim();
+                            } else {
                                 const numericValue = value.replace(/[^\d]/g, '');
                                 if (numericValue) {
                                     targetInput.value = numericValue;
-                                    
-                                    // Adicionar efeito visual para mostrar que foi colado
-                                    targetInput.style.backgroundColor = '#d4edda';
-                                    setTimeout(() => {
-                                        targetInput.style.backgroundColor = '';
-                                    }, 1000);
                                 }
                             }
+                            // Adicionar efeito visual para mostrar que foi colado
+                            targetInput.style.backgroundColor = '#d4edda';
+                            setTimeout(() => {
+                                targetInput.style.backgroundColor = '';
+                            }, 1000);
                         }
                     }
                 });
             });
-            
+
             // Mostrar notificação de sucesso
             const totalCells = lines.reduce((acc, line) => {
                 const values = line.includes('\t') ? line.split('\t') : line.split(/\s+/).filter(v => v.trim() !== '');
-                return acc + values.length; // Contar todas as células incluindo data
+                return acc + values.length;
             }, 0);
-            
+
             if (totalCells > 0) {
-                showNotification('success', 'Dados colados com sucesso!', `${totalCells} valores foram inseridos na tabela (incluindo datas).`);
+                showNotification('success', 'Dados colados com sucesso!', `${totalCells} valores foram inseridos na tabela.`);
             }
         }
         

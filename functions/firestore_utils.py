@@ -24,17 +24,25 @@ def criar_documento(nome_colecao, dados):
     for doc in docs:
         doc_dict = doc.to_dict()
         try:
-            doc_id = int(doc_dict.get('id', -1))
+            # Garante que só ids inteiros sejam considerados
+            doc_id = doc_dict.get('id', -1)
+            if isinstance(doc_id, str):
+                if doc_id.isdigit():
+                    doc_id = int(doc_id)
+                else:
+                    continue
+            elif not isinstance(doc_id, int):
+                continue
             if doc_id > maior_id:
                 maior_id = doc_id
         except (ValueError, TypeError):
             continue
     novo_id = maior_id + 1
-    dados['id'] = novo_id
-    # O id do documento no Firestore também será o número, como string
+    dados['id'] = novo_id  # Garante que o campo id é inteiro
+    # O id do documento no Firestore será o número como string, mas o campo 'id' salvo é inteiro
     doc_ref = colecao_ref.document(str(novo_id))
     doc_ref.set(dados)
-    return str(novo_id)
+    return novo_id  # Retorna como inteiro
 
 def ler_documento(nome_colecao, doc_id):
     """

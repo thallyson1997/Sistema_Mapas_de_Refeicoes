@@ -292,15 +292,16 @@ def calcular_colunas_siisp(mapa):
 	return mapa
 
 def salvar_mapas_atualizados(mapas):
-	from .firestore_utils import db
+	from .firestore_utils import criar_documento, db
+	# Remove todos os documentos da coleção 'mapas' no Firestore
 	colecao_ref = db.collection('mapas')
-	# Remove campo 'id' manual se existir
-	for mapa in mapas:
-		if 'id' in mapa:
-			del mapa['id']
-		# Salva cada registro como documento individual
-		doc_ref = colecao_ref.document()
-		doc_ref.set(mapa)
+	docs = colecao_ref.stream()
+	for doc in docs:
+		doc.reference.delete()
+	# Regrava todos os mapas atuais
+	if isinstance(mapas, list):
+		for mapa in mapas:
+			criar_documento('mapas', mapa)
 	return True
 
 def carregar_mapas():

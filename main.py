@@ -1,3 +1,6 @@
+# === API para adicionar novo lote e unidades ===
+from functions.firestore_utils import criar_documento
+
 # ===== IMPORTS NECESSÁRIOS =====
 from flask import Flask, request, send_file, render_template, flash, redirect, url_for, session, jsonify
 import io
@@ -6,7 +9,6 @@ import json
 import calendar
 from datetime import datetime
 from functions.utils import (
-    salvar_mapas,
     carregar_usuarios,
     salvar_usuarios,
     carregar_lotes,
@@ -1002,18 +1004,10 @@ def api_adicionar_dados():
         except ValueError:
             return jsonify({'error': 'Lote ID, mês e ano devem ser números'}), 400
         
-        # Carregar todos os mapas existentes
+        # Carregar dados existentes do arquivo mapas.json
         dados_mapas = {'mapas': carregar_mapas()}
-
-        # Remover do Firestore qualquer mapa existente para a mesma unidade, mês, ano e lote
-        from functions.firestore_utils import db
-        colecao_ref = db.collection('mapas')
-        # Buscar documentos duplicados
-        docs_duplicados = colecao_ref.where('nome_unidade', '==', nome_unidade).where('mes', '==', mes).where('ano', '==', ano).where('lote_id', '==', lote_id).stream()
-        for doc in docs_duplicados:
-            colecao_ref.document(doc.id).delete()
-
-        # Verificar se já existe registro para esta unidade, mês, ano e lote (na lista local)
+        
+        # Verificar se já existe registro para esta unidade, mês, ano e lote
         registro_existente_index = None
         for i, registro in enumerate(dados_mapas['mapas']):
             if (registro.get('nome_unidade') == nome_unidade and 
@@ -1032,15 +1026,15 @@ def api_adicionar_dados():
             print(f"🔄 Substituindo registro existente para {nome_unidade} - {mes}/{ano} (Lote {lote_id})")
         else:
             # Gerar novo ID único (baseado no maior ID existente + 1)
-            maior_id = -1
+            maior_id = 0
             for registro in dados_mapas['mapas']:
-                if 'id' in registro:
-                    try:
-                        id_val = int(registro['id'])
-                        if id_val > maior_id:
-                            maior_id = id_val
-                    except (ValueError, TypeError):
-                        continue
+                valor_id = registro.get('id')
+                try:
+                    valor_id_int = int(valor_id)
+                except (ValueError, TypeError):
+                    continue
+                if valor_id_int > maior_id:
+                    maior_id = valor_id_int
             id_a_usar = maior_id + 1
             print(f"✨ Criando novo registro para {nome_unidade} - {mes}/{ano} (Lote {lote_id})")
         
@@ -1130,7 +1124,7 @@ def api_adicionar_dados():
         dados_mapas['mapas'].append(novo_registro)
         
         # Salvar no arquivo mapas.json
-        if salvar_mapas(novo_registro):
+        if salvar_mapas_atualizados(dados_mapas['mapas']):
             print(f"✅ Dados salvos com sucesso em mapas.json:")
             print(f"   Lote ID: {lote_id}")
             print(f"   Mês: {mes}, Ano: {ano} ({dias_esperados} dias)")
@@ -1220,32 +1214,31 @@ def api_excluir_dados():
         
         # Remover o registro da lista
         dados_mapas['mapas'].pop(registro_index)
-
-        # Remover do Firestore qualquer mapa existente para a mesma unidade, mês, ano e lote
-        from functions.firestore_utils import db
-        colecao_ref = db.collection('mapas')
-        docs_duplicados = colecao_ref.where('nome_unidade', '==', nome_unidade).where('mes', '==', mes).where('ano', '==', ano).where('lote_id', '==', lote_id).stream()
-        for doc in docs_duplicados:
-            colecao_ref.document(doc.id).delete()
-
-        print(f"✅ Registro excluído com sucesso:")
-        print(f"   Lote ID: {lote_id}")
-        print(f"   Período: {mes}/{ano}")
-        print(f"   Unidade: {nome_unidade}")
-        print(f"   Total de registros restantes: {len(dados_mapas['mapas'])}")
-
-        return jsonify({
-            'success': True,
-            'message': 'Registro excluído com sucesso!',
-            'registro_excluido': {
-                'id': registro_encontrado.get('id'),
-                'lote_id': lote_id,
-                'mes': mes,
-                'ano': ano,
-                'nome_unidade': nome_unidade,
-                'data_criacao': registro_encontrado.get('data_criacao')
-            }
-        })
+        
+        # Salvar dados atualizados
+        sucesso_salvamento = salvar_mapas_atualizados(dados_mapas['mapas'])
+        
+        if sucesso_salvamento:
+            print(f"✅ Registro excluído com sucesso:")
+            print(f"   Lote ID: {lote_id}")
+            print(f"   Período: {mes}/{ano}")
+            print(f"   Unidade: {nome_unidade}")
+            print(f"   Total de registros restantes: {len(dados_mapas['mapas'])}")
+            
+            return jsonify({
+                'success': True,
+                'message': 'Registro excluído com sucesso!',
+                'registro_excluido': {
+                    'id': registro_encontrado.get('id'),
+                    'lote_id': lote_id,
+                    'mes': mes,
+                    'ano': ano,
+                    'nome_unidade': nome_unidade,
+                    'data_criacao': registro_encontrado.get('data_criacao')
+                }
+            })
+        else:
+            return jsonify({'error': 'Erro ao salvar alterações no arquivo'}), 500
             
     except Exception as e:
         print(f"❌ Erro ao excluir dados: {e}")
@@ -1301,25 +1294,27 @@ def api_entrada_manual():
         
         # Se existe registro para esta unidade/mês/ano/lote, usar o mesmo ID
         if registro_existente_index is not None:
-            # Manter o ID do registro existente, garantindo que seja inteiro
+            # Manter o ID do registro existente
+            id_existente = dados_mapas['mapas'][registro_existente_index].get('id', 1)
             try:
-                id_a_usar = int(dados_mapas['mapas'][registro_existente_index].get('id', 1))
-            except Exception:
+                id_a_usar = int(id_existente)
+            except (ValueError, TypeError):
                 id_a_usar = 1
             # Remover o registro antigo
             dados_mapas['mapas'].pop(registro_existente_index)
             print(f"🔄 Substituindo registro existente para {nome_unidade} - {mes}/{ano} (Lote {lote_id})")
         else:
-            # Gerar novo ID único (baseado no maior ID existente + 1), garantindo inteiro
-            maior_id = -1
+            # Gerar novo ID único (baseado no maior ID existente + 1)
+            maior_id = 0
             for registro in dados_mapas['mapas']:
+                valor_id = registro.get('id')
                 try:
-                    id_val = int(registro.get('id', -1))
-                    if id_val > maior_id:
-                        maior_id = id_val
-                except Exception:
+                    valor_id_int = int(valor_id)
+                except (ValueError, TypeError):
                     continue
-            id_a_usar = int(maior_id) + 1
+                if valor_id_int > maior_id:
+                    maior_id = valor_id_int
+            id_a_usar = maior_id + 1
             print(f"✨ Criando novo registro para {nome_unidade} - {mes}/{ano} (Lote {lote_id})")
         
         # Gerar lista de datas do mês automaticamente (formato DD/MM/YYYY)
@@ -1383,17 +1378,23 @@ def api_entrada_manual():
         print(f"🔢 Calculando colunas SIISP automaticamente com lista de zeros...")
         novo_registro = calcular_colunas_siisp(novo_registro)
         
-        # Salvar apenas o novo registro, igual à rota adicionar_dados
-        if salvar_mapas(novo_registro):
+        # Adicionar novo registro
+        dados_mapas['mapas'].append(novo_registro)
+        
+        # Salvar no arquivo mapas.json
+        if salvar_mapas_atualizados(dados_mapas['mapas']):
             print(f"✅ Entrada manual salva com sucesso em mapas.json:")
             print(f"   Lote ID: {lote_id}")
             print(f"   Mês: {mes}, Ano: {ano} ({dias_esperados} dias)")
             print(f"   Unidade: {nome_unidade}")
             print(f"   📊 Registros processados: {len(dados_tabela)}")
             print(f"   📊 Dados SIISP: Lista vazia (como especificado)")
-            total_refeicoes = sum(cafe_interno + cafe_funcionario + almoco_interno + almoco_funcionario + \
+            
+            # Calcular totais para log
+            total_refeicoes = sum(cafe_interno + cafe_funcionario + almoco_interno + almoco_funcionario + 
                                 lanche_interno + lanche_funcionario + jantar_interno + jantar_funcionario)
             print(f"   📊 Total de refeições: {total_refeicoes}")
+            
             return jsonify({
                 'success': True,
                 'message': 'Dados da entrada manual salvos com sucesso!',
@@ -1468,25 +1469,23 @@ def api_adicionar_siisp():
                 'error': f'Quantidade de números SIISP ({len(numeros_siisp)}) não confere com os dias do mês {mes}/{ano} ({dias_esperados} dias).'
             }), 400
         
-        # Atualizar no Firestore
+        # Buscar o registro correspondente no Firestore
         from functions.firestore_utils import db
-        colecao_ref = db.collection('mapas')
-        # Buscar documento correspondente
-        docs = colecao_ref.where('nome_unidade', '==', nome_unidade).where('mes', '==', mes).where('ano', '==', ano).where('lote_id', '==', lote_id).stream()
-        doc_id = None
-        registro_encontrado = None
-        for doc in docs:
-            doc_id = doc.id
-            registro_encontrado = doc.to_dict()
-            break
-        if registro_encontrado is None or doc_id is None:
+        mapas_ref = db.collection('mapas')
+        query = mapas_ref.where('nome_unidade', '==', nome_unidade).where('mes', '==', mes).where('ano', '==', ano).where('lote_id', '==', lote_id)
+        results = query.get()
+        if not results:
             return jsonify({
                 'success': False,
                 'error': f'Não foram encontrados dados de refeições para {nome_unidade} em {mes}/{ano}. É necessário ter dados de refeições antes de adicionar números SIISP.'
             }), 404
-        print(f"📊 Registro Firestore encontrado para {nome_unidade} - {mes}/{ano} (Lote {lote_id})")
+        doc = results[0]
+        registro_encontrado = doc.to_dict()
+        print(f"📊 Registro encontrado para {nome_unidade} - {mes}/{ano} (Lote {lote_id}) [Firestore ID: {doc.id}]")
+
         # Atualizar o registro com os números SIISP
         registro_encontrado['n_siisp'] = numeros_siisp
+
         # Calcular automaticamente as colunas SIISP (diferenças)
         print(f"🔢 Calculando colunas SIISP automaticamente...")
         campos_refeicoes = [
@@ -1505,25 +1504,32 @@ def api_adicionar_siisp():
             else:
                 registro_encontrado[campo_siisp] = []
                 print(f"   ⚠️ {campo_siisp}: dados incompatíveis, mantido vazio")
+
+        # Atualizar timestamp de modificação
         registro_encontrado['data_atualizacao_siisp'] = datetime.now().isoformat()
-        # Atualizar documento no Firestore
-        colecao_ref.document(doc_id).set(registro_encontrado)
-        print(f"✅ Números SIISP adicionados com sucesso no Firestore:")
-        print(f"   Lote ID: {lote_id}")
-        print(f"   Período: {mes}/{ano} ({dias_esperados} dias)")
-        print(f"   Unidade: {nome_unidade}")
-        print(f"   📊 Números SIISP: {len(numeros_siisp)} valores")
-        print(f"   📊 Colunas calculadas: 8 campos de diferenças")
-        return jsonify({
-            'success': True,
-            'message': f'Números SIISP adicionados com sucesso para {nome_unidade} em {mes}/{ano}! (Firestore)',
-            'registro': registro_encontrado,
-            'estatisticas': {
-                'total_dias': dias_esperados,
-                'numeros_adicionados': len(numeros_siisp),
-                'colunas_calculadas': len(campos_refeicoes)
-            }
-        })
+
+        # Salvar dados atualizados no Firestore
+        try:
+            mapas_ref.document(doc.id).set(registro_encontrado)
+            print(f"✅ Números SIISP adicionados com sucesso no Firestore:")
+            print(f"   Lote ID: {lote_id}")
+            print(f"   Período: {mes}/{ano} ({dias_esperados} dias)")
+            print(f"   Unidade: {nome_unidade}")
+            print(f"   📊 Números SIISP: {len(numeros_siisp)} valores")
+            print(f"   📊 Colunas calculadas: 8 campos de diferenças")
+            return jsonify({
+                'success': True,
+                'message': f'Números SIISP adicionados com sucesso para {nome_unidade} em {mes}/{ano}! (Firestore)',
+                'registro': registro_encontrado,
+                'estatisticas': {
+                    'total_dias': dias_esperados,
+                    'numeros_adicionados': len(numeros_siisp),
+                    'colunas_calculadas': len(campos_refeicoes)
+                }
+            })
+        except Exception as e:
+            print(f"❌ Erro ao salvar alterações no Firestore: {e}")
+            return jsonify({'error': 'Erro ao salvar alterações no Firestore'}), 500
             
     except Exception as e:
         print(f"❌ Erro ao adicionar números SIISP: {e}")
@@ -1535,66 +1541,115 @@ def api_lotes():
     lotes = carregar_lotes()
     return jsonify(lotes)
 
-@app.route('/api/usuarios')
-def api_usuarios():
-    """API para listar usuários (apenas para admins)"""
-    if 'usuario_id' not in session or session.get('usuario_id') != 1:
+@app.route('/api/novo-lote', methods=['POST'])
+def api_novo_lote():
+    """API para adicionar novo lote e suas unidades no Firestore"""
+    if 'usuario_id' not in session:
         return jsonify({'error': 'Acesso negado'}), 403
-    
-    usuarios = carregar_usuarios()
-    # Remover senhas da resposta por segurança
-    usuarios_safe = []
-    for u in usuarios:
-        usuario_safe = u.copy()
-        usuario_safe.pop('senha', None)
-        usuarios_safe.append(usuario_safe)
-    
-    return jsonify(usuarios_safe)
-
-@app.route('/api/validar-campo', methods=['POST'])
-def validar_campo_unico():
-    """API para validar se um campo específico já existe (validação em tempo real)"""
+    # (Bloco duplicado removido)
     try:
-        campo = request.json.get('campo')
-        valor = request.json.get('valor', '').strip()
-        
-        if not campo or not valor:
-            return jsonify({'valido': True})
-        
-        usuarios = carregar_usuarios()
-        
-        # Validações específicas por campo
-        existe = False
-        mensagem = ''
-        
-        if campo == 'email':
-            valor = valor.lower()
-            existe = any(u.get('email', '').lower() == valor for u in usuarios)
-            mensagem = 'Este email já está em uso!'
-        elif campo == 'cpf':
-            existe = any(u.get('cpf', '') == valor for u in usuarios)
-            mensagem = 'Este CPF já está cadastrado!'
-        elif campo == 'usuario':
-            valor = valor.lower()
-            existe = any(u.get('usuario', '').lower() == valor for u in usuarios)
-            mensagem = 'Este nome de usuário já existe!'
-        elif campo == 'matricula':
-            if valor:  # Matrícula é opcional
-                existe = any(u.get('matricula', '') == valor for u in usuarios)
-                mensagem = 'Esta matrícula já está em uso!'
-        elif campo == 'telefone':
-            if valor:  # Telefone é opcional
-                existe = any(u.get('telefone', '') == valor for u in usuarios)
-                mensagem = 'Este telefone já está cadastrado!'
-        
-        return jsonify({
-            'valido': not existe,
-            'mensagem': mensagem if existe else 'Disponível!'
-        })
-        
+        # Receber dados do formulário
+        dados = request.get_json()
+        print(f"📥 Dados recebidos para novo lote: {dados}")
+        nome_lote = dados.get('nome_lote', '').strip()
+        nome_empresa = dados.get('nome_empresa', '').strip()
+        numero_contrato = dados.get('numero_contrato', '').strip()
+        data_inicio = dados.get('data_inicio', '').strip()
+        precos = dados.get('precos', {})
+        # Converter todos os valores de precos para float
+        for refeicao in precos:
+            for tipo in precos[refeicao]:
+                valor = precos[refeicao][tipo]
+                try:
+                    precos[refeicao][tipo] = float(valor)
+                except (ValueError, TypeError):
+                    precos[refeicao][tipo] = 0.0
+        unidades_nomes = dados.get('unidades', [])
+
+        # Validação básica
+        if not nome_lote or not nome_empresa or not numero_contrato or not data_inicio or not unidades_nomes:
+            return jsonify({'error': 'Preencha todos os campos obrigatórios.'}), 400
+
+        # Carregar unidades existentes
+        unidades_existentes = carregar_unidades()
+        # Mapear nomes para IDs
+        unidades_ids = []
+        unidades_atualizadas = False
+        novas_unidades_firestore = []
+        for nome in unidades_nomes:
+            unidade = next((u for u in unidades_existentes if u.get('nome', '').strip().lower() == nome.strip().lower()), None)
+            if unidade:
+                unidades_ids.append(unidade['id'])
+            else:
+                # Se unidade não existe, criar nova unidade e atribuir novo ID
+                ids_unidades = [int(u['id']) for u in unidades_existentes if isinstance(u.get('id'), (int, float, str)) and str(u.get('id')).isdigit()]
+                novo_id = max(ids_unidades, default=-1) + 1
+                nova_unidade = {
+                    'id': novo_id,
+                    'nome': nome.strip(),
+                    'ativo': True,
+                    'lote_id': None  # será preenchido após obter o novo_id do lote
+                }
+                unidades_existentes.append(nova_unidade)
+                unidades_ids.append(novo_id)
+                unidades_atualizadas = True
+                novas_unidades_firestore.append(nova_unidade)
+        # Salvar unidades atualizadas se houve inclusão
+        if unidades_atualizadas:
+            with open(os.path.join(DADOS_DIR, 'unidades.json'), 'w', encoding='utf-8') as f:
+                import json
+                json.dump(unidades_existentes, f, ensure_ascii=False, indent=2)
+
+        # Carregar lotes existentes
+        lotes = carregar_lotes()
+        # O id do novo lote deve ser o próximo disponível (maior id + 1, ou 0 se nenhum lote)
+        if lotes:
+            novo_id = max([l['id'] for l in lotes]) + 1
+        else:
+            novo_id = 0
+        # Atualizar o campo lote_id das novas unidades
+        for unidade in novas_unidades_firestore:
+            unidade['lote_id'] = novo_id
+        novo_lote = {
+            'id': novo_id,
+            'nome': nome_lote,
+            'empresa': nome_empresa,
+            'contrato': numero_contrato,
+            'data_inicio': data_inicio,
+            'precos': precos,
+            'unidades': unidades_ids,
+            'ativo': True
+        }
+        lotes.append(novo_lote)
+        # Salvar lotes atualizados
+        with open(os.path.join(DADOS_DIR, 'lotes.json'), 'w', encoding='utf-8') as f:
+            import json
+            json.dump(lotes, f, ensure_ascii=False, indent=2)
+
+        # Salvar também no Firestore
+        try:
+            firestore_id = criar_documento('lotes', dict(novo_lote))
+            print(f"☁️ Lote salvo no Firestore: lotes/{firestore_id}")
+            # Salvar apenas as novas unidades na coleção 'unidades' do Firestore
+            for unidade in novas_unidades_firestore:
+                unidade_firestore = {
+                    'id': unidade['id'],
+                    'nome': unidade['nome'],
+                    'ativo': unidade.get('ativo', True),
+                    'lote_id': unidade['lote_id']
+                }
+                try:
+                    criar_documento('unidades', unidade_firestore)
+                except Exception as e:
+                    print(f"⚠️ Erro ao salvar unidade no Firestore: {e}")
+        except Exception as e:
+            print(f"⚠️ Erro ao salvar lote/unidades no Firestore: {e}")
+
+        print(f"✅ Novo lote cadastrado: {novo_lote}")
+        return jsonify({'success': True, 'lote': novo_lote})
     except Exception as e:
-        print(f"Erro na validação: {e}")
-        return jsonify({'valido': True}), 500
+        print(f"❌ Erro ao cadastrar novo lote: {e}")
+        return jsonify({'error': 'Erro ao cadastrar lote.'}), 500
 
 # ===== FILTROS PERSONALIZADOS PARA TEMPLATES =====
 

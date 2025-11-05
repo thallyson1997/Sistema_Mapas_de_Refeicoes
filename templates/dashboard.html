@@ -248,13 +248,14 @@
                             <div>
                                 <h3 style="margin-bottom: 0.25rem;">{{ lote.nome }}</h3>
                                 <div style="font-size: 0.75rem; opacity: 0.8;">
-                                    <strong>{{ lote.contrato }}</strong> - {% if lote.data_inicio_contrato %}
-                                        {% set dt = lote.data_inicio_contrato|string %}
+                                    <strong>{{ lote.contrato }}</strong> -
+                                    {% if lote.data_inicio %}
+                                        {% set dt = lote.data_inicio|string %}
                                         {% if dt|length >= 10 and '-' in dt %}
                                             {% set parts = dt.split(' ')[0].split('-') %}
                                             {{ parts[2] }}/{{ parts[1] }}/{{ parts[0] }}
                                         {% else %}
-                                            {{ lote.data_inicio_contrato }}
+                                            {{ lote.data_inicio }}
                                         {% endif %}
                                     {% else %}
                                         N/A

@@ -201,12 +201,39 @@
     </footer>
 
     <!-- Modal Novo Lote -->
+
     <div id="modal-novo-lote" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); z-index: 2000;">
-        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 16px; padding: 2rem; max-width: 480px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.18);">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 16px; padding: 2rem; max-width: 900px; width: 95%; box-shadow: 0 8px 32px rgba(0,0,0,0.18);">
             <h2 style="margin-bottom: 1.5rem; color: var(--primary-color);">Novo Lote Contratual</h2>
             <form id="form-novo-lote" autocomplete="off">
-                <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2rem;">
-                    <div>
+                <div style="display: flex; flex-direction: row; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap;">
+                    <!-- Coluna dos campos de texto -->
+                    <div style="flex: 1 1 320px; min-width: 280px; display: flex; flex-direction: column; gap: 1rem;">
+                        <div>
+                            <label for="novo-lote-nome" class="form-label" style="font-weight: 500;">Nome do Lote</label>
+                            <input type="text" id="novo-lote-nome" name="nome_lote" class="form-input" placeholder="Digite o nome do lote" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                        </div>
+                        <div>
+                            <label for="novo-lote-empresa" class="form-label" style="font-weight: 500;">Nome da Empresa</label>
+                            <input type="text" id="novo-lote-empresa" name="nome_empresa" class="form-input" placeholder="Digite o nome da empresa" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                        </div>
+                        <div>
+                            <label for="novo-lote-contrato" class="form-label" style="font-weight: 500;">Número do Contrato</label>
+                            <input type="text" id="novo-lote-contrato" name="numero_contrato" class="form-input" placeholder="Digite o número do contrato" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                        </div>
+                        <div>
+                            <label for="novo-lote-inicio" class="form-label" style="font-weight: 500;">Data de Início do Contrato</label>
+                            <input type="date" id="novo-lote-inicio" name="data_inicio" class="form-input" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                        </div>
+                        <div>
+                            <label class="form-label" style="font-weight: 500;">Unidades do Lote</label>
+                            <div id="unidades-lista" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
+                            <input type="text" id="input-unidade" class="form-input" placeholder="Digite o nome da unidade e pressione Enter" style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300); margin-top: 0.5rem;">
+                            <small style="color: var(--gray-500);">Pressione Enter para adicionar cada unidade. Clique no X para remover.</small>
+                        </div>
+                    </div>
+                    <!-- Coluna dos preços -->
+                    <div style="flex: 1 1 320px; min-width: 280px; display: flex; flex-direction: column; gap: 1rem;">
                         <label class="form-label" style="font-weight: 500;">Preços das Refeições (R$)</label>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
                             <div>
@@ -242,28 +269,6 @@
                                 <input type="number" step="0.01" min="0" id="preco-jantar-funcionario" name="preco_jantar_funcionario" class="form-input" placeholder="0,00" required style="width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid var(--gray-300);">
                             </div>
                         </div>
-                    </div>
-                    <div>
-                        <label for="novo-lote-nome" class="form-label" style="font-weight: 500;">Nome do Lote</label>
-                        <input type="text" id="novo-lote-nome" name="nome_lote" class="form-input" placeholder="Digite o nome do lote" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
-                    </div>
-                    <div>
-                        <label for="novo-lote-empresa" class="form-label" style="font-weight: 500;">Nome da Empresa</label>
-                        <input type="text" id="novo-lote-empresa" name="nome_empresa" class="form-input" placeholder="Digite o nome da empresa" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
-                    </div>
-                    <div>
-                        <label for="novo-lote-contrato" class="form-label" style="font-weight: 500;">Número do Contrato</label>
-                        <input type="text" id="novo-lote-contrato" name="numero_contrato" class="form-input" placeholder="Digite o número do contrato" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
-                    </div>
-                    <div>
-                        <label for="novo-lote-inicio" class="form-label" style="font-weight: 500;">Data de Início do Contrato</label>
-                        <input type="date" id="novo-lote-inicio" name="data_inicio" class="form-input" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
-                    </div>
-                    <div>
-                        <label class="form-label" style="font-weight: 500;">Unidades do Lote</label>
-                        <div id="unidades-lista" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
-                        <input type="text" id="input-unidade" class="form-input" placeholder="Digite o nome da unidade e pressione Enter" style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300); margin-top: 0.5rem;">
-                        <small style="color: var(--gray-500);">Pressione Enter para adicionar cada unidade. Clique no X para remover.</small>
                     </div>
                 </div>
                 <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
@@ -392,10 +397,58 @@
                 // Substituir o submit padrão para não recarregar a página
                 var formNovoLote = document.getElementById('form-novo-lote');
                 if (formNovoLote) {
-                    formNovoLote.addEventListener('submit', function(e) {
+                    formNovoLote.addEventListener('submit', async function(e) {
                         e.preventDefault();
-                        // Futuramente: lógica de adicionar lote
-                        modalNovoLote.style.display = 'none';
+                        // Coletar dados do formulário
+                        const nome_lote = document.getElementById('novo-lote-nome').value.trim();
+                        const nome_empresa = document.getElementById('novo-lote-empresa').value.trim();
+                        const numero_contrato = document.getElementById('novo-lote-contrato').value.trim();
+                        const data_inicio = document.getElementById('novo-lote-inicio').value;
+                        // Unidades
+                        const unidades = Array.from(document.querySelectorAll('#unidades-lista input[name="unidades[]"]')).map(i => i.value.trim()).filter(Boolean);
+                        // Preços
+                        const precos = {
+                            cafe: {
+                                interno: document.getElementById('preco-cafe-interno').value,
+                                funcionario: document.getElementById('preco-cafe-funcionario').value
+                            },
+                            almoco: {
+                                interno: document.getElementById('preco-almoco-interno').value,
+                                funcionario: document.getElementById('preco-almoco-funcionario').value
+                            },
+                            lanche: {
+                                interno: document.getElementById('preco-lanche-interno')?.value || '',
+                                funcionario: document.getElementById('preco-lanche-funcionario')?.value || ''
+                            },
+                            jantar: {
+                                interno: document.getElementById('preco-jantar-interno')?.value || '',
+                                funcionario: document.getElementById('preco-jantar-funcionario')?.value || ''
+                            }
+                        };
+                        // Validação básica
+                        if (!nome_lote || !nome_empresa || !numero_contrato || !data_inicio || unidades.length === 0) {
+                            alert('Preencha todos os campos obrigatórios.');
+                            return;
+                        }
+                        // Enviar para backend
+                        try {
+                            const resp = await fetch('/api/novo-lote', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                credentials: 'same-origin', // Garante envio do cookie de sessão Flask
+                                body: JSON.stringify({ nome_lote, nome_empresa, numero_contrato, data_inicio, precos, unidades })
+                            });
+                            const data = await resp.json();
+                            if (resp.ok && data.success) {
+                                alert('Lote cadastrado com sucesso!');
+                                modalNovoLote.style.display = 'none';
+                                window.location.reload();
+                            } else {
+                                alert(data.error || 'Erro ao cadastrar lote.');
+                            }
+                        } catch (err) {
+                            alert('Erro de conexão com o servidor.');
+                        }
                     });
                 }
             }

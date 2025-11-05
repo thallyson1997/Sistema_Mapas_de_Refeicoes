@@ -289,17 +289,15 @@
                                 </div>
                                 <div>
                                     <strong>Contrato:</strong><br>
-                                    <span>{{ lote.contrato }} - {% if lote.data_inicio_contrato %}
-                                        {% set dt = lote.data_inicio_contrato|string %}
-                                        {% if dt|length >= 10 and '-' in dt %}
-                                            {% set parts = dt.split(' ')[0].split('-') %}
-                                            {{ parts[2] }}/{{ parts[1] }}/{{ parts[0] }}
-                                        {% else %}
-                                            {{ lote.data_inicio_contrato }}
-                                        {% endif %}
+                                    <span>{{ lote.contrato }}</span>
+                                </div>
+                                <div>
+                                    <strong>Início do Contrato:</strong><br>
+                                    {% if lote.data_inicio %}
+                                        <span>{{ lote.data_inicio.split('-')[2] }}/{{ lote.data_inicio.split('-')[1] }}/{{ lote.data_inicio.split('-')[0] }}</span>
                                     {% else %}
-                                        N/A
-                                    {% endif %}</span>
+                                        <span style="color: #aaa;">Não informado</span>
+                                    {% endif %}
                                 </div>
                                 <div>
                                     <strong>Unidades Ativas:</strong><br>

@@ -27,29 +27,24 @@
 
     <main>
         <div class="container">
-            <!-- Breadcrumb -->
-            <nav aria-label="Navegação" style="margin-bottom: 2rem;">
-                <ol style="display: flex; gap: 0.5rem; font-size: 0.875rem; color: var(--gray-500);">
-                    <li><a href="{{ url_for('dashboard') }}" style="color: var(--primary-color); text-decoration: none;">Dashboard</a></li>
-                    <li aria-hidden="true">/</li>
-                    <li aria-current="page">Lotes Contratuais</li>
-                </ol>
+            <!-- Breadcrumb melhorado -->
+            <nav aria-label="Navegação" style="margin-bottom: 2.5rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0.75rem 1.25rem; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                <div style="display: flex; gap: 0.5rem; font-size: 0.95rem; color: var(--gray-500); align-items: center;">
+                    <span><a href="{{ url_for('dashboard') }}" style="color: var(--primary-color); text-decoration: none; font-weight: 500;">Dashboard</a></span>
+                    <span aria-hidden="true" style="font-size: 1.1em; opacity: 0.7;">/</span>
+                    <span aria-current="page" style="color: var(--primary-color); font-weight: 600;">Lotes Contratuais</span>
+                </div>
             </nav>
 
-            <!-- Header da Página -->
-            <section style="margin-bottom: 2rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+            <!-- Header da Página melhorado -->
+            <section style="margin-bottom: 2.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 2rem;">
                     <div>
-                        <h1>Lotes Contratuais</h1>
-                        <p style="color: var(--gray-600); margin: 0;">
-                            Gerenciamento completo dos lotes e unidades prisionais
-                        </p>
+                        <h1 style="margin-bottom: 0.5rem; color: var(--primary-color); font-size: 2.1rem; font-weight: 700; letter-spacing: -1px;">Lotes Contratuais</h1>
+                        <p style="color: var(--gray-600); margin: 0; font-size: 1.05rem;">Gerenciamento completo dos lotes e unidades prisionais</p>
                     </div>
-                    <div style="display: flex; gap: 0.75rem;">
-                        <!-- Botão Exportar Dados removido -->
-                        <button class="btn btn-primary" id="novoLote">
-                            ➕ Novo Lote
-                        </button>
+                    <div style="display: flex; gap: 1rem; align-items: flex-end;">
+                        <button class="btn btn-primary" id="novoLote" style="font-size: 1.08rem; padding: 0.7rem 1.3rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(59,130,246,0.08);">➕ Novo Lote</button>
                     </div>
                 </div>
             </section>

@@ -33,11 +33,20 @@ def login():
 def cadastro():
     #Página de cadastro
     if request.method == 'POST':
-        # coleta dados do formulário (se houver) e chama a função de cadastro
         form_data = request.form.to_dict()
-        cadastrar_novo_usuario(form_data)
-        # comportamento inicial: manter a página de cadastro após envio
-        return render_template('cadastro.html')
+        resp = cadastrar_novo_usuario(form_data)
+
+        accept = request.headers.get('Accept', '')
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        if request.is_json or is_ajax or 'application/json' in accept:
+            return jsonify(resp), (200 if resp.get('ok') else 400)
+
+        if resp.get('ok'):
+            flash(resp.get('mensagem', 'Usuário cadastrado com sucesso'))
+            return redirect(url_for('login'))
+        else:
+            flash(resp.get('mensagem', 'Erro ao cadastrar usuário'))
+            return render_template('cadastro.html', form_data=form_data, erro=resp.get('mensagem'))
 
     return render_template('cadastro.html')
 
@@ -104,14 +113,11 @@ def api_validar_campo():
         data = request.get_json(force=True, silent=True) or {}
         campo = data.get('campo')
         valor = data.get('valor')
-        # Se o cliente enviar o formulário completo como { form: { ... } },
-        # delegamos para validar_cadastro_no_usuario (somente valida, não salva).
         form = data.get('form')
         if isinstance(form, dict):
             result = validar_cadastro_no_usuario(form)
             return jsonify(result), 200
 
-        # Se receber um par campo/valor, despacha para o validador correspondente
         if campo and valor is not None:
             campo = campo.lower()
             if campo == 'cpf':
@@ -143,7 +149,6 @@ def api_validar_campo():
                 res = {'valido': True, 'mensagem': 'OK', 'campo': 'senha'}
                 return jsonify(res), 200
 
-        # Implementação padrão: responder OK (inclui campo quando informado)
         default_res = {'valido': True, 'mensagem': 'OK'}
         if campo:
             default_res['campo'] = campo

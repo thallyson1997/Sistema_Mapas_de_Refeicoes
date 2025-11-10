@@ -3,13 +3,81 @@ import re
 import os
 
 def cadastrar_novo_usuario(form_data=None):
-	resp = {"ok": True}
-	try:
-		print(json.dumps(resp, ensure_ascii=False))
-	except Exception:
-		print(resp)
-	return resp
+	r = validar_cadastro_no_usuario(form_data)
+	if not r.get('valido'):
+		return {'ok': False, 'mensagem': r.get('mensagem', 'Validação falhou'), 'campo': r.get('campo')}
 
+	base_dir = os.path.dirname(os.path.dirname(__file__))
+	usuarios_path = os.path.join(base_dir, 'dados', 'usuarios.json')
+	usuarios = None
+	data_wrapped = None
+	try:
+		data = _load_usuarios_data()
+		if isinstance(data, list):
+			usuarios = data
+		elif isinstance(data, dict) and isinstance(data.get('usuarios'), list):
+			usuarios = data.get('usuarios')
+			data_wrapped = data
+		else:
+			usuarios = []
+	except Exception:
+		usuarios = []
+
+	existing_ids = [u.get('id') for u in usuarios if isinstance(u, dict) and isinstance(u.get('id'), int)]
+	new_id = (max(existing_ids) + 1) if existing_ids else 1
+
+	registro = {
+		'id': new_id,
+		'cpf': re.sub(r'\D', '', str(form_data.get('cpf') or '')),
+		'email': str(form_data.get('email') or '').strip(),
+		'telefone': re.sub(r'\D', '', str(form_data.get('telefone') or '')),
+		'matricula': str(form_data.get('matricula') or '').strip(),
+		'usuario': str(form_data.get('usuario') or '').strip(),
+		'nome': str(form_data.get('nome') or form_data.get('nome_completo') or '').strip(),
+		'cargo': str(form_data.get('cargo') or '').strip(),
+		'unidade': str(form_data.get('unidade') or '').strip(),
+		'motivo': str(
+			form_data.get('motivo') or form_data.get('motivo_solicitacao') or form_data.get('justificativa') or form_data.get('justificativa_acesso') or ''
+		).strip(),
+		'concordo': False,
+		'ativo': False,
+		'senha': str(form_data.get('senha') or '')
+	}
+
+	# normalizar valor do checkbox "concordo" (vários nomes possíveis vindos do form)
+	_concordo_raw = (
+		form_data.get('concordo') or
+		form_data.get('concordo_termos') or
+		form_data.get('aceito') or
+		form_data.get('aceito_termos') or
+		form_data.get('aceitarTermos') or
+		form_data.get('aceitar_termos') or
+		form_data.get('aceito_termos')
+	)
+	if _concordo_raw is not None:
+		v = str(_concordo_raw).strip().lower()
+		if v in ('1', 'true', 'on', 'yes', 'sim', 'y'):
+			registro['concordo'] = True
+
+	try:
+		usuarios.append(registro)
+		os.makedirs(os.path.dirname(usuarios_path), exist_ok=True)
+		if data_wrapped is not None:
+			data_wrapped['usuarios'] = usuarios
+			to_write = data_wrapped
+		else:
+			to_write = usuarios
+		tmp_path = usuarios_path + '.tmp'
+		with open(tmp_path, 'w', encoding='utf-8') as f:
+			json.dump(to_write, f, ensure_ascii=False, indent=2)
+		os.replace(tmp_path, usuarios_path)
+		return {'ok': True, 'mensagem': 'Usuário cadastrado com sucesso', 'id': new_id}
+	except Exception as e:
+		try:
+			print('Erro ao salvar usuário:', e)
+		except Exception:
+			pass
+		return {'ok': False, 'mensagem': 'Erro ao salvar usuário'}
 
 def validar_cpf(cpf):
 	if not cpf:

@@ -1,12 +1,11 @@
-from functions.firestore_utils import salvar_firestore
-
-# Para salvar um único usuário (dict)
-usuario = {"nome": "João", "email": "joao@email.com"}
-ids = salvar_firestore("usuarios", usuario)
-
-# Para salvar vários usuários (lista de dicts)
-usuarios = [
-    {"nome": "Maria", "email": "maria@email.com"},
-    {"nome": "Carlos", "email": "carlos@email.com"}
-]
-ids = salvar_firestore("usuarios", usuarios)
+from functions.utils import cadastrar_novo_usuario
+form = {
+  'cpf': '123.456.789-09',
+  'email': 'teste@example.com',
+  'telefone': '(11) 91234-5678',
+  'matricula': '12345',
+  'usuario': 'usuario_teste',
+  'senha': 'senha123',
+  'confirmarSenha': 'senha123'
+}
+print(cadastrar_novo_usuario(form))

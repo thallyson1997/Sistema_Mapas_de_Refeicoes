@@ -1814,28 +1814,39 @@
                 const temColunasSiisp = row.cafeIntSiisp !== null && row.cafeIntSiisp !== undefined;
                 const statusSiisp = temColunasSiisp ? 'Calculado' : 'Não disponível';
                 
-                // Café Interno - usar dados calculados do backend se disponíveis
-                const cafeClass = temColunasSiisp ? 
+                // Classificações para INTERNOS usando getClassificacaoSiisp
+                const cafeIntClass = temColunasSiisp ? 
                     getClassificacaoSiisp(row.cafeIntSiisp) : 
                     { class: 'cell-na', display: 'N/A' };
                 
-                // Outras refeições ainda vão mostrar N/A por enquanto
-                const almocoClass = { class: 'cell-na', display: 'N/A' };
-                const lancheClass = { class: 'cell-na', display: 'N/A' };
-                const jantarClass = { class: 'cell-na', display: 'N/A' };
+                const almocoIntClass = temColunasSiisp ? 
+                    getClassificacaoSiisp(row.almocoIntSiisp) : 
+                    { class: 'cell-na', display: 'N/A' };
+                
+                const lancheIntClass = temColunasSiisp ? 
+                    getClassificacaoSiisp(row.lancheIntSiisp) : 
+                    { class: 'cell-na', display: 'N/A' };
+                
+                const jantarIntClass = temColunasSiisp ? 
+                    getClassificacaoSiisp(row.jantarIntSiisp) : 
+                    { class: 'cell-na', display: 'N/A' };
 
-                // Função para formatar células de funcionários SIISP - FORÇAR N/A
-                function formatarCelulaFuncSiisp(valorFunc, valorSiisp) {
-                    return {
-                        style: 'text-align: center; background-color: var(--gray-200); color: var(--gray-500);',
-                        value: 'N/A'
-                    };
-                }
-
-                const cafeFuncStyle = formatarCelulaFuncSiisp(row.cafeFunc, row.cafeFuncSiisp);
-                const almocoFuncStyle = formatarCelulaFuncSiisp(row.almocoFunc, row.almocoFuncSiisp);
-                const lancheFuncStyle = formatarCelulaFuncSiisp(row.lancheFunc, row.lancheFuncSiisp);
-                const jantarFuncStyle = formatarCelulaFuncSiisp(row.jantarFunc, row.jantarFuncSiisp);
+                // Classificações para FUNCIONÁRIOS usando getClassificacaoSiisp
+                const cafeFuncClass = temColunasSiisp ? 
+                    getClassificacaoSiisp(row.cafeFuncSiisp) : 
+                    { class: 'cell-na', display: 'N/A' };
+                
+                const almocoFuncClass = temColunasSiisp ? 
+                    getClassificacaoSiisp(row.almocoFuncSiisp) : 
+                    { class: 'cell-na', display: 'N/A' };
+                
+                const lancheFuncClass = temColunasSiisp ? 
+                    getClassificacaoSiisp(row.lancheFuncSiisp) : 
+                    { class: 'cell-na', display: 'N/A' };
+                
+                const jantarFuncClass = temColunasSiisp ? 
+                    getClassificacaoSiisp(row.jantarFuncSiisp) : 
+                    { class: 'cell-na', display: 'N/A' };
 
                 tr.innerHTML = `
                     <td>${row.data}</td>
@@ -1843,22 +1854,30 @@
                     <td style="text-align: center; font-weight: 600; background-color: var(--gray-100);">
                         ${siisp}
                     </td>
-                    <td class="${cafeClass.class}" style="text-align: center;">
-                        ${cafeClass.display}
+                    <td class="${cafeIntClass.class}" style="text-align: center;">
+                        ${cafeIntClass.display}
                     </td>
-                    <td style="${cafeFuncStyle.style}">${cafeFuncStyle.value}</td>
-                    <td class="${almocoClass.class}" style="text-align: center;">
-                        ${almocoClass.display}
+                    <td class="${cafeFuncClass.class}" style="text-align: center;">
+                        ${cafeFuncClass.display}
                     </td>
-                    <td style="${almocoFuncStyle.style}">${almocoFuncStyle.value}</td>
-                    <td class="${lancheClass.class}" style="text-align: center;">
-                        ${lancheClass.display}
+                    <td class="${almocoIntClass.class}" style="text-align: center;">
+                        ${almocoIntClass.display}
                     </td>
-                    <td style="${lancheFuncStyle.style}">${lancheFuncStyle.value}</td>
-                    <td class="${jantarClass.class}" style="text-align: center;">
-                        ${jantarClass.display}
+                    <td class="${almocoFuncClass.class}" style="text-align: center;">
+                        ${almocoFuncClass.display}
                     </td>
-                    <td style="${jantarFuncStyle.style}">${jantarFuncStyle.value}</td>
+                    <td class="${lancheIntClass.class}" style="text-align: center;">
+                        ${lancheIntClass.display}
+                    </td>
+                    <td class="${lancheFuncClass.class}" style="text-align: center;">
+                        ${lancheFuncClass.display}
+                    </td>
+                    <td class="${jantarIntClass.class}" style="text-align: center;">
+                        ${jantarIntClass.display}
+                    </td>
+                    <td class="${jantarFuncClass.class}" style="text-align: center;">
+                        ${jantarFuncClass.display}
+                    </td>
                 `;
                 
                 tbody.appendChild(tr);

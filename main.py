@@ -1,8 +1,11 @@
-from flask import Flask, request, jsonify, render_template, session, flash, redirect, url_for, abort
+from flask import Flask, request, jsonify, render_template, session, flash, redirect, url_for, abort, send_file
 import os
 import json
 import re
+import io
+import calendar
 from datetime import datetime
+from copy import copy
 from functions.utils import (
     cadastrar_novo_usuario,
     validar_cadastro_no_usuario,
@@ -21,12 +24,19 @@ from functions.utils import (
     salvar_mapas_raw,
     calcular_metricas_lotes,
     preparar_dados_entrada_manual,
-    reordenar_registro_mapas
+    reordenar_registro_mapas,
+    adicionar_siisp_em_mapa,
+    excluir_mapa,
+    _load_mapas_partitioned,
+    gerar_excel_exportacao
 )
 
 app = Flask(__name__)
 app.secret_key = 'sgmrp_seap_2025_secret_key_desenvolvimento'
 app.config['DEBUG'] = True
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DADOS_DIR = os.path.join(BASE_DIR, 'dados')
 
 #FEITOS
 @app.route('/')
@@ -175,11 +185,11 @@ def dashboard():
 
 @app.route('/lotes')
 def lotes():
+    #Página de listagem de lotes
     data = carregar_lotes_para_dashboard()
     lotes = data.get('lotes', [])
     mapas = data.get('mapas_dados', [])
 
-    # calcular métricas dos lotes usando função utilitária
     calcular_metricas_lotes(lotes, mapas)
 
     empresas = []
@@ -194,12 +204,11 @@ def lotes():
 
 @app.route('/lote/<int:lote_id>')
 def lote_detalhes(lote_id):
-    # Carregar lotes normalizados
+    #Página de detalhes do lote
     data = carregar_lotes_para_dashboard()
     lotes = data.get('lotes', [])
     mapas_dados = data.get('mapas_dados', [])
 
-    # Encontrar lote pelo id
     lote = None
     for l in lotes:
         try:
@@ -210,16 +219,12 @@ def lote_detalhes(lote_id):
             continue
 
     if lote is None:
-        # lote não encontrado
         abort(404)
 
-    # Normalizar precos usando helper centralizado
     lote['precos'] = normalizar_precos(lote.get('precos'))
 
-    # unidades do lote (nomes)
     unidades_lote = lote.get('unidades') or []
 
-    # mapas relacionados ao lote (por enquanto podem estar vazios) - filtrar por id com tolerância de tipos
     mapas_lote = []
     for m in (mapas_dados or []):
         try:
@@ -232,6 +237,7 @@ def lote_detalhes(lote_id):
 
 @app.route('/api/adicionar-dados', methods=['POST'])
 def api_adicionar_dados():
+    # Endpoint para adicionar dados de mapas via API
     try:
         data = request.get_json(force=True, silent=True)
         res = salvar_mapas_raw(data)
@@ -277,6 +283,7 @@ def api_adicionar_dados():
 
 @app.route('/api/entrada-manual', methods=['POST'])
 def api_entrada_manual():
+    # Endpoint para adicionar dados de mapas via entrada manual
     try:
         data = request.get_json(force=True, silent=True) or {}
         
@@ -318,6 +325,111 @@ def api_entrada_manual():
     except Exception:
         return jsonify({'success': False, 'error': 'Erro interno'}), 200
 
+@app.route('/api/adicionar-siisp', methods=['POST'])
+def api_adicionar_siisp():
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        
+        print('🔍 DEBUG adicionar-siisp - Payload recebido:')
+        print(f'  - unidade: {data.get("unidade")}')
+        print(f'  - mes: {data.get("mes")}')
+        print(f'  - ano: {data.get("ano")}')
+        print(f'  - lote_id: {data.get("lote_id")}')
+        print(f'  - dados_siisp tipo: {type(data.get("dados_siisp"))}')
+        print(f'  - dados_siisp: {data.get("dados_siisp")}')
+        
+        res = adicionar_siisp_em_mapa(data)
+        
+        if res.get('success'):
+            registro = res.get('registro', {})
+            
+            dias_esperados = len(registro.get('dados_siisp', []))
+            
+            validacao = {
+                'valido': True,
+                'siisp': {
+                    'registros_processados': dias_esperados,
+                    'dias_esperados': dias_esperados,
+                    'mensagem': res.get('mensagem', 'Dados SIISP adicionados')
+                },
+                'mensagem_geral': res.get('mensagem', 'Dados SIISP adicionados com sucesso')
+            }
+            
+            resp = {
+                'success': True, 
+                'registro': registro, 
+                'validacao': validacao,
+                'id': registro.get('id')
+            }
+            return jsonify(resp), 200
+        else:
+            print(f'❌ Erro: {res.get("error")}')
+            return jsonify({'success': False, 'error': res.get('error', 'Erro ao adicionar SIISP')}), 200
+    except Exception as e:
+        print(f'❌ Exception: {str(e)}')
+        return jsonify({'success': False, 'error': 'Erro interno'}), 200
+
+@app.route('/api/excluir-dados', methods=['DELETE'])
+def api_excluir_dados():
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        
+        print('🔍 DEBUG excluir-dados - Payload recebido:')
+        print(f'  - unidade: {data.get("unidade")}')
+        print(f'  - mes: {data.get("mes")}')
+        print(f'  - ano: {data.get("ano")}')
+        print(f'  - lote_id: {data.get("lote_id")}')
+        
+        res = excluir_mapa(data)
+        
+        if res.get('success'):
+            resp = {
+                'success': True,
+                'mensagem': res.get('mensagem', 'Mapa excluído com sucesso'),
+                'id': res.get('id')
+            }
+            print(f'✅ Mapa excluído: ID {res.get("id")}')
+            return jsonify(resp), 200
+        else:
+            print(f'❌ Erro: {res.get("error")}')
+            return jsonify({'success': False, 'error': res.get('error', 'Erro ao excluir mapa')}), 200
+    except Exception as e:
+        print(f'❌ Exception: {str(e)}')
+        return jsonify({'success': False, 'error': 'Erro interno'}), 200
+
+@app.route('/exportar-tabela')
+def exportar_tabela():
+    """Rota para exportação de dados em formato Excel"""
+    # Receber filtros da query string
+    lote_id = request.args.get('lote_id', type=int)
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
+    unidades = request.args.get('unidades')
+    unidades_list = unidades.split(',') if unidades else []
+
+    print(f"📊 Exportação solicitada - Lote: {lote_id}, Unidades: {unidades_list}")
+
+    if lote_id is None:
+        print("❌ Erro: lote_id não fornecido")
+        return jsonify({'error': 'lote_id é obrigatório'}), 400
+
+    # Chamar função auxiliar para gerar Excel
+    resultado = gerar_excel_exportacao(lote_id, unidades_list, data_inicio, data_fim)
+    
+    if not resultado.get('success'):
+        erro = resultado.get('error', 'Erro desconhecido')
+        print(f"❌ Erro: {erro}")
+        return jsonify({'error': erro}), 500
+    
+    print(f"✅ Arquivo gerado: {resultado['filename']}")
+    
+    return send_file(
+        resultado['output'],
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=resultado['filename']
+    )
+
 #NÃO FEITOS
 
 @app.route('/admin/usuarios')
@@ -329,27 +441,12 @@ def admin_usuarios():
 def aprovar_usuario(user_id):
     return jsonify({'ok': True})
 
-
 @app.route('/admin/usuarios/<int:user_id>/revogar', methods=['POST'])
 def revogar_usuario(user_id):
     return jsonify({'ok': True})
 
-@app.route('/api/excluir-dados', methods=['DELETE'])
-def api_excluir_dados():
-    return jsonify({'ok': True})
-
-
-@app.route('/api/adicionar-siisp', methods=['POST'])
-def api_adicionar_siisp():
-    return jsonify({'ok': True})
-
-
 @app.route('/api/lotes')
 def api_lotes():
-    return jsonify({'ok': True})
-
-@app.route('/exportar-tabela')
-def exportar_tabela():
     return jsonify({'ok': True})
 
 @app.template_filter('data_br')
@@ -390,7 +487,9 @@ def erro_interno(error):
 
 
 if __name__ == '__main__':
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    DADOS_DIR = os.path.join(BASE_DIR, 'dados')
-    print("🚀 Iniciando SGMRP (stub)")
+    print("🚀 Iniciando SGMRP - Sistema de Gerenciamento de Mapas de Refeições Penitenciário")
+    print(f"📁 Diretório base: {BASE_DIR}")
+    print(f"💾 Dados JSON: {DADOS_DIR}")
+    print("🔗 Acesse: http://localhost:5000")
+    print("-" * 60)
     app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=True)

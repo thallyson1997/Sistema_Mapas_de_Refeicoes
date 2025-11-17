@@ -4,6 +4,7 @@
 
 # Arquivos de dados reais (contém informações sensíveis)
 dados/mapas.json
+dados/mapas_*.json
 dados/usuarios.json
 dados/unidades.json
 dados/lotes.json

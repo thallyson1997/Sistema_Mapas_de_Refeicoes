@@ -95,6 +95,185 @@
                 max-width: none;
             }
         }
+
+        /* Modal de Notificações */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 9998;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-container {
+            background: white;
+            border-radius: 16px;
+            max-width: 900px;
+            width: 90%;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s ease;
+            z-index: 9999;
+        }
+
+        .modal-header {
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            color: var(--gray-900);
+            font-size: 1.5rem;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 2rem;
+            color: var(--gray-500);
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .modal-close:hover {
+            background: var(--gray-100);
+            color: var(--gray-900);
+        }
+
+        .modal-body {
+            padding: 1.5rem 2rem;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .modal-notification-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+            transition: all 0.2s;
+            border-left: 4px solid transparent;
+        }
+
+        .modal-notification-item:hover {
+            background: var(--gray-50);
+        }
+
+        .modal-notification-item.danger {
+            border-left-color: var(--danger-color);
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        .modal-notification-item.warning {
+            border-left-color: var(--warning-color);
+            background: rgba(245, 158, 11, 0.05);
+        }
+
+        .modal-notification-item.info {
+            border-left-color: var(--info-color);
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .modal-notification-item.success {
+            border-left-color: var(--success-color);
+            background: rgba(34, 197, 94, 0.05);
+        }
+
+        .modal-notification-icon {
+            font-size: 1.75rem;
+            flex-shrink: 0;
+        }
+
+        .modal-notification-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .modal-notification-title {
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: 0.25rem;
+            font-size: 0.95rem;
+        }
+
+        .modal-notification-message {
+            color: var(--gray-600);
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+
+        .modal-notification-time {
+            color: var(--gray-500);
+            font-size: 0.75rem;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .modal-footer {
+            padding: 1rem 2rem;
+            border-top: 1px solid var(--gray-200);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-footer-info {
+            color: var(--gray-600);
+            font-size: 0.875rem;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .modal-container {
+                width: 95%;
+                max-height: 90vh;
+            }
+
+            .modal-header, .modal-body, .modal-footer {
+                padding: 1rem 1.25rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -306,50 +485,19 @@
                 </div>
             </section>
 
-            <!-- Alertas Recentes -->
+            <!-- Notificações e Alertas -->
             <section style="margin-top: 3rem;">
-                <h2>Alertas e Discrepâncias Recentes</h2>
+                <h2>Notificações e Alertas</h2>
                 <div class="card fade-in">
                     <div class="card-body">
-                        <div style="display: grid; gap: 1rem;">
-                            <div class="alert alert-warning" style="display: flex; align-items: center; gap: 1rem;">
-                                <div style="font-size: 1.5rem;">⚠️</div>
-                                <div style="flex: 1;">
-                                    <strong>Presídio Central - Lote 2</strong><br>
-                                    <span style="font-size: 0.875rem;">Diferença de +12 refeições no almoço do dia 18/10/2025</span>
-                                </div>
-                                <div style="font-size: 0.875rem; color: var(--gray-500);">
-                                    Há 1 dia
-                                </div>
-                            </div>
-
-                            <div class="alert alert-danger" style="display: flex; align-items: center; gap: 1rem;">
-                                <div style="font-size: 1.5rem;">🚨</div>
-                                <div style="flex: 1;">
-                                    <strong>Penitenciária Norte - Lote 4</strong><br>
-                                    <span style="font-size: 0.875rem;">Diferença de +25 refeições no jantar do dia 17/10/2025</span>
-                                </div>
-                                <div style="font-size: 0.875rem; color: var(--gray-500);">
-                                    Há 2 dias
-                                </div>
-                            </div>
-
-                            <div class="alert alert-info" style="display: flex; align-items: center; gap: 1rem;">
-                                <div style="font-size: 1.5rem;">ℹ️</div>
-                                <div style="flex: 1;">
-                                    <strong>Casa de Custódia Sul - Lote 1</strong><br>
-                                    <span style="font-size: 0.875rem;">Dados do SIISP atualizados - diferenças resolvidas</span>
-                                </div>
-                                <div style="font-size: 0.875rem; color: var(--gray-500);">
-                                    Há 3 dias
-                                </div>
-                            </div>
+                        <div id="notificacoes-recentes-container" style="display: grid; gap: 1rem;">
+                            <!-- Notificações serão carregadas dinamicamente via JavaScript -->
                         </div>
 
                         <div style="text-align: center; margin-top: 1.5rem;">
-                            <a href="#relatorios" class="btn btn-secondary">
-                                Ver Todos os Alertas
-                            </a>
+                            <button type="button" id="btn-ver-todas-notificacoes" class="btn btn-secondary">
+                                Ver Todas as Notificações
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -400,6 +548,23 @@
             </p>
         </div>
     </footer>
+
+    <!-- Modal de Notificações -->
+    <div id="modal-notificacoes" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2>Todas as Notificações e Alertas</h2>
+                <button type="button" class="modal-close" onclick="fecharModalNotificacoes()">×</button>
+            </div>
+            <div class="modal-body" id="modal-notificacoes-body">
+                <!-- Notificações serão carregadas dinamicamente -->
+            </div>
+            <div class="modal-footer">
+                <span class="modal-footer-info">Exibindo notificações dos últimos 30 dias</span>
+                <button type="button" class="btn btn-secondary" onclick="fecharModalNotificacoes()">Fechar</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         // Dados dos mapas e lotes vindos do Flask
@@ -977,15 +1142,362 @@
 
         // Placeholder para funcionalidades futuras
         document.addEventListener('click', function(e) {
-            if (e.target.closest('a[href="#relatorios"]')) {
-                e.preventDefault();
-                alert('Módulo de Relatórios será implementado na próxima versão do SGMRP.');
-            }
-            
             if (e.target.closest('a[href="#configuracoes"]')) {
                 e.preventDefault();
                 alert('Módulo de Configurações será implementado na próxima versão do SGMRP.');
             }
+        });
+
+        // ===== Sistema de Notificações e Alertas =====
+        
+        function calcularConformidadeMapa(mapa) {
+            // Calcula conformidade financeira do mapa (baseado em preços e diferenças SIISP)
+            const lote = lotesGlobal.find(l => l.id === mapa.lote_id);
+            let precos = null;
+            
+            if (lote && lote.precos) {
+                precos = lote.precos;
+            } else {
+                // Fallback para preços simulados
+                precos = {
+                    cafe: { interno: 4.50, funcionario: 5.00 },
+                    almoco: { interno: 12.00, funcionario: 13.50 },
+                    lanche: { interno: 6.00, funcionario: 6.50 },
+                    jantar: { interno: 10.00, funcionario: 11.00 }
+                };
+            }
+            
+            let valorTotal = 0;
+            let valorDesvio = 0;
+            
+            // Calcular valores para cada dia
+            for (let i = 0; i < mapa.data.length; i++) {
+                // Valor total do dia
+                const valorDia = 
+                    (mapa.cafe_interno[i] * precos.cafe.interno) +
+                    (mapa.cafe_funcionario[i] * precos.cafe.funcionario) +
+                    (mapa.almoco_interno[i] * precos.almoco.interno) +
+                    (mapa.almoco_funcionario[i] * precos.almoco.funcionario) +
+                    (mapa.lanche_interno[i] * precos.lanche.interno) +
+                    (mapa.lanche_funcionario[i] * precos.lanche.funcionario) +
+                    (mapa.jantar_interno[i] * precos.jantar.interno) +
+                    (mapa.jantar_funcionario[i] * precos.jantar.funcionario);
+                
+                valorTotal += valorDia;
+                
+                // Calcular desvios usando colunas _siisp se disponíveis
+                const usarColunasSiisp = mapa.cafe_interno_siisp && mapa.cafe_interno_siisp.length > i;
+                
+                if (usarColunasSiisp) {
+                    // Incluir TODOS os excedentes no desvio
+                    const excedenteCafe = mapa.cafe_interno_siisp[i] > 0 ? mapa.cafe_interno_siisp[i] : 0;
+                    const excedenteAlmoco = mapa.almoco_interno_siisp[i] > 0 ? mapa.almoco_interno_siisp[i] : 0;
+                    const excedenteLanche = mapa.lanche_interno_siisp[i] > 0 ? mapa.lanche_interno_siisp[i] : 0;
+                    const excedenteJantar = mapa.jantar_interno_siisp[i] > 0 ? mapa.jantar_interno_siisp[i] : 0;
+                    
+                    valorDesvio += 
+                        (excedenteCafe * precos.cafe.interno) +
+                        (excedenteAlmoco * precos.almoco.interno) +
+                        (excedenteLanche * precos.lanche.interno) +
+                        (excedenteJantar * precos.jantar.interno);
+                    
+                    // Funcionários SIISP
+                    if (mapa.cafe_funcionario_siisp && mapa.cafe_funcionario_siisp[i] > 0) {
+                        valorDesvio += mapa.cafe_funcionario_siisp[i] * precos.cafe.funcionario;
+                    }
+                    if (mapa.almoco_funcionario_siisp && mapa.almoco_funcionario_siisp[i] > 0) {
+                        valorDesvio += mapa.almoco_funcionario_siisp[i] * precos.almoco.funcionario;
+                    }
+                    if (mapa.lanche_funcionario_siisp && mapa.lanche_funcionario_siisp[i] > 0) {
+                        valorDesvio += mapa.lanche_funcionario_siisp[i] * precos.lanche.funcionario;
+                    }
+                    if (mapa.jantar_funcionario_siisp && mapa.jantar_funcionario_siisp[i] > 0) {
+                        valorDesvio += mapa.jantar_funcionario_siisp[i] * precos.jantar.funcionario;
+                    }
+                }
+            }
+            
+            // Calcular conformidade percentual
+            const conformidade = valorTotal > 0 ? 
+                Math.max(0, ((valorTotal - valorDesvio) / valorTotal) * 100) : 
+                100.0;
+            
+            return conformidade;
+        }
+        
+        function gerarNotificacoesDosSistema() {
+            const notificacoes = [];
+            const agora = new Date();
+            const dataLimite = new Date(agora);
+            dataLimite.setDate(dataLimite.getDate() - 30); // Últimos 30 dias
+            
+            // Obter filtros atuais
+            const mes = parseInt(document.getElementById('filtro-mes').value);
+            const ano = parseInt(document.getElementById('filtro-ano').value);
+            const loteId = parseInt(document.getElementById('filtro-lote').value);
+            
+            // Filtrar mapas
+            let mapasFiltrados = mapasDados;
+            if (mes) {
+                mapasFiltrados = mapasFiltrados.filter(mapa => mapa.mes === mes);
+            }
+            if (ano) {
+                mapasFiltrados = mapasFiltrados.filter(mapa => mapa.ano === ano);
+            }
+            if (loteId) {
+                mapasFiltrados = mapasFiltrados.filter(mapa => mapa.lote_id === loteId);
+            }
+            
+            // Processar cada mapa
+            mapasFiltrados.forEach(mapa => {
+                const lote = lotesGlobal.find(l => l.id === mapa.lote_id);
+                const nomeLote = lote ? lote.nome : `Lote ${mapa.lote_id}`;
+                const nomeUnidade = mapa.nome_unidade || 'Unidade';
+                const mesNome = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                                 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'][mapa.mes - 1];
+                
+                // Usar data real de criação/atualização do mapa
+                let dataNotificacao = agora;
+                if (mapa.atualizado_em) {
+                    dataNotificacao = new Date(mapa.atualizado_em);
+                } else if (mapa.criado_em) {
+                    dataNotificacao = new Date(mapa.criado_em);
+                }
+                
+                if (dataNotificacao < dataLimite || dataNotificacao > agora) {
+                    return; // Pular mapas fora do período de 30 dias
+                }
+                
+                // Verificar se o mapa tem dados SIISP
+                const temSIISP = mapa.n_siisp && mapa.n_siisp.length > 0 && 
+                                 mapa.n_siisp.some(val => val > 0);
+                
+                // Notificação de criação do mapa (se criado nos últimos 30 dias)
+                if (mapa.criado_em) {
+                    const dataCriacao = new Date(mapa.criado_em);
+                    if (dataCriacao >= dataLimite && dataCriacao <= agora) {
+                        const totalRefeicoes = mapa.data.reduce((total, _, i) => {
+                            return total + 
+                                (mapa.cafe_interno[i] || 0) + (mapa.cafe_funcionario[i] || 0) +
+                                (mapa.almoco_interno[i] || 0) + (mapa.almoco_funcionario[i] || 0) +
+                                (mapa.lanche_interno[i] || 0) + (mapa.lanche_funcionario[i] || 0) +
+                                (mapa.jantar_interno[i] || 0) + (mapa.jantar_funcionario[i] || 0);
+                        }, 0);
+                        
+                        notificacoes.push({
+                            tipo: 'info',
+                            icone: 'ℹ️',
+                            titulo: `Novo mapa adicionado - ${nomeUnidade}`,
+                            mensagem: `${totalRefeicoes.toLocaleString('pt-BR')} refeições registradas para ${mesNome}/${mapa.ano} (${nomeLote})`,
+                            data: dataCriacao,
+                            timestamp: dataCriacao.getTime()
+                        });
+                    }
+                }
+                
+                // Notificação de conformidade (se tem SIISP)
+                if (temSIISP) {
+                    // Usar atualizado_em se existir, senão usar criado_em
+                    const dataConformidade = mapa.atualizado_em ? 
+                        new Date(mapa.atualizado_em) : 
+                        (mapa.criado_em ? new Date(mapa.criado_em) : null);
+                    
+                    if (dataConformidade && dataConformidade >= dataLimite && dataConformidade <= agora) {
+                        const conformidade = calcularConformidadeMapa(mapa);
+                        
+                        if (conformidade > 95) {
+                            // Notificação azul: Excelente conformidade (> 95%)
+                            notificacoes.push({
+                                tipo: 'info',
+                                icone: '✅',
+                                titulo: `Conformidade Excelente - ${nomeUnidade}`,
+                                mensagem: `${mesNome}/${mapa.ano} com ${conformidade.toFixed(1)}% de conformidade (${nomeLote})`,
+                                data: dataConformidade,
+                                timestamp: dataConformidade.getTime()
+                            });
+                        } else if (conformidade >= 90 && conformidade <= 95) {
+                            // Notificação amarela: Conformidade moderada (90-95%)
+                            notificacoes.push({
+                                tipo: 'warning',
+                                icone: '⚠️',
+                                titulo: `Atenção - ${nomeUnidade}`,
+                                mensagem: `${mesNome}/${mapa.ano} com ${conformidade.toFixed(1)}% de conformidade (${nomeLote})`,
+                                data: dataConformidade,
+                                timestamp: dataConformidade.getTime()
+                            });
+                        } else {
+                            // Notificação vermelha: Conformidade crítica (< 90%)
+                            notificacoes.push({
+                                tipo: 'danger',
+                                icone: '🚨',
+                                titulo: `CRÍTICO - ${nomeUnidade}`,
+                                mensagem: `${mesNome}/${mapa.ano} com apenas ${conformidade.toFixed(1)}% de conformidade (${nomeLote})`,
+                                data: dataConformidade,
+                                timestamp: dataConformidade.getTime()
+                            });
+                        }
+                    }
+                }
+            });
+            
+            // Adicionar notificações de novos lotes (simulado - seria do backend na implementação real)
+            // Por enquanto, apenas listamos lotes recentes
+            lotesGlobal.forEach(lote => {
+                if (lote.criado_em) {
+                    const dataCriacao = new Date(lote.criado_em);
+                    if (dataCriacao >= dataLimite && dataCriacao <= agora) {
+                        notificacoes.push({
+                            tipo: 'success',
+                            icone: '🎉',
+                            titulo: 'Novo Lote Cadastrado',
+                            mensagem: `${lote.nome} - ${lote.empresa} (${lote.unidades.length} unidades)`,
+                            data: dataCriacao,
+                            timestamp: dataCriacao.getTime()
+                        });
+                    }
+                }
+            });
+            
+            // Ordenar por data (mais recente primeiro)
+            notificacoes.sort((a, b) => b.timestamp - a.timestamp);
+            
+            return notificacoes;
+        }
+        
+        function formatarTempoDecorrido(data) {
+            const agora = new Date();
+            const diff = agora - data;
+            const segundos = Math.floor(diff / 1000);
+            const minutos = Math.floor(segundos / 60);
+            const horas = Math.floor(minutos / 60);
+            const dias = Math.floor(horas / 24);
+            
+            if (dias > 0) {
+                return dias === 1 ? 'Há 1 dia' : `Há ${dias} dias`;
+            } else if (horas > 0) {
+                return horas === 1 ? 'Há 1 hora' : `Há ${horas} horas`;
+            } else if (minutos > 0) {
+                return minutos === 1 ? 'Há 1 minuto' : `Há ${minutos} minutos`;
+            } else {
+                return 'Agora mesmo';
+            }
+        }
+        
+        function renderizarNotificacoesRecentes() {
+            const container = document.getElementById('notificacoes-recentes-container');
+            if (!container) return;
+            
+            const todasNotificacoes = gerarNotificacoesDosSistema();
+            const notificacoesRecentes = todasNotificacoes.slice(0, 3); // Mostrar apenas as 3 mais recentes
+            
+            if (notificacoesRecentes.length === 0) {
+                container.innerHTML = `
+                    <div class="alert alert-info" style="display: flex; align-items: center; gap: 1rem; justify-content: center;">
+                        <div style="font-size: 1.5rem;">✅</div>
+                        <div>
+                            <strong>Nenhuma notificação recente</strong><br>
+                            <span style="font-size: 0.875rem;">Não há alertas ou discrepâncias nos últimos 30 dias</span>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = notificacoesRecentes.map(notif => {
+                const alertClass = notif.tipo === 'danger' ? 'alert-danger' : 
+                                  notif.tipo === 'warning' ? 'alert-warning' : 'alert-info';
+                
+                return `
+                    <div class="alert ${alertClass}" style="display: flex; align-items: center; gap: 1rem;">
+                        <div style="font-size: 1.5rem;">${notif.icone}</div>
+                        <div style="flex: 1;">
+                            <strong>${notif.titulo}</strong><br>
+                            <span style="font-size: 0.875rem;">${notif.mensagem}</span>
+                        </div>
+                        <div style="font-size: 0.875rem; color: var(--gray-500);">
+                            ${formatarTempoDecorrido(notif.data)}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function abrirModalNotificacoes() {
+            const modal = document.getElementById('modal-notificacoes');
+            const body = document.getElementById('modal-notificacoes-body');
+            if (!modal || !body) return;
+            
+            const todasNotificacoes = gerarNotificacoesDosSistema();
+            
+            if (todasNotificacoes.length === 0) {
+                body.innerHTML = `
+                    <div style="text-align: center; padding: 3rem 1rem;">
+                        <div style="font-size: 4rem; margin-bottom: 1rem;">✅</div>
+                        <h3 style="color: var(--gray-600); margin-bottom: 0.5rem;">Nenhuma notificação</h3>
+                        <p style="color: var(--gray-500);">Não há alertas ou notificações nos últimos 30 dias</p>
+                    </div>
+                `;
+            } else {
+                body.innerHTML = todasNotificacoes.map(notif => {
+                    return `
+                        <div class="modal-notification-item ${notif.tipo}">
+                            <div class="modal-notification-icon">${notif.icone}</div>
+                            <div class="modal-notification-content">
+                                <div class="modal-notification-title">${notif.titulo}</div>
+                                <div class="modal-notification-message">${notif.mensagem}</div>
+                            </div>
+                            <div class="modal-notification-time">
+                                ${formatarTempoDecorrido(notif.data)}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+            
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function fecharModalNotificacoes() {
+            const modal = document.getElementById('modal-notificacoes');
+            if (!modal) return;
+            
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+        
+        // Event listeners
+        document.getElementById('btn-ver-todas-notificacoes')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            abrirModalNotificacoes();
+        });
+        
+        // Fechar modal ao clicar no overlay
+        document.getElementById('modal-notificacoes')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                fecharModalNotificacoes();
+            }
+        });
+        
+        // Fechar modal com tecla ESC
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                fecharModalNotificacoes();
+            }
+        });
+        
+        // Atualizar notificações quando os filtros mudarem
+        const filtroMesEl = document.getElementById('filtro-mes');
+        const filtroAnoEl = document.getElementById('filtro-ano');
+        const filtroLoteEl = document.getElementById('filtro-lote');
+        
+        if (filtroMesEl) filtroMesEl.addEventListener('change', renderizarNotificacoesRecentes);
+        if (filtroAnoEl) filtroAnoEl.addEventListener('change', renderizarNotificacoesRecentes);
+        if (filtroLoteEl) filtroLoteEl.addEventListener('change', renderizarNotificacoesRecentes);
+        
+        // Renderizar notificações iniciais após carregar resumo
+        window.addEventListener('load', function() {
+            setTimeout(renderizarNotificacoesRecentes, 500);
         });
     </script>
     <script type="module">

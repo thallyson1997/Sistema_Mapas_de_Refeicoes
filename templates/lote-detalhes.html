@@ -242,14 +242,11 @@
     </header>
 
     <main>
-
             <!-- Botão flutuante para troca de abas/tabelas -->
-            <div style="position: fixed; bottom: 32px; right: 32px; z-index: 1200; display: flex; gap: 16px;">
-                <button id="btn-troca-tabela" style="background: var(--primary-color); color: white; border: none; border-radius: 50%; width: 56px; height: 56px; box-shadow: 0 4px 16px rgba(0,0,0,0.18); font-size: 2rem; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.2s;" title="Alternar tabela">
-                    <span id="icon-troca-tabela">⇄</span>
-                </button>
-                <button id="btn-baixar-tabela" style="background: var(--primary-color); color: white; border: none; border-radius: 50%; width: 56px; height: 56px; box-shadow: 0 4px 16px rgba(0,0,0,0.18); font-size: 2rem; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.2s;" title="Baixar tabela">
-                    <span id="icon-baixar-tabela">↓</span>
+            <div style="position: fixed; bottom: 32px; right: 32px; z-index: 1200;">
+                <button class="btn btn-primary" id="btn-troca-tabela" style="border-radius: 12px; padding: 12px 20px; box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4); font-size: 0.875rem; font-weight: 600; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.3s ease; border: none; backdrop-filter: blur(10px);" title="Alternar entre tabelas">
+                    <span id="icon-troca-tabela" style="font-size: 1.25rem;">⇄</span>
+                    <span style="letter-spacing: 0.5px;">Trocar Tabela</span>
                 </button>
             </div>
         <div class="container">
@@ -1220,49 +1217,6 @@
     const precosLote = JSON.parse(`{{ lote.precos | tojson | safe }}`);
     // ID do lote atual
     const loteId = "{{ lote.id }}";
-
-    // Evento do botão de baixar tabela
-    document.getElementById('btn-baixar-tabela').addEventListener('click', function() {
-        // Obter filtros ativos
-        const dataInicio = filtrosAtivos.dataInicio;
-        const dataFim = filtrosAtivos.dataFim;
-        const unidades = filtrosAtivos.unidadesSelecionadas;
-
-        // Montar nome do arquivo
-        let nomeArquivo = 'tabela_lote_' + loteId;
-        if (dataInicio && dataFim) {
-            nomeArquivo += `_${dataInicio}_a_${dataFim}`;
-        }
-        nomeArquivo += '.xlsx';
-
-        // Montar URL da exportação
-        const params = new URLSearchParams();
-        if (dataInicio) params.append('data_inicio', dataInicio);
-        if (dataFim) params.append('data_fim', dataFim);
-        if (unidades && unidades.length > 0) params.append('unidades', unidades.join(','));
-        params.append('lote_id', loteId);
-
-        // Chamar rota Flask para exportar Excel
-        fetch(`/exportar-tabela?${params.toString()}`)
-            .then(response => {
-                if (!response.ok) throw new Error('Falha ao gerar arquivo');
-                return response.blob();
-            })
-            .then(blob => {
-                // Criar link para download
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = nomeArquivo;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                window.URL.revokeObjectURL(url);
-            })
-            .catch(() => {
-                showNotification('error', 'Erro ao baixar tabela', 'Não foi possível gerar o arquivo Excel.');
-            });
-    });
         
         // Variáveis globais para controle dos filtros
         let filtrosAtivos = {
@@ -1447,6 +1401,9 @@
             // Verificar parâmetros da URL para ações específicas
             const urlParams = new URLSearchParams(window.location.search);
             const acao = urlParams.get('acao');
+            const unidadeFiltro = urlParams.get('unidade');
+            const mesFiltro = urlParams.get('mes');
+            const anoFiltro = urlParams.get('ano');
 
             // Interface já inicializada pelo Flask com dados dinâmicos
 
@@ -1457,11 +1414,61 @@
                 mostrarSecaoManual();
             }
 
-            // Definir mês anterior como padrão no filtro
-            setDefaultPreviousMonth();
+            // Se houver filtros na URL (após adicionar dados), aplicá-los
+            if (unidadeFiltro && mesFiltro && anoFiltro) {
+                console.log('🔍 DEBUG URL Parameters:', 'unidade=', unidadeFiltro, 'mes=', mesFiltro, 'ano=', anoFiltro);
+                
+                // Calcular período do mês/ano especificado
+                const mesNum = parseInt(mesFiltro);
+                const anoNum = parseInt(anoFiltro);
+                
+                console.log('🔍 DEBUG Parsed:', 'mesNum=', mesNum, 'anoNum=', anoNum);
+                
+                // Calcular primeiro e último dia do mês corretamente
+                // Usar Date.UTC para evitar problemas de timezone
+                const primeiroDia = new Date(Date.UTC(anoNum, mesNum - 1, 1));
+                // Calcular último dia: primeiro dia do próximo mês - 1 dia
+                const ultimoDia = new Date(Date.UTC(anoNum, mesNum, 0));
+                
+                console.log('🔍 DEBUG Dates:', 
+                    'primeiroDia=', primeiroDia.toISOString(), 
+                    'ultimoDia=', ultimoDia.toISOString()
+                );
+                
+                const dataInicioStr = primeiroDia.toISOString().split('T')[0];
+                const dataFimStr = ultimoDia.toISOString().split('T')[0];
+                
+                console.log('🔍 DEBUG Date Strings:', 'dataInicioStr=', dataInicioStr, 'dataFimStr=', dataFimStr);
+                
+                // Atualizar inputs de data
+                const dataInicioInput = document.getElementById('data-inicio');
+                const dataFimInput = document.getElementById('data-fim');
+                if (dataInicioInput && dataFimInput) {
+                    dataInicioInput.value = dataInicioStr;
+                    dataFimInput.value = dataFimStr;
+                    filtrosAtivos.dataInicio = dataInicioStr;
+                    filtrosAtivos.dataFim = dataFimStr;
+                    console.log('🔍 DEBUG Input values set:', 
+                        'dataInicioValue=', dataInicioInput.value, 
+                        'dataFimValue=', dataFimInput.value
+                    );
+                }
+                
+                // Atualizar seleção de unidades (será aplicado depois em initUnidadesFilter)
+                filtrosAtivos.unidadesSelecionadas = [unidadeFiltro];
+            } else {
+                // Definir mês anterior como padrão no filtro
+                setDefaultPreviousMonth();
+            }
             
             // Inicializar filtro de período
-            initPeriodoFilter();
+            initPeriodoFilter(unidadeFiltro && mesFiltro && anoFiltro);
+            
+            // Se veio da URL com filtros, atualizar display do período
+            if (unidadeFiltro && mesFiltro && anoFiltro) {
+                atualizarDisplayPeriodo();
+                atualizarTituloPeriodo();
+            }
             
             // Inicializar filtro de unidades
             initUnidadesFilter();
@@ -1493,10 +1500,10 @@
             } else {
                 mes--;
             }
-            // Primeiro dia do mês anterior
-            const dataInicio = new Date(ano, mes, 1);
-            // Último dia do mês anterior
-            const dataFim = new Date(ano, mes + 1, 0);
+            // Primeiro dia do mês anterior - usar Date.UTC para evitar problemas de timezone
+            const dataInicio = new Date(Date.UTC(ano, mes, 1));
+            // Último dia do mês anterior - usar Date.UTC para evitar problemas de timezone
+            const dataFim = new Date(Date.UTC(ano, mes + 1, 0));
             const dataInicioStr = dataInicio.toISOString().split('T')[0];
             const dataFimStr = dataFim.toISOString().split('T')[0];
             const dataInicioInput = document.getElementById('data-inicio');
@@ -2183,7 +2190,7 @@
                 mes: parseInt(mes),
                 ano: parseInt(ano),
                 unidade: unidade,
-                numeros_siisp: numerosSiisp
+                dados_siisp: numerosSiisp
             };
             
             console.log('Enviando dados SIISP para API:', dadosParaApi);
@@ -2207,10 +2214,12 @@
             .then(data => {
                 if (data.success) {
                     // Mostrar notificação de sucesso
-                    const stats = data.estatisticas || {};
-                    const mensagem = `${stats.numeros_adicionados || 0} números SIISP adicionados para ${unidade} em ${mes}/${ano}. ${stats.colunas_calculadas || 0} colunas de diferenças calculadas automaticamente.`;
+                    const validacao = data.validacao || {};
+                    const siisp = validacao.siisp || {};
+                    const registros = siisp.registros_processados || 0;
+                    const mensagem = `${registros} números SIISP adicionados para ${unidade} em ${mes}/${ano}.`;
                     
-                    showNotification('success', 'SIISP adicionado com sucesso!', mensagem);
+                    showNotification('success', 'Dados SIISP salvos com sucesso!', mensagem);
                     
                     // Fechar seção e limpar formulário
                     document.getElementById('secao-siisp').style.display = 'none';
@@ -2671,16 +2680,11 @@
                     
                     // Acessar dados de validação corretamente
                     const refeicoes = data.validacao.refeicoes;
-                    const siisp = data.validacao.siisp;
+                    const registros = refeicoes.registros_processados || 0;
                     
-                    const detalhesCompletos = `Período: ${mesNome}/${ano} | ` +
-                        `Unidade: ${unidade} | ` +
-                        `Refeições: ${refeicoes.registros_processados} registros | ` +
-                        `Dias: ${refeicoes.dias_esperados} | ` +
-                        `SIISP: ${siisp.mensagem} | ` +
-                        `${data.validacao.mensagem_geral}`;
+                    const mensagem = `${registros} registros importados para ${unidade} em ${mesNome}/${ano}.`;
                     
-                    showNotification('success', 'Dados salvos com sucesso!', detalhesCompletos);
+                    showNotification('success', 'Dados importados com sucesso!', mensagem);
                     
                     document.getElementById('secao-importacao').style.display = 'none';
                     
@@ -2688,9 +2692,9 @@
                     document.getElementById('texto-pdf').value = '';
                     document.getElementById('dados-siisp').value = '';
                     
-                    // Recarregar página para mostrar novos dados
+                    // Recarregar página com filtros aplicados para a unidade e período recém-adicionados
                     setTimeout(() => {
-                        window.location.reload();
+                        window.location.href = `?unidade=${encodeURIComponent(unidade)}&mes=${mes}&ano=${ano}`;
                     }, 1500);
                     
                     console.log('✅ Dados salvos:', data.registro);
@@ -2804,9 +2808,9 @@
                     // Atualizar dados na tela (se aplicável)
                     console.log('✅ Entrada manual salva:', data.registro);
                     
-                    // Recarregar a página para mostrar os novos dados
+                    // Recarregar a página com filtros aplicados para a unidade e período recém-adicionados
                     setTimeout(() => {
-                        window.location.reload();
+                        window.location.href = `?unidade=${encodeURIComponent(unidade)}&mes=${mes}&ano=${ano}`;
                     }, 2000);
                     
                 } else {
@@ -2960,7 +2964,45 @@
 
         // Exportar tabela
         document.getElementById('btn-exportar-tabela').addEventListener('click', function() {
-            showNotification('warning', 'Funcionalidade em desenvolvimento', 'A exportação será implementada em versões futuras. Formatos disponíveis: Excel, PDF, CSV');
+            // Obter filtros ativos
+            const dataInicio = filtrosAtivos.dataInicio;
+            const dataFim = filtrosAtivos.dataFim;
+            const unidades = filtrosAtivos.unidadesSelecionadas;
+
+            // Montar nome do arquivo
+            let nomeArquivo = 'tabela_lote_' + loteId;
+            if (dataInicio && dataFim) {
+                nomeArquivo += `_${dataInicio}_a_${dataFim}`;
+            }
+            nomeArquivo += '.xlsx';
+
+            // Montar URL da exportação
+            const params = new URLSearchParams();
+            if (dataInicio) params.append('data_inicio', dataInicio);
+            if (dataFim) params.append('data_fim', dataFim);
+            if (unidades && unidades.length > 0) params.append('unidades', unidades.join(','));
+            params.append('lote_id', loteId);
+
+            // Chamar rota Flask para exportar Excel
+            fetch(`/exportar-tabela?${params.toString()}`)
+                .then(response => {
+                    if (!response.ok) throw new Error('Erro ao gerar arquivo');
+                    return response.blob();
+                })
+                .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = nomeArquivo;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                    showNotification('success', 'Download concluído', 'Tabela exportada com sucesso!');
+                })
+                .catch(() => {
+                    showNotification('error', 'Erro ao baixar tabela', 'Não foi possível gerar o arquivo Excel.');
+                });
         });
         
 
@@ -2979,7 +3021,7 @@
         });
 
         // Controle do filtro de período
-        function initPeriodoFilter() {
+        function initPeriodoFilter(skipAutoInit = false) {
             const periodoDisplay = document.getElementById('periodo-display');
             const calendarioPopup = document.getElementById('calendario-popup');
             const calendarioOverlay = document.getElementById('calendario-overlay');
@@ -3065,8 +3107,10 @@
             mesPeriodo.addEventListener('change', atualizarDatasPorMesAno);
             anoPeriodo.addEventListener('change', atualizarDatasPorMesAno);
             
-            // Aplicar o mês anterior inicial
-            atualizarDatasPorMesAno();
+            // Aplicar o mês anterior inicial APENAS se não houver parâmetros na URL
+            if (!skipAutoInit) {
+                atualizarDatasPorMesAno();
+            }
         }
         
         function atualizarInfoDias() {
@@ -3106,13 +3150,22 @@
             const dataFim = document.getElementById('data-fim').value;
             const periodoText = document.getElementById('periodo-text');
             
+            console.log('🔍 DEBUG atualizarDisplayPeriodo:', 'dataInicio=', dataInicio, 'dataFim=', dataFim);
+            
             if (dataInicio && dataFim) {
                 // Usar split para evitar problemas de timezone
                 const [anoInicio, mesInicio, diaInicio] = dataInicio.split('-');
                 const [anoFim, mesFim, diaFim] = dataFim.split('-');
                 
+                console.log('🔍 DEBUG Split dates:', 
+                    'inicio:', diaInicio, '/', mesInicio, '/', anoInicio,
+                    'fim:', diaFim, '/', mesFim, '/', anoFim
+                );
+                
                 const inicioFormatado = `${diaInicio}/${mesInicio}/${anoInicio}`;
                 const fimFormatado = `${diaFim}/${mesFim}/${anoFim}`;
+                
+                console.log('🔍 DEBUG Formatted:', 'inicio=', inicioFormatado, 'fim=', fimFormatado);
                 
                 periodoText.textContent = `${inicioFormatado} - ${fimFormatado}`;
             }
@@ -3147,14 +3200,25 @@
             
             let unidadesSelecionadasBackup = [];
             
-            // Inicializar com todas as unidades selecionadas
-            const checkboxes = document.querySelectorAll('.unidade-checkbox');
-            checkboxes.forEach(checkbox => {
-                checkbox.checked = true;
-            });
+            // Verificar se há unidades pré-selecionadas vindas da URL
+            const unidadesPreSelecionadas = filtrosAtivos.unidadesSelecionadas;
             
-            // Definir unidades nos filtros ativos - começar com todas selecionadas (sem filtro -> null)
-            filtrosAtivos.unidadesSelecionadas = null;
+            // Inicializar checkboxes
+            const checkboxes = document.querySelectorAll('.unidade-checkbox');
+            if (unidadesPreSelecionadas && unidadesPreSelecionadas.length > 0) {
+                // Se veio da URL, selecionar apenas as especificadas
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = unidadesPreSelecionadas.includes(checkbox.value);
+                });
+            } else {
+                // Caso contrário, selecionar todas
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = true;
+                });
+                // Definir como null (todas selecionadas = sem filtro)
+                filtrosAtivos.unidadesSelecionadas = null;
+            }
+            
             atualizarDisplayUnidades();
             
             // Abrir popup de unidades

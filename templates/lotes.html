@@ -172,8 +172,8 @@
                                     <a href="{{ url_for('lote_detalhes', lote_id=lote.id) }}" class="btn btn-primary btn-sm">
                                     🔍 Ver Detalhes
                                 </a>
-                                <button class="btn btn-secondary btn-sm" onclick="importarDados({{ loop.index }})">
-                                                📤 Importar Dados
+                                <button class="btn btn-secondary btn-sm" onclick="ExportarDados({{ lote.id }})">
+                                                📤 Exportar Dados
                                           </button>
                                           <button class="btn btn-secondary btn-sm" onclick="alert('Funcionalidade de relatório para Lote {{ loop.index }} será implementada em versões futuras.')">
                                               📊 Relatório
@@ -606,8 +606,46 @@
             lotes.forEach(lote => container.appendChild(lote));
         }
 
-        function importarDados(loteId) {
-            alert(`Funcionalidade de importação de dados para Lote ${loteId} será implementada em versões futuras.`);
+        function ExportarDados(loteId) {
+            // Montar nome do arquivo
+            const nomeArquivo = `lote_${loteId}_completo.xlsx`;
+            
+            // Montar URL da exportação sem filtros (exporta tudo)
+            const params = new URLSearchParams();
+            params.append('lote_id', loteId);
+            // Não passar data_inicio, data_fim ou unidades = exporta tudo
+            
+            // Mostrar notificação de processamento
+            showNotification('warning', 'Gerando arquivo...', 'Exportando todos os dados do lote. Aguarde...', false);
+            
+            // Chamar rota Flask para exportar Excel
+            fetch(`/exportar-tabela?${params.toString()}`)
+                .then(response => {
+                    if (!response.ok) throw new Error('Erro ao gerar arquivo');
+                    return response.blob();
+                })
+                .then(blob => {
+                    // Criar link para download
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = nomeArquivo;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                    
+                    // Fechar notificação anterior e mostrar sucesso
+                    const existingNotification = document.querySelector('.notification');
+                    if (existingNotification) existingNotification.remove();
+                    showNotification('success', 'Download concluído!', `Arquivo ${nomeArquivo} exportado com sucesso.`);
+                })
+                .catch(() => {
+                    // Fechar notificação anterior e mostrar erro
+                    const existingNotification = document.querySelector('.notification');
+                    if (existingNotification) existingNotification.remove();
+                    showNotification('error', 'Erro ao exportar', 'Não foi possível gerar o arquivo Excel. Tente novamente.');
+                });
         }
 
         function gerarRelatorio(loteId) {

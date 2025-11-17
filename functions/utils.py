@@ -983,7 +983,7 @@ def calcular_metricas_lotes(lotes, mapas):
 	- meses_cadastrados: número de meses únicos com dados
 	- refeicoes_mes: média de refeições por mês
 	- custo_mes: custo médio por mês
-	- desvio_mes: placeholder (0.0)
+	- desvio_mes: desvio médio por mês (diferença entre refeições e SIISP)
 	
 	Args:
 		lotes: lista de dicionários representando os lotes
@@ -995,6 +995,7 @@ def calcular_metricas_lotes(lotes, mapas):
 	meses_por_lote = defaultdict(set)
 	totais_refeicoes_por_lote = {}
 	totais_custos_por_lote = {}
+	totais_desvios_por_lote = {}
 	
 	for m in (mapas or []):
 		try:
@@ -1072,6 +1073,34 @@ def calcular_metricas_lotes(lotes, mapas):
 						pass
 		
 		totais_custos_por_lote[lote_id] = totais_custos_por_lote.get(lote_id, 0.0) + custo_mapa
+		
+		# acumular desvios totais por lote (baseado nos campos _siisp)
+		# Desvio = valor monetário dos EXCEDENTES (apenas valores positivos)
+		desvio_mapa = 0.0
+		desvio_fields = [
+			('cafe_interno_siisp', precos.get('cafe', {}).get('interno', 0)),
+			('cafe_funcionario_siisp', precos.get('cafe', {}).get('funcionario', 0)),
+			('almoco_interno_siisp', precos.get('almoco', {}).get('interno', 0)),
+			('almoco_funcionario_siisp', precos.get('almoco', {}).get('funcionario', 0)),
+			('lanche_interno_siisp', precos.get('lanche', {}).get('interno', 0)),
+			('lanche_funcionario_siisp', precos.get('lanche', {}).get('funcionario', 0)),
+			('jantar_interno_siisp', precos.get('jantar', {}).get('interno', 0)),
+			('jantar_funcionario_siisp', precos.get('jantar', {}).get('funcionario', 0))
+		]
+		
+		for field_name, preco_unitario in desvio_fields:
+			if field_name in m:
+				try:
+					# somar apenas os excedentes (valores positivos > 0)
+					for valor_dia in m[field_name]:
+						if valor_dia is not None:
+							val = int(valor_dia)
+							if val > 0:  # apenas excedentes
+								desvio_mapa += val * float(preco_unitario or 0)
+				except Exception:
+					pass
+		
+		totais_desvios_por_lote[lote_id] = totais_desvios_por_lote.get(lote_id, 0.0) + desvio_mapa
 	
 	# anexar métricas calculadas a cada lote
 	for l in lotes:
@@ -1103,8 +1132,15 @@ def calcular_metricas_lotes(lotes, mapas):
 				avg_custo = 0.0
 		l['custo_mes'] = avg_custo
 		
-		if 'desvio_mes' not in l:
-			l['desvio_mes'] = 0.0
+		# calcular desvio médio mensal (total desvios / meses_cadastrados)
+		total_desvio = totais_desvios_por_lote.get(lid, 0.0) if lid is not None else 0.0
+		avg_desvio = 0.0
+		if count > 0:
+			try:
+				avg_desvio = round(total_desvio / float(count), 2)
+			except Exception:
+				avg_desvio = 0.0
+		l['desvio_mes'] = avg_desvio
 
 
 def carregar_lotes_para_dashboard():
@@ -1218,15 +1254,25 @@ def carregar_lotes_para_dashboard():
 
 	mapas_dados = []
 
-	# Carregar mapas salvos (se existirem) e normalizar para uso no dashboard
-	mapas_raw = _load_mapas_data() or []
+	# Carregar mapas salvos - NOVO: priorizar arquivos particionados
 	mapas_list_src = []
-	if isinstance(mapas_raw, dict) and isinstance(mapas_raw.get('mapas'), list):
-		mapas_list_src = mapas_raw.get('mapas')
-	elif isinstance(mapas_raw, list):
-		mapas_list_src = mapas_raw
+	
+	# Primeiro: tentar carregar arquivos particionados
+	mapas_particionados = _load_all_mapas_partitioned()
+	if mapas_particionados:
+		mapas_list_src = mapas_particionados
+		print(f"✅ Usando {len(mapas_list_src)} mapas de arquivos particionados")
 	else:
-		mapas_list_src = []
+		# Fallback: carregar arquivo legado mapas.json
+		print("📂 Nenhum arquivo particionado encontrado, tentando mapas.json legado...")
+		mapas_raw = _load_mapas_data() or []
+		if isinstance(mapas_raw, dict) and isinstance(mapas_raw.get('mapas'), list):
+			mapas_list_src = mapas_raw.get('mapas')
+		elif isinstance(mapas_raw, list):
+			mapas_list_src = mapas_raw
+		else:
+			mapas_list_src = []
+		print(f"📂 Carregados {len(mapas_list_src)} mapas do arquivo legado")
 
 	for m in mapas_list_src:
 		if not isinstance(m, dict):
@@ -1448,34 +1494,207 @@ def _save_mapas_data(data):
 		return False
 
 
+# ----- Partitioned Mapas Storage (by month/year) -----
+def _get_mapas_filepath(mes, ano):
+	"""Retorna o caminho do arquivo de mapas particionado por mês/ano.
+	
+	Formato: dados/mapas_2025_09.json (setembro/2025)
+	"""
+	base_dir = os.path.dirname(os.path.dirname(__file__))
+	filename = f'mapas_{ano}_{mes:02d}.json'
+	return os.path.join(base_dir, 'dados', filename)
+
+
+def _load_mapas_partitioned(mes, ano):
+	"""Carrega mapas de um arquivo particionado específico (mês/ano).
+	
+	Retorna lista de mapas ou None se arquivo não existir.
+	"""
+	filepath = _get_mapas_filepath(mes, ano)
+	if not os.path.isfile(filepath):
+		return None
+	try:
+		with open(filepath, 'r', encoding='utf-8') as f:
+			data = json.load(f)
+			# Normalizar: sempre retornar lista
+			if isinstance(data, dict) and 'mapas' in data:
+				return data['mapas']
+			elif isinstance(data, list):
+				return data
+			return None
+	except Exception as e:
+		print(f"❌ Erro ao ler {filepath}: {e}")
+		return None
+
+
+def _save_mapas_partitioned(mapas_list, mes, ano):
+	"""Salva lista de mapas em arquivo particionado (mês/ano).
+	
+	Args:
+		mapas_list: lista de dicionários representando mapas
+		mes: número do mês (1-12)
+		ano: ano (ex: 2025)
+	
+	Returns:
+		True se salvou com sucesso, False caso contrário
+	"""
+	filepath = _get_mapas_filepath(mes, ano)
+	try:
+		os.makedirs(os.path.dirname(filepath), exist_ok=True)
+		tmp_path = filepath + '.tmp'
+		# Salvar como lista direta (sem wrapper)
+		with open(tmp_path, 'w', encoding='utf-8') as f:
+			json.dump(mapas_list, f, ensure_ascii=False, indent=2)
+		os.replace(tmp_path, filepath)
+		print(f"✅ Mapas salvos em: {filepath} ({len(mapas_list)} registros)")
+		return True
+	except Exception as e:
+		print(f"❌ Erro ao salvar {filepath}: {e}")
+		return False
+
+
+def _load_mapas_by_period(mes_inicio, ano_inicio, mes_fim, ano_fim):
+	"""Carrega todos os mapas dentro de um período (range de meses).
+	
+	Retorna lista agregada de todos os mapas encontrados.
+	"""
+	mapas_agregados = []
+	
+	# Iterar através dos meses
+	ano_atual = ano_inicio
+	mes_atual = mes_inicio
+	
+	while (ano_atual < ano_fim) or (ano_atual == ano_fim and mes_atual <= mes_fim):
+		# Tentar carregar arquivo particionado
+		mapas_mes = _load_mapas_partitioned(mes_atual, ano_atual)
+		if mapas_mes:
+			mapas_agregados.extend(mapas_mes)
+			print(f"📂 Carregados {len(mapas_mes)} mapas de {mes_atual:02d}/{ano_atual}")
+		
+		# Avançar para próximo mês
+		mes_atual += 1
+		if mes_atual > 12:
+			mes_atual = 1
+			ano_atual += 1
+	
+	print(f"✅ Total de mapas carregados no período: {len(mapas_agregados)}")
+	return mapas_agregados
+
+
+def _detect_mes_ano_from_entry(entry):
+	"""Detecta mês e ano de um registro de mapa.
+	
+	Retorna tupla (mes, ano) ou (None, None) se não puder detectar.
+	"""
+	if not isinstance(entry, dict):
+		return (None, None)
+	
+	# Tentar extrair de várias chaves possíveis
+	mes_keys = ('mes', 'month', 'mes_num', 'mesNumero', 'month_num')
+	ano_keys = ('ano', 'year')
+	
+	mes = None
+	ano = None
+	
+	for k in mes_keys:
+		if k in entry:
+			try:
+				mes = int(entry[k])
+				break
+			except (ValueError, TypeError):
+				continue
+	
+	for k in ano_keys:
+		if k in entry:
+			try:
+				ano = int(entry[k])
+				break
+			except (ValueError, TypeError):
+				continue
+	
+	return (mes, ano)
+
+
+def _load_all_mapas_partitioned():
+	"""Carrega TODOS os arquivos de mapas particionados disponíveis.
+	
+	Varre o diretório dados/ procurando por arquivos mapas_YYYY_MM.json
+	e carrega todos eles em uma única lista agregada.
+	
+	Retorna lista de mapas ou lista vazia se nenhum arquivo encontrado.
+	"""
+	import glob
+	
+	base_dir = os.path.dirname(os.path.dirname(__file__))
+	dados_dir = os.path.join(base_dir, 'dados')
+	
+	# Padrão: mapas_2025_09.json, mapas_2025_10.json, etc
+	pattern = os.path.join(dados_dir, 'mapas_????_??.json')
+	
+	arquivos = glob.glob(pattern)
+	mapas_agregados = []
+	
+	for filepath in sorted(arquivos):
+		try:
+			with open(filepath, 'r', encoding='utf-8') as f:
+				data = json.load(f)
+				# Normalizar: sempre trabalhar com lista
+				if isinstance(data, dict) and 'mapas' in data:
+					mapas_agregados.extend(data['mapas'])
+				elif isinstance(data, list):
+					mapas_agregados.extend(data)
+				
+				filename = os.path.basename(filepath)
+				print(f"📂 Carregado: {filename} ({len(data) if isinstance(data, list) else len(data.get('mapas', []))} mapas)")
+		except Exception as e:
+			print(f"❌ Erro ao carregar {filepath}: {e}")
+			continue
+	
+	print(f"✅ Total de mapas particionados carregados: {len(mapas_agregados)}")
+	return mapas_agregados
+
+
 def salvar_mapas_raw(payload):
-	"""Salva o payload recebido diretamente em dados/mapas.json sem tratamento.
+	"""Salva o payload recebido em arquivos particionados por mês/ano.
 
 	Retorna dict simples: {'success': True} ou {'success': False, 'error': '...'}.
 	"""
-	# Aceitar dict ou lista (um ou vários mapas). Vamos armazenar os mapas
-	# como uma lista dentro de dados/mapas.json (ou manter wrapper {'mapas': [...]}).
+	# Aceitar dict ou lista (um ou vários mapas)
 	try:
-		existing = _load_mapas_data()
-		mapas_list = []
-		wrapped = None
-		if isinstance(existing, dict) and isinstance(existing.get('mapas'), list):
-			mapas_list = existing.get('mapas')
-			wrapped = existing
-		elif isinstance(existing, list):
-			mapas_list = existing
-		else:
-			mapas_list = []
-
-		# coletar ids existentes
-		existing_ids = {int(m.get('id')) for m in mapas_list if isinstance(m, dict) and isinstance(m.get('id'), int)}
-		next_id = (max(existing_ids) + 1) if existing_ids else 0
-
 		entries = []
 		if isinstance(payload, list):
 			entries = payload
 		else:
 			entries = [payload or {}]
+		
+		# Detectar mês/ano dos novos registros
+		periodos_afetados = set()
+		for entry in entries:
+			mes, ano = _detect_mes_ano_from_entry(entry)
+			if mes and ano:
+				periodos_afetados.add((mes, ano))
+		
+		if not periodos_afetados:
+			return {'success': False, 'error': 'Não foi possível detectar mês/ano dos dados'}
+		
+		# Carregar mapas existentes dos períodos afetados
+		mapas_list = []
+		for (mes, ano) in periodos_afetados:
+			mapas_periodo = _load_mapas_partitioned(mes, ano)
+			if mapas_periodo:
+				mapas_list.extend(mapas_periodo)
+		
+		# Também tentar carregar do arquivo legado (backward compatibility)
+		legacy_data = _load_mapas_data()
+		if legacy_data:
+			if isinstance(legacy_data, dict) and isinstance(legacy_data.get('mapas'), list):
+				mapas_list.extend(legacy_data.get('mapas'))
+			elif isinstance(legacy_data, list):
+				mapas_list.extend(legacy_data)
+
+		# coletar ids existentes
+		existing_ids = {int(m.get('id')) for m in mapas_list if isinstance(m, dict) and isinstance(m.get('id'), int)}
+		next_id = (max(existing_ids) + 1) if existing_ids else 0
 
 		saved_ids = []
 		saved_records = []
@@ -1804,16 +2023,31 @@ def salvar_mapas_raw(payload):
 				operacoes = []
 			operacoes.append('created')
 
-		# montar objeto para salvar (preservar wrapper quando existir)
-		if wrapped is not None:
-			wrapped['mapas'] = mapas_list
-			to_write = wrapped
-		else:
-			to_write = mapas_list
-
-		ok = _save_mapas_data(to_write)
-		if not ok:
-			return {'success': False, 'error': 'Erro ao salvar mapas'}
+		# NOVO: Sistema particionado - agrupar mapas por mês/ano e salvar separadamente
+		mapas_por_periodo = {}  # {(mes, ano): [mapas...]}
+		
+		for mapa in mapas_list:
+			mes, ano = _detect_mes_ano_from_entry(mapa)
+			if mes and ano:
+				key = (mes, ano)
+				if key not in mapas_por_periodo:
+					mapas_por_periodo[key] = []
+				mapas_por_periodo[key].append(mapa)
+			else:
+				# Se não detectar mes/ano, tentar salvar no legado
+				print(f"⚠️ Mapa sem mes/ano detectável: {mapa.get('id', 'sem id')}")
+		
+		# Salvar cada período em seu próprio arquivo
+		all_saved = True
+		for (mes, ano), mapas_periodo in mapas_por_periodo.items():
+			ok = _save_mapas_partitioned(mapas_periodo, mes, ano)
+			if not ok:
+				all_saved = False
+				print(f"❌ Falha ao salvar mapas de {mes:02d}/{ano}")
+		
+		if not all_saved:
+			return {'success': False, 'error': 'Erro ao salvar alguns arquivos de mapas'}
+		
 		# Retorno enriquecido: id(s) e registro(s) salvos
 		if len(saved_records) == 1:
 			ret = {'success': True, 'id': saved_records[0]['id'], 'registro': saved_records[0]}
@@ -2006,3 +2240,818 @@ def reordenar_registro_mapas(registro_id):
 		
 	except Exception:
 		return False
+
+
+def adicionar_siisp_em_mapa(payload):
+	"""Adiciona dados SIISP a um mapa existente.
+	
+	Args:
+		payload: dict contendo:
+			- unidade: nome da unidade
+			- mes: número do mês (1-12)
+			- ano: ano (ex: 2025)
+			- lote_id: ID do lote
+			- dados_siisp: texto tabular com dados SIISP ou lista de números
+	
+	Retorna:
+		dict com 'success' (bool) e 'error' (str) ou 'registro' (dict)
+	"""
+	if not isinstance(payload, dict):
+		return {'success': False, 'error': 'Payload inválido'}
+	
+	unidade = payload.get('unidade', '').strip()
+	mes = payload.get('mes')
+	ano = payload.get('ano')
+	lote_id = payload.get('lote_id')
+	dados_siisp_raw = payload.get('dados_siisp')
+	
+	# Validações básicas
+	if not unidade or not mes or not ano or lote_id is None:
+		return {'success': False, 'error': 'Campos obrigatórios ausentes: unidade, mes, ano, lote_id'}
+	
+	try:
+		mes = int(mes)
+		ano = int(ano)
+		lote_id = int(lote_id)
+	except Exception:
+		return {'success': False, 'error': 'Valores inválidos para mes, ano ou lote_id'}
+	
+	if mes < 1 or mes > 12:
+		return {'success': False, 'error': 'Mês deve estar entre 1 e 12'}
+	
+	# Calcular dias esperados do mês
+	import calendar
+	try:
+		dias_esperados = calendar.monthrange(ano, mes)[1]
+	except Exception:
+		return {'success': False, 'error': 'Combinação inválida de mês/ano'}
+	
+	# Processar dados_siisp
+	dados_siisp_list = []
+	if isinstance(dados_siisp_raw, str):
+		# Texto tabular - parsear
+		parsed = parse_texto_tabular(dados_siisp_raw)
+		if not parsed.get('ok'):
+			return {'success': False, 'error': f'Erro ao processar dados SIISP: {parsed.get("error")}'}
+		
+		# Pegar primeira coluna
+		colunas = parsed.get('colunas', {})
+		primeira_coluna_key = 'coluna_0'
+		if primeira_coluna_key in colunas:
+			dados_siisp_list = colunas[primeira_coluna_key]
+		else:
+			return {'success': False, 'error': 'Dados SIISP não encontrados na primeira coluna'}
+	elif isinstance(dados_siisp_raw, list):
+		# Se é lista, tentar converter cada item para número
+		for item in dados_siisp_raw:
+			try:
+				if isinstance(item, (int, float)):
+					dados_siisp_list.append(int(item))
+				elif isinstance(item, str):
+					# Remover espaços e converter
+					num = int(item.strip())
+					dados_siisp_list.append(num)
+				else:
+					dados_siisp_list.append(0)
+			except Exception:
+				dados_siisp_list.append(0)
+	elif dados_siisp_raw is None or dados_siisp_raw == '':
+		return {'success': False, 'error': 'Dados SIISP não fornecidos'}
+	else:
+		return {'success': False, 'error': f'Formato de dados SIISP inválido: tipo {type(dados_siisp_raw).__name__}. Esperado: string ou lista'}
+	
+	# Validar quantidade de dias
+	if len(dados_siisp_list) != dias_esperados:
+		return {
+			'success': False, 
+			'error': f'Quantidade de dados SIISP ({len(dados_siisp_list)}) não corresponde aos dias do mês ({dias_esperados} dias em {mes:02d}/{ano})'
+		}
+	
+	# Buscar mapa existente usando sistema particionado
+	mapas_existentes = _load_mapas_partitioned(mes, ano)
+	if mapas_existentes is None:
+		return {
+			'success': False,
+			'error': f'Nenhum mapa encontrado para {mes:02d}/{ano}. Adicione dados de refeições primeiro.'
+		}
+	
+	# Procurar mapa específico
+	mapa_encontrado = None
+	indice_mapa = None
+	for i, m in enumerate(mapas_existentes):
+		if not isinstance(m, dict):
+			continue
+		m_unidade = str(m.get('unidade', '')).strip()
+		m_lote_id = m.get('lote_id')
+		m_mes = m.get('mes')
+		m_ano = m.get('ano')
+		
+		try:
+			if (m_unidade.lower() == unidade.lower() and 
+				int(m_lote_id) == int(lote_id) and
+				int(m_mes) == int(mes) and
+				int(m_ano) == int(ano)):
+				mapa_encontrado = m
+				indice_mapa = i
+				break
+		except Exception:
+			continue
+	
+	if mapa_encontrado is None:
+		return {
+			'success': False,
+			'error': f'Mapa não encontrado para Unidade "{unidade}", Lote {lote_id}, período {mes:02d}/{ano}. Adicione dados de refeições primeiro.'
+		}
+	
+	# Atualizar dados_siisp no mapa
+	mapa_encontrado['dados_siisp'] = dados_siisp_list
+	mapa_encontrado['atualizado_em'] = datetime.now().isoformat()
+	
+	# Recalcular campos comparativos SIISP
+	_calcular_campos_comparativos_siisp(mapa_encontrado)
+	
+	# Atualizar no array
+	mapas_existentes[indice_mapa] = mapa_encontrado
+	
+	# Salvar arquivo particionado
+	if not _save_mapas_partitioned(mapas_existentes, mes, ano):
+		return {'success': False, 'error': 'Erro ao salvar dados'}
+	
+	return {
+		'success': True,
+		'registro': mapa_encontrado,
+		'mensagem': f'Dados SIISP adicionados com sucesso ao mapa {mapa_encontrado.get("id")}'
+	}
+
+
+def excluir_mapa(payload):
+	"""Remove um mapa específico do arquivo particionado.
+	
+	Args:
+		payload: dict contendo:
+			- unidade: nome da unidade
+			- mes: número do mês (1-12)
+			- ano: ano (ex: 2025)
+			- lote_id: ID do lote (opcional, para validação adicional)
+	
+	Retorna:
+		dict com 'success' (bool) e 'error' (str) ou 'mensagem' (str)
+	"""
+	if not isinstance(payload, dict):
+		return {'success': False, 'error': 'Payload inválido'}
+	
+	unidade = payload.get('unidade', '').strip()
+	mes = payload.get('mes')
+	ano = payload.get('ano')
+	lote_id = payload.get('lote_id')  # Opcional
+	
+	# Validações básicas
+	if not unidade or not mes or not ano:
+		return {'success': False, 'error': 'Campos obrigatórios ausentes: unidade, mes, ano'}
+	
+	try:
+		mes = int(mes)
+		ano = int(ano)
+		if lote_id is not None:
+			lote_id = int(lote_id)
+	except Exception:
+		return {'success': False, 'error': 'Valores inválidos para mes, ano ou lote_id'}
+	
+	if mes < 1 or mes > 12:
+		return {'success': False, 'error': 'Mês deve estar entre 1 e 12'}
+	
+	# Buscar mapa existente usando sistema particionado
+	mapas_existentes = _load_mapas_partitioned(mes, ano)
+	if mapas_existentes is None:
+		return {
+			'success': False,
+			'error': f'Nenhum mapa encontrado para {mes:02d}/{ano}. Não há dados para excluir.'
+		}
+	
+	# Procurar mapa específico
+	mapa_encontrado = None
+	indice_mapa = None
+	for i, m in enumerate(mapas_existentes):
+		if not isinstance(m, dict):
+			continue
+		m_unidade = str(m.get('unidade', '')).strip()
+		m_mes = m.get('mes')
+		m_ano = m.get('ano')
+		
+		# Comparação básica: unidade, mês e ano
+		try:
+			if (m_unidade.lower() == unidade.lower() and 
+				int(m_mes) == int(mes) and
+				int(m_ano) == int(ano)):
+				# Se lote_id foi fornecido, validar também
+				if lote_id is not None:
+					m_lote_id = m.get('lote_id')
+					if int(m_lote_id) != int(lote_id):
+						continue
+				mapa_encontrado = m
+				indice_mapa = i
+				break
+		except Exception:
+			continue
+	
+	if mapa_encontrado is None:
+		msg_extra = f' e Lote {lote_id}' if lote_id is not None else ''
+		return {
+			'success': False,
+			'error': f'Mapa não encontrado para Unidade "{unidade}", período {mes:02d}/{ano}{msg_extra}.'
+		}
+	
+	# Guardar informações para mensagem de confirmação
+	mapa_id = mapa_encontrado.get('id')
+	
+	# Remover mapa do array
+	mapas_existentes.pop(indice_mapa)
+	
+	# Salvar arquivo particionado atualizado (ou deletar se ficou vazio)
+	if len(mapas_existentes) == 0:
+		# Se não sobrou nenhum mapa, deletar o arquivo
+		filepath = _get_mapas_filepath(mes, ano)
+		try:
+			if os.path.isfile(filepath):
+				os.remove(filepath)
+				print(f"🗑️ Arquivo vazio deletado: {filepath}")
+		except Exception as e:
+			print(f"⚠️ Aviso: Não foi possível deletar arquivo vazio: {e}")
+			# Não é erro crítico, continuar
+	else:
+		# Ainda há mapas, salvar arquivo atualizado
+		if not _save_mapas_partitioned(mapas_existentes, mes, ano):
+			return {'success': False, 'error': 'Erro ao salvar dados após exclusão'}
+	
+	return {
+		'success': True,
+		'mensagem': f'Mapa {mapa_id} da unidade "{unidade}" ({mes:02d}/{ano}) excluído com sucesso.',
+		'id': mapa_id
+	}
+
+
+# ----- Excel Export Helper -----
+def int_to_roman(num):
+	"""Converte número inteiro em algarismo romano"""
+	val = [
+		1000, 900, 500, 400,
+		100, 90, 50, 40,
+		10, 9, 5, 4,
+		1
+	]
+	syms = [
+		"M", "CM", "D", "CD",
+		"C", "XC", "L", "XL",
+		"X", "IX", "V", "IV",
+		"I"
+	]
+	roman_num = ''
+	i = 0
+	while num > 0:
+		for _ in range(num // val[i]):
+			roman_num += syms[i]
+			num -= val[i]
+		i += 1
+	return roman_num
+
+
+def gerar_excel_exportacao(lote_id, unidades_list, data_inicio=None, data_fim=None):
+	"""Gera arquivo Excel com dados do lote para exportação.
+	
+	Args:
+		lote_id: ID do lote
+		unidades_list: lista de nomes de unidades (vazia = todas)
+		data_inicio: data de início do filtro (opcional)
+		data_fim: data de fim do filtro (opcional)
+	
+	Retorna:
+		dict com:
+		- success: bool
+		- error: str (se falha)
+		- output: BytesIO (se sucesso)
+		- filename: str (se sucesso)
+	"""
+	try:
+		from openpyxl import load_workbook
+		from copy import copy
+		import io
+		import re
+		import os
+		import glob
+		import calendar
+	except ImportError as e:
+		return {'success': False, 'error': f'Biblioteca não instalada: {str(e)}'}
+	
+	try:
+		# Carregar dados
+		dashboard_data = carregar_lotes_para_dashboard()
+		lotes = dashboard_data.get('lotes', [])
+		
+		# Buscar lote específico
+		lote = None
+		for l in lotes:
+			try:
+				if int(l.get('id')) == int(lote_id):
+					lote = l
+					break
+			except Exception:
+				continue
+		
+		if not lote:
+			return {'success': False, 'error': 'Lote não encontrado'}
+		
+		precos = normalizar_precos(lote.get('precos', {}))
+
+		# Buscar mapas (usando sistema particionado)
+		mapas_filtrados = []
+		base_dir = os.path.dirname(os.path.dirname(__file__))
+		dados_dir = os.path.join(base_dir, 'dados')
+		
+		mapas_files = glob.glob(os.path.join(dados_dir, 'mapas_*.json'))
+		
+		for mapas_file in mapas_files:
+			filename = os.path.basename(mapas_file)
+			match = re.search(r'mapas_(\d{4})_(\d{2})\.json', filename)
+			if match:
+				ano_arquivo = int(match.group(1))
+				mes_arquivo = int(match.group(2))
+				
+				mapas_mes = _load_mapas_partitioned(mes_arquivo, ano_arquivo)
+				
+				for m in mapas_mes:
+					try:
+						if int(m.get('lote_id')) != int(lote_id):
+							continue
+						
+						if unidades_list:
+							unidade_nome = (m.get('unidade') or '').strip()
+							if unidade_nome not in unidades_list:
+								continue
+						
+						mapas_filtrados.append(m)
+					except Exception:
+						continue
+
+		if not mapas_filtrados:
+			return {'success': False, 'error': 'Nenhum dado encontrado para os filtros selecionados'}
+
+		# Carregar modelo Excel
+		modelo_path = os.path.join(dados_dir, 'modelo.xlsx')
+		
+		if not os.path.exists(modelo_path):
+			return {'success': False, 'error': 'Arquivo modelo.xlsx não encontrado'}
+
+		wb = load_workbook(modelo_path)
+
+		# Selecionar planilha COMPARATIVO
+		if 'COMPARATIVO' in wb.sheetnames:
+			ws1 = wb['COMPARATIVO']
+		else:
+			ws1 = wb.active
+			ws1.title = 'COMPARATIVO'
+
+		# Definir ordem dos preços (usado em RESUMO e COMPARATIVO)
+		precos_ordem = [
+			('cafe', 'interno'),
+			('cafe', 'funcionario'),
+			('almoco', 'interno'),
+			('almoco', 'funcionario'),
+			('lanche', 'interno'),
+			('lanche', 'funcionario'),
+			('jantar', 'interno'),
+			('jantar', 'funcionario')
+		]
+
+		# ===== PREENCHER PLANILHA RESUMO =====
+		if 'RESUMO' in wb.sheetnames:
+			ws_resumo = wb['RESUMO']
+			
+			# Preencher B8 com número do contrato
+			contrato_numero = lote.get('contrato', '')
+			ws_resumo['B8'] = f"CONTRATO : {contrato_numero}"
+			
+			# Preencher B7 com texto dinâmico
+			empresa_nome = lote.get('empresa', '')
+			mes = None
+			ano = None
+			if mapas_filtrados:
+				mes = mapas_filtrados[0].get('mes')
+				ano = mapas_filtrados[0].get('ano')
+			
+			# Mês em português
+			meses_pt = [
+				'', 'JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO',
+				'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'
+			]
+			mes_nome = meses_pt[mes] if mes and 1 <= mes <= 12 else ''
+			
+			# Lote em romano
+			lote_romano = int_to_roman(lote_id) if lote_id else ''
+			texto_resumo = f"RESUMO FINAL LOTE {lote_romano} - EMPRESA {empresa_nome} - {mes_nome} {ano}".upper()
+			ws_resumo['B7'] = texto_resumo
+			
+			# Desmesclar células mescladas na área de dados
+			for merged_range in list(ws_resumo.merged_cells.ranges):
+				min_col = merged_range.min_col
+				max_col = merged_range.max_col
+				min_row = merged_range.min_row
+				max_row = merged_range.max_row
+				if max_row >= 13 and min_col >= 2 and max_col <= 11:
+					ws_resumo.unmerge_cells(str(merged_range))
+			
+			# Preparar lista de unidades
+			if unidades_list:
+				nomes_unidades = unidades_list
+			else:
+				nomes_unidades = list(set(m.get('unidade', '') for m in mapas_filtrados if m.get('unidade')))
+				nomes_unidades.sort()
+			
+			quantidade_unidades = len(nomes_unidades)
+			estilo_b11 = ws_resumo['B11']
+			
+			if quantidade_unidades == 1:
+				# Caso de 1 unidade
+				cell_b11 = ws_resumo['B11']
+				cell_b11.value = 1
+				cell_b11.font = copy(estilo_b11.font)
+				cell_b11.border = copy(estilo_b11.border)
+				cell_b11.alignment = copy(estilo_b11.alignment)
+				cell_b11.number_format = estilo_b11.number_format
+				cell_b11.protection = copy(estilo_b11.protection)
+				
+				cell_c11 = ws_resumo['C11']
+				cell_c11.value = nomes_unidades[0]
+				cell_c11.font = copy(estilo_b11.font)
+				cell_c11.border = copy(estilo_b11.border)
+				cell_c11.alignment = copy(estilo_b11.alignment)
+				cell_c11.number_format = estilo_b11.number_format
+				cell_c11.protection = copy(estilo_b11.protection)
+				
+				colunas_refeicoes = [
+					('cafe_interno', 4),
+					('cafe_funcionario', 5),
+					('almoco_interno', 6),
+					('almoco_funcionario', 7),
+					('lanche_interno', 8),
+					('lanche_funcionario', 9),
+					('jantar_interno', 10),
+					('jantar_funcionario', 11)
+				]
+				nome_unidade = nomes_unidades[0]
+				mapa_unidade = next((m for m in mapas_filtrados if m.get('unidade') == nome_unidade), None)
+				
+				for campo, col_idx in colunas_refeicoes:
+					valor_total = 0
+					if mapa_unidade:
+						valores = mapa_unidade.get(campo, [])
+						valor_total = sum(int(v or 0) for v in valores)
+					
+					cell = ws_resumo.cell(row=11, column=col_idx, value=valor_total)
+					cell.font = copy(estilo_b11.font)
+					cell.border = copy(estilo_b11.border)
+					cell.alignment = copy(estilo_b11.alignment)
+					cell.number_format = estilo_b11.number_format
+					cell.protection = copy(estilo_b11.protection)
+				
+				ws_resumo.merge_cells(start_row=13, start_column=2, end_row=16, end_column=2)
+				
+				linha_precos = 13
+				for col_offset, (ref, tipo) in enumerate(precos_ordem):
+					col_idx = 4 + col_offset
+					valor_preco = precos.get(ref, {}).get(tipo, 0)
+					cell = ws_resumo.cell(row=linha_precos, column=col_idx, value=valor_preco)
+					cell_modelo = ws_resumo.cell(row=13, column=4)
+					cell.font = copy(cell_modelo.font)
+					cell.border = copy(cell_modelo.border)
+					cell.alignment = copy(cell_modelo.alignment)
+					cell.number_format = cell_modelo.number_format
+					cell.protection = copy(cell_modelo.protection)
+				
+				for campo, col_idx in colunas_refeicoes:
+					soma_total = 0
+					for nome in nomes_unidades:
+						mapa = next((m for m in mapas_filtrados if m.get('unidade') == nome), None)
+						if mapa:
+							valores = mapa.get(campo, [])
+							soma_total += sum(int(v or 0) for v in valores)
+					
+					cell = ws_resumo.cell(row=14, column=col_idx, value=soma_total)
+					cell_modelo = ws_resumo.cell(row=14, column=col_idx)
+					cell.font = copy(cell_modelo.font)
+					cell.border = copy(cell_modelo.border)
+					cell.alignment = copy(cell_modelo.alignment)
+					cell.number_format = cell_modelo.number_format
+					cell.protection = copy(cell_modelo.protection)
+				
+				for col_idx in range(4, 12):
+					preco = ws_resumo.cell(row=13, column=col_idx).value or 0
+					soma = ws_resumo.cell(row=14, column=col_idx).value or 0
+					produto = float(preco) * float(soma)
+					
+					cell = ws_resumo.cell(row=15, column=col_idx, value=produto)
+					cell_modelo = ws_resumo.cell(row=15, column=4)
+					cell.font = copy(cell_modelo.font)
+					cell.border = copy(cell_modelo.border)
+					cell.alignment = copy(cell_modelo.alignment)
+					cell.number_format = cell_modelo.number_format
+					cell.protection = copy(cell_modelo.protection)
+				
+				ws_resumo.merge_cells('D16:K16')
+				soma_produtos = sum(ws_resumo.cell(row=15, column=col_idx).value or 0 for col_idx in range(4, 12))
+				cell_total = ws_resumo['D16']
+				cell_modelo = ws_resumo.cell(row=16, column=4)
+				cell_total.value = soma_produtos
+				cell_total.font = copy(cell_modelo.font)
+				cell_total.border = copy(cell_modelo.border)
+				cell_total.alignment = copy(cell_modelo.alignment)
+				cell_total.number_format = cell_modelo.number_format
+				cell_total.protection = copy(cell_modelo.protection)
+				
+			else:
+				# Caso de múltiplas unidades
+				ws_resumo.insert_rows(11, amount=quantidade_unidades - 1)
+				
+				for idx, nome_unidade in enumerate(nomes_unidades):
+					linha_atual = 11 + idx
+					
+					cell_b = ws_resumo.cell(row=linha_atual, column=2, value=idx + 1)
+					cell_b.font = copy(estilo_b11.font)
+					cell_b.border = copy(estilo_b11.border)
+					cell_b.alignment = copy(estilo_b11.alignment)
+					cell_b.number_format = estilo_b11.number_format
+					cell_b.protection = copy(estilo_b11.protection)
+					
+					cell_c = ws_resumo.cell(row=linha_atual, column=3, value=nome_unidade)
+					cell_c.font = copy(estilo_b11.font)
+					cell_c.border = copy(estilo_b11.border)
+					cell_c.alignment = copy(estilo_b11.alignment)
+					cell_c.number_format = estilo_b11.number_format
+					cell_c.protection = copy(estilo_b11.protection)
+					
+					mapa_unidade = next((m for m in mapas_filtrados if m.get('unidade') == nome_unidade), None)
+					
+					colunas_refeicoes = [
+						('cafe_interno', 4),
+						('cafe_funcionario', 5),
+						('almoco_interno', 6),
+						('almoco_funcionario', 7),
+						('lanche_interno', 8),
+						('lanche_funcionario', 9),
+						('jantar_interno', 10),
+						('jantar_funcionario', 11)
+					]
+					
+					for campo, col_idx in colunas_refeicoes:
+						valor_total = 0
+						if mapa_unidade:
+							valores = mapa_unidade.get(campo, [])
+							valor_total = sum(int(v or 0) for v in valores)
+						
+						cell = ws_resumo.cell(row=linha_atual, column=col_idx, value=valor_total)
+						cell.font = copy(estilo_b11.font)
+						cell.border = copy(estilo_b11.border)
+						cell.alignment = copy(estilo_b11.alignment)
+						cell.number_format = estilo_b11.number_format
+						cell.protection = copy(estilo_b11.protection)
+				
+				linha_inicio_resumo = 11 + quantidade_unidades + 1
+				
+				ws_resumo.merge_cells(start_row=linha_inicio_resumo, start_column=2, 
+									 end_row=linha_inicio_resumo + 3, end_column=2)
+				
+				linha_precos = linha_inicio_resumo
+				for col_offset, (ref, tipo) in enumerate(precos_ordem):
+					col_idx = 4 + col_offset
+					valor_preco = precos.get(ref, {}).get(tipo, 0)
+					cell = ws_resumo.cell(row=linha_precos, column=col_idx, value=valor_preco)
+					cell_modelo = ws_resumo.cell(row=linha_inicio_resumo, column=4)
+					cell.font = copy(cell_modelo.font)
+					cell.border = copy(cell_modelo.border)
+					cell.alignment = copy(cell_modelo.alignment)
+					cell.number_format = cell_modelo.number_format
+					cell.protection = copy(cell_modelo.protection)
+				
+				linha_somas = linha_inicio_resumo + 1
+				colunas_refeicoes = [
+					('cafe_interno', 4),
+					('cafe_funcionario', 5),
+					('almoco_interno', 6),
+					('almoco_funcionario', 7),
+					('lanche_interno', 8),
+					('lanche_funcionario', 9),
+					('jantar_interno', 10),
+					('jantar_funcionario', 11)
+				]
+				
+				for campo, col_idx in colunas_refeicoes:
+					soma_total = 0
+					for nome in nomes_unidades:
+						mapa = next((m for m in mapas_filtrados if m.get('unidade') == nome), None)
+						if mapa:
+							valores = mapa.get(campo, [])
+							soma_total += sum(int(v or 0) for v in valores)
+					
+					cell = ws_resumo.cell(row=linha_somas, column=col_idx, value=soma_total)
+					cell_modelo = ws_resumo.cell(row=linha_somas, column=col_idx)
+					cell.font = copy(cell_modelo.font)
+					cell.border = copy(cell_modelo.border)
+					cell.alignment = copy(cell_modelo.alignment)
+					cell.number_format = cell_modelo.number_format
+					cell.protection = copy(cell_modelo.protection)
+				
+				linha_produtos = linha_inicio_resumo + 2
+				for col_idx in range(4, 12):
+					preco = ws_resumo.cell(row=linha_precos, column=col_idx).value or 0
+					soma = ws_resumo.cell(row=linha_somas, column=col_idx).value or 0
+					produto = float(preco) * float(soma)
+					
+					cell = ws_resumo.cell(row=linha_produtos, column=col_idx, value=produto)
+					cell_modelo = ws_resumo.cell(row=linha_produtos, column=4)
+					cell.font = copy(cell_modelo.font)
+					cell.border = copy(cell_modelo.border)
+					cell.alignment = copy(cell_modelo.alignment)
+					cell.number_format = cell_modelo.number_format
+					cell.protection = copy(cell_modelo.protection)
+				
+				linha_total = linha_inicio_resumo + 3
+				ws_resumo.merge_cells(start_row=linha_total, start_column=4, 
+									 end_row=linha_total, end_column=11)
+				soma_produtos = sum(ws_resumo.cell(row=linha_produtos, column=col_idx).value or 0 
+								   for col_idx in range(4, 12))
+				cell_total = ws_resumo.cell(row=linha_total, column=4)
+				cell_modelo = ws_resumo.cell(row=linha_total, column=4)
+				cell_total.value = soma_produtos
+				cell_total.font = copy(cell_modelo.font)
+				cell_total.border = copy(cell_modelo.border)
+				cell_total.alignment = copy(cell_modelo.alignment)
+				cell_total.number_format = cell_modelo.number_format
+				cell_total.protection = copy(cell_modelo.protection)
+
+		# ===== PREENCHER PLANILHA COMPARATIVO =====
+		col_inicio = 13  # M = 13
+		for idx, (ref, tipo) in enumerate(precos_ordem):
+			col = col_inicio + idx
+			valor_preco = precos.get(ref, {}).get(tipo, 0)
+			cell_preco = ws1.cell(row=6, column=col, value=valor_preco)
+			cell_modelo = ws1.cell(row=6, column=col)
+			cell_preco.font = copy(cell_modelo.font)
+			cell_preco.border = copy(cell_modelo.border)
+			cell_preco.alignment = copy(cell_modelo.alignment)
+			cell_preco.number_format = 'General'
+			cell_preco.protection = copy(cell_modelo.protection)
+
+		# Buscar cabeçalho 'LOCAÇÃO'
+		header = None
+		idx_locacao = None
+		header_row = None
+		for r in range(1, 21):
+			row_values = [cell.value for cell in ws1[r]]
+			if row_values and 'LOCAÇÃO' in row_values:
+				header = row_values
+				idx_locacao = row_values.index('LOCAÇÃO')
+				header_row = r
+				break
+
+		if header is None:
+			return {'success': False, 'error': 'Cabeçalho LOCAÇÃO não encontrado no modelo'}
+
+		# Detectar índice da coluna UNIDADE
+		idx_unidade = None
+		for i, col_name in enumerate(header):
+			if col_name and str(col_name).strip().upper() == 'UNIDADE':
+				idx_unidade = i
+				break
+
+		# Preencher dados a partir da linha 12
+		linha = 12
+		lote_nome = f"LOTE {lote_id}"
+		
+		a12 = ws1.cell(row=12, column=1)
+		style_a12 = {
+			'font': copy(a12.font),
+			'border': copy(a12.border),
+			'alignment': copy(a12.alignment),
+			'number_format': a12.number_format,
+			'protection': copy(a12.protection)
+		}
+
+		tem_dados = False
+		for mapa in mapas_filtrados:
+			unidade_nome = (mapa.get('unidade') or '').strip()
+			dados_siisp = mapa.get('dados_siisp', [])
+			datas = mapa.get('datas', [])
+			
+			for i in range(len(datas)):
+				if idx_locacao is not None:
+					cell_locacao = ws1.cell(row=linha, column=idx_locacao+1, value=lote_nome)
+					cell_locacao.font = style_a12['font']
+					cell_locacao.border = style_a12['border']
+					cell_locacao.alignment = style_a12['alignment']
+					cell_locacao.number_format = style_a12['number_format']
+					cell_locacao.protection = style_a12['protection']
+				
+				if idx_unidade is not None:
+					cell_unidade = ws1.cell(row=linha, column=idx_unidade+1, value=unidade_nome)
+					cell_unidade.font = style_a12['font']
+					cell_unidade.border = style_a12['border']
+					cell_unidade.alignment = style_a12['alignment']
+					cell_unidade.number_format = style_a12['number_format']
+					cell_unidade.protection = style_a12['protection']
+				
+				valor_siisp = dados_siisp[i] if i < len(dados_siisp) else 0
+				cell_siisp = ws1.cell(row=linha, column=3, value=valor_siisp)
+				cell_siisp.font = style_a12['font']
+				cell_siisp.border = style_a12['border']
+				cell_siisp.alignment = style_a12['alignment']
+				cell_siisp.number_format = 'General'
+				cell_siisp.protection = style_a12['protection']
+
+				data_val = datas[i] if i < len(datas) else ''
+				cell_data = ws1.cell(row=linha, column=4, value=data_val)
+				cell_data.font = style_a12['font']
+				cell_data.border = style_a12['border']
+				cell_data.alignment = style_a12['alignment']
+				cell_data.number_format = 'DD/MM/YYYY'
+				cell_data.protection = style_a12['protection']
+
+				colunas_refeicoes = [
+					('cafe_interno', 5),
+					('cafe_funcionario', 6),
+					('almoco_interno', 7),
+					('almoco_funcionario', 8),
+					('lanche_interno', 9),
+					('lanche_funcionario', 10),
+					('jantar_interno', 11),
+					('jantar_funcionario', 12)
+				]
+				for campo, col in colunas_refeicoes:
+					valores = mapa.get(campo, [])
+					valor_refeicao = valores[i] if i < len(valores) else 0
+					cell_refeicao = ws1.cell(row=linha, column=col, value=valor_refeicao)
+					cell_refeicao.font = style_a12['font']
+					cell_refeicao.border = style_a12['border']
+					cell_refeicao.alignment = style_a12['alignment']
+					cell_refeicao.number_format = 'General'
+					cell_refeicao.protection = style_a12['protection']
+
+				linha += 1
+				tem_dados = True
+
+		if not tem_dados:
+			return {'success': False, 'error': 'Nenhum dado para exportar'}
+
+		# Copiar fórmulas de M12:T12 para as linhas preenchidas
+		linhas_preenchidas = linha - 12
+		for offset in range(1, linhas_preenchidas):
+			target_row = 12 + offset
+			for col in range(13, 21):
+				formula_or_value = ws1.cell(row=12, column=col).value
+				if ws1.cell(row=12, column=col).data_type == 'f':
+					formula_ajustada = re.sub(r'(\D)12(\D|$)', lambda m: m.group(1)+str(target_row)+m.group(2), formula_or_value)
+					ws1.cell(row=target_row, column=col, value=formula_ajustada)
+					ws1.cell(row=target_row, column=col).data_type = 'f'
+				else:
+					ws1.cell(row=target_row, column=col, value=formula_or_value)
+				
+				cell_modelo = ws1.cell(row=12, column=col)
+				cell_dest = ws1.cell(row=target_row, column=col)
+				cell_dest.font = copy(cell_modelo.font)
+				cell_dest.border = copy(cell_modelo.border)
+				cell_dest.alignment = copy(cell_modelo.alignment)
+				cell_dest.number_format = cell_modelo.number_format
+				cell_dest.protection = copy(cell_modelo.protection)
+
+		# Copiar regras de formatação condicional
+		for col in range(13, 21):
+			cell_coord = ws1.cell(row=12, column=col).coordinate
+			regras_para_copiar = []
+			for cf_rule in ws1.conditional_formatting:
+				if cell_coord in cf_rule.cells:
+					for rule in cf_rule.rules:
+						regras_para_copiar.append(rule)
+			for rule in regras_para_copiar:
+				for target_row in range(13, linha):
+					target_coord = ws1.cell(row=target_row, column=col).coordinate
+					ws1.conditional_formatting.add(target_coord, rule)
+
+		# Salvar em memória
+		output = io.BytesIO()
+		wb.save(output)
+		output.seek(0)
+
+		# Nome do arquivo
+		nome_arquivo = f"tabela_lote_{lote_id}"
+		if data_inicio and data_fim:
+			nome_arquivo += f"_{data_inicio}_a_{data_fim}"
+		nome_arquivo += ".xlsx"
+
+		return {
+			'success': True,
+			'output': output,
+			'filename': nome_arquivo
+		}
+	
+	except Exception as e:
+		import traceback
+		traceback.print_exc()
+		return {'success': False, 'error': f'Erro ao gerar arquivo: {str(e)}'}

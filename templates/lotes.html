@@ -45,6 +45,8 @@
                     </div>
                     <div style="display: flex; gap: 1rem; align-items: flex-end;">
                         <button class="btn btn-primary" id="novoLote" style="font-size: 1.08rem; padding: 0.7rem 1.3rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(59,130,246,0.08);">➕ Novo Lote</button>
+                        <button class="btn btn-secondary" id="editarLote" style="font-size: 1.08rem; padding: 0.7rem 1.3rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(108,117,125,0.08);">✏️ Editar Lote</button>
+                        <button class="btn btn-danger" id="excluirLote" style="font-size: 1.08rem; padding: 0.7rem 1.3rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(220,53,69,0.08); background-color: #dc3545; color: white;">🗑️ Excluir Lote</button>
                     </div>
                 </div>
             </section>
@@ -129,8 +131,22 @@
                                         INATIVO
                                     </div>
                                     {% endif %}
-                                    <div style="background-color: var(--light-blue); color: var(--primary-color); padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 500;">
-                                        {{ lote.conformidade }}% Conformidade
+                                    {% set percentual = lote.saldo_consumido %}
+                                    {% if percentual < 50 %}
+                                        {% set cor_fundo = 'var(--success-color)' %}
+                                        {% set cor_texto = 'white' %}
+                                    {% elif percentual < 80 %}
+                                        {% set cor_fundo = 'var(--warning-color)' %}
+                                        {% set cor_texto = 'white' %}
+                                    {% elif percentual < 100 %}
+                                        {% set cor_fundo = '#ff6b35' %}
+                                        {% set cor_texto = 'white' %}
+                                    {% else %}
+                                        {% set cor_fundo = 'var(--danger-color)' %}
+                                        {% set cor_texto = 'white' %}
+                                    {% endif %}
+                                    <div style="background-color: {{ cor_fundo }}; color: {{ cor_texto }}; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 500;">
+                                        {{ "%.1f"|format(lote.saldo_consumido) }}% Consumido
                                     </div>
                                 </div>
 
@@ -142,7 +158,7 @@
                                         <strong>Unidades:</strong> {{ lote.unidades|length }} unidades ativas
                                     </p>
                                     <p style="margin: 0; color: var(--gray-600);">
-                                        <strong>Última Atualização:</strong> 18/10/2025 às 15:30
+                                        <strong>Última Atividade:</strong> {{ lote.ultima_atualizacao }}{% if lote.ultima_atividade %} - <em style="color: var(--primary-color);">{{ lote.ultima_atividade }}</em>{% endif %}
                                     </p>
                                 </div>
 
@@ -220,6 +236,10 @@
                             <label for="novo-lote-inicio" class="form-label" style="font-weight: 500;">Data de Início do Contrato</label>
                             <input type="date" id="novo-lote-inicio" name="data_inicio" class="form-input" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
                         </div>
+                        <div>
+                            <label for="novo-lote-valor-contratual" class="form-label" style="font-weight: 500;">Valor Contratual (R$)</label>
+                            <input type="number" step="0.01" min="0" id="novo-lote-valor-contratual" name="valor_contratual" class="form-input" placeholder="0,00" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                        </div>
                     </div>
                     <!-- Coluna 2: unidades -->
                     <div style="flex: 1 1 220px; min-width: 180px; display: flex; flex-direction: column; gap: 1rem;">
@@ -275,7 +295,111 @@
         </div>
     </div>
 
+    <!-- Modal Editar Lote -->
+    <div id="modal-editar-lote" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); z-index: 2000;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 16px; padding: 2rem; max-width: 1100px; width: 98%; box-shadow: 0 8px 32px rgba(0,0,0,0.18);">
+            <h2 style="margin-bottom: 1.5rem; color: var(--primary-color);">Editar Lote Contratual</h2>
+            <form id="form-editar-lote" autocomplete="off">
+                <div style="display: flex; flex-direction: row; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap;">
+                    <!-- Coluna 1: dados principais -->
+                    <div style="flex: 1 1 260px; min-width: 220px; display: flex; flex-direction: column; gap: 1rem;">
+                        <div>
+                            <label for="editar-lote-selecao" class="form-label" style="font-weight: 500;">Selecione o Lote</label>
+                            <select id="editar-lote-selecao" class="form-select" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                                <option value="">-- Selecione um lote --</option>
+                                {% for lote in lotes %}
+                                <option value="{{ lote.id }}">{{ lote.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label for="editar-lote-empresa" class="form-label" style="font-weight: 500;">Nome da Empresa</label>
+                            <input type="text" id="editar-lote-empresa" name="nome_empresa" class="form-input" placeholder="Digite o nome da empresa" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                        </div>
+                        <div>
+                            <label for="editar-lote-contrato" class="form-label" style="font-weight: 500;">Número do Contrato</label>
+                            <input type="text" id="editar-lote-contrato" name="numero_contrato" class="form-input" placeholder="Digite o número do contrato" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                        </div>
+                        <div>
+                            <label for="editar-lote-inicio" class="form-label" style="font-weight: 500;">Data de Início do Contrato</label>
+                            <input type="date" id="editar-lote-inicio" name="data_inicio" class="form-input" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                        </div>
+                        <div>
+                            <label for="editar-lote-valor-contratual" class="form-label" style="font-weight: 500;">Valor Contratual (R$)</label>
+                            <input type="number" step="0.01" min="0" id="editar-lote-valor-contratual" name="valor_contratual" class="form-input" placeholder="0,00" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                        </div>
+                        <div>
+                            <label class="form-label" style="font-weight: 500;">Status</label>
+                            <div style="display: flex; gap: 1rem; align-items: center;">
+                                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                    <input type="radio" id="editar-lote-ativo-sim" name="ativo" value="true" checked style="cursor: pointer;">
+                                    <span>Ativo</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                    <input type="radio" id="editar-lote-ativo-nao" name="ativo" value="false" style="cursor: pointer;">
+                                    <span>Inativo</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Coluna 2: unidades -->
+                    <div style="flex: 1 1 220px; min-width: 180px; display: flex; flex-direction: column; gap: 1rem;">
+                        <label class="form-label" style="font-weight: 500;">Unidades do Lote</label>
+                        <div id="editar-unidades-lista" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
+                        <input type="text" id="editar-input-unidade" class="form-input" placeholder="Digite o nome da unidade e pressione Enter" style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300); margin-top: 0.5rem;">
+                        <small style="color: var(--gray-500);">Pressione Enter para adicionar novas unidades. Unidades existentes não podem ser removidas.</small>
+                    </div>
+                    <!-- Coluna 3: preços -->
+                    <div style="flex: 1 1 320px; min-width: 220px; display: flex; flex-direction: column; gap: 1rem;">
+                        <label class="form-label" style="font-weight: 500;">Preços das Refeições (R$)</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                            <div>
+                                <label for="editar-preco-cafe-interno" style="font-size: 0.95em;">Café Interno</label>
+                                <input type="number" step="0.01" min="0" id="editar-preco-cafe-interno" name="preco_cafe_interno" class="form-input" placeholder="0,00" required style="width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                            </div>
+                            <div>
+                                <label for="editar-preco-cafe-funcionario" style="font-size: 0.95em;">Café Funcionário</label>
+                                <input type="number" step="0.01" min="0" id="editar-preco-cafe-funcionario" name="preco_cafe_funcionario" class="form-input" placeholder="0,00" required style="width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                            </div>
+                            <div>
+                                <label for="editar-preco-almoco-interno" style="font-size: 0.95em;">Almoço Interno</label>
+                                <input type="number" step="0.01" min="0" id="editar-preco-almoco-interno" name="preco_almoco_interno" class="form-input" placeholder="0,00" required style="width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                            </div>
+                            <div>
+                                <label for="editar-preco-almoco-funcionario" style="font-size: 0.95em;">Almoço Funcionário</label>
+                                <input type="number" step="0.01" min="0" id="editar-preco-almoco-funcionario" name="preco_almoco_funcionario" class="form-input" placeholder="0,00" required style="width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                            </div>
+                            <div>
+                                <label for="editar-preco-lanche-interno" style="font-size: 0.95em;">Lanche Interno</label>
+                                <input type="number" step="0.01" min="0" id="editar-preco-lanche-interno" name="preco_lanche_interno" class="form-input" placeholder="0,00" required style="width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                            </div>
+                            <div>
+                                <label for="editar-preco-lanche-funcionario" style="font-size: 0.95em;">Lanche Funcionário</label>
+                                <input type="number" step="0.01" min="0" id="editar-preco-lanche-funcionario" name="preco_lanche_funcionario" class="form-input" placeholder="0,00" required style="width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                            </div>
+                            <div>
+                                <label for="editar-preco-jantar-interno" style="font-size: 0.95em;">Jantar Interno</label>
+                                <input type="number" step="0.01" min="0" id="editar-preco-jantar-interno" name="preco_jantar_interno" class="form-input" placeholder="0,00" required style="width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                            </div>
+                            <div>
+                                <label for="editar-preco-jantar-funcionario" style="font-size: 0.95em;">Jantar Funcionário</label>
+                                <input type="number" step="0.01" min="0" id="editar-preco-jantar-funcionario" name="preco_jantar_funcionario" class="form-input" placeholder="0,00" required style="width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
+                    <button type="button" id="btn-cancelar-editar-lote" class="btn btn-secondary">Cancelar</button>
+                    <button type="submit" id="btn-salvar-editar-lote" class="btn btn-primary">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
+        // Dados dos lotes carregados do backend
+        const lotesData = {{ lotes|tojson|safe }};
+
         // Campo dinâmico de unidades do lote
         function adicionarCampoUnidade(nome = "") {
             const lista = document.getElementById('unidades-lista');
@@ -312,6 +436,110 @@
             lista.appendChild(div);
         }
 
+        // Campo dinâmico de unidades do lote (modal editar) - apenas exibição
+        function adicionarCampoUnidadeEditar(nome = "", unidadeId = null, isExisting = true) {
+            const lista = document.getElementById('editar-unidades-lista');
+            const div = document.createElement('div');
+            div.style.display = 'flex';
+            div.style.alignItems = 'center';
+            div.style.gap = '0.5rem';
+            div.className = 'unidade-item-editar';
+            if (unidadeId) div.dataset.unidadeId = unidadeId;
+            if (isExisting) div.dataset.existing = 'true';
+            
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'form-input';
+            input.value = nome;
+            input.name = 'unidades[]';
+            input.placeholder = 'Nome da unidade';
+            input.required = true;
+            input.style.flex = '1';
+            input.style.padding = '0.5rem';
+            input.style.borderRadius = '6px';
+            input.style.border = '1px solid var(--gray-300)';
+            input.readOnly = true; // Unidades não podem ser renomeadas
+            input.style.backgroundColor = isExisting ? '#f3f4f6' : '#fff';
+            
+            // Apenas unidades NOVAS podem ser removidas
+            if (!isExisting) {
+                const btnRemover = document.createElement('button');
+                btnRemover.type = 'button';
+                btnRemover.textContent = '✖';
+                btnRemover.title = 'Remover unidade';
+                btnRemover.style.background = 'none';
+                btnRemover.style.border = 'none';
+                btnRemover.style.color = '#e53e3e';
+                btnRemover.style.fontSize = '1.1rem';
+                btnRemover.style.cursor = 'pointer';
+                btnRemover.addEventListener('click', function() {
+                    lista.removeChild(div);
+                });
+                div.appendChild(input);
+                div.appendChild(btnRemover);
+            } else {
+                // Unidades existentes: apenas exibição, sem botão de remover
+                div.appendChild(input);
+            }
+            
+            lista.appendChild(div);
+        }
+
+        // Carregar dados do lote selecionado
+        function carregarDadosLote(loteId) {
+            const lote = lotesData.find(l => l.id === parseInt(loteId));
+            if (!lote) {
+                alert('Lote não encontrado');
+                return;
+            }
+
+            // Preencher campos básicos
+            document.getElementById('editar-lote-empresa').value = lote.empresa || '';
+            document.getElementById('editar-lote-contrato').value = lote.numero_contrato || lote.contrato || '';
+            document.getElementById('editar-lote-inicio').value = lote.data_inicio || lote.inicio_contrato || '';
+            document.getElementById('editar-lote-valor-contratual').value = lote.valor_contratual || 0;
+            
+            // Status
+            if (lote.ativo) {
+                document.getElementById('editar-lote-ativo-sim').checked = true;
+            } else {
+                document.getElementById('editar-lote-ativo-nao').checked = true;
+            }
+
+            // Limpar unidades anteriores
+            const listaUnidades = document.getElementById('editar-unidades-lista');
+            listaUnidades.innerHTML = '';
+
+            // TODO: Carregar nomes das unidades (por enquanto só mostra IDs)
+            // Isso será implementado quando tivermos acesso aos dados de unidades
+            if (lote.unidades && Array.isArray(lote.unidades)) {
+                lote.unidades.forEach(unidadeId => {
+                    adicionarCampoUnidadeEditar(`Unidade ID ${unidadeId}`, unidadeId, true); // true = unidade existente
+                });
+            }
+
+            // Preencher preços
+            const precos = lote.precos || {};
+            
+            // Função auxiliar para extrair valor
+            const getPreco = (refeicao, tipo) => {
+                if (typeof precos[refeicao] === 'object') {
+                    return precos[refeicao][tipo] || 0;
+                }
+                const key = `${refeicao}_${tipo}`;
+                return precos[key] || 0;
+            };
+
+            document.getElementById('editar-preco-cafe-interno').value = getPreco('cafe', 'interno');
+            document.getElementById('editar-preco-cafe-funcionario').value = getPreco('cafe', 'funcionario');
+            document.getElementById('editar-preco-almoco-interno').value = getPreco('almoco', 'interno');
+            document.getElementById('editar-preco-almoco-funcionario').value = getPreco('almoco', 'funcionario');
+            document.getElementById('editar-preco-lanche-interno').value = getPreco('lanche', 'interno');
+            document.getElementById('editar-preco-lanche-funcionario').value = getPreco('lanche', 'funcionario');
+            document.getElementById('editar-preco-jantar-interno').value = getPreco('jantar', 'interno');
+            document.getElementById('editar-preco-jantar-funcionario').value = getPreco('jantar', 'funcionario');
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             // Campo de adicionar unidade dinâmica
             var inputUnidade = document.getElementById('input-unidade');
@@ -327,6 +555,22 @@
                     }
                 });
             }
+
+            // Campo de adicionar unidade no modal editar
+            var inputUnidadeEditar = document.getElementById('editar-input-unidade');
+            if (inputUnidadeEditar) {
+                inputUnidadeEditar.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const nome = inputUnidadeEditar.value.trim();
+                        if (nome.length > 0) {
+                            adicionarCampoUnidadeEditar(nome, null, false); // false = nova unidade (pode ser removida)
+                            inputUnidadeEditar.value = '';
+                        }
+                    }
+                });
+            }
+            
             // Observação: a verificação via localStorage foi removida para
             // evitar redirecionamentos indesejados quando a sessão Flask
             // já está ativa. A autenticação deve ser verificada no servidor.
@@ -385,6 +629,129 @@
                     modalNovoLote.style.display = 'none';
                 });
             }
+
+            // Botão Editar Lote - abrir modal
+            var editarLoteBtn = document.getElementById('editarLote');
+            var modalEditarLote = document.getElementById('modal-editar-lote');
+            var btnCancelarEditarLote = document.getElementById('btn-cancelar-editar-lote');
+            var btnSalvarEditarLote = document.getElementById('btn-salvar-editar-lote');
+            
+            if (editarLoteBtn && modalEditarLote) {
+                editarLoteBtn.addEventListener('click', function() {
+                    // Limpar seleção e campos
+                    document.getElementById('editar-lote-selecao').value = '';
+                    document.getElementById('editar-unidades-lista').innerHTML = '';
+                    modalEditarLote.style.display = 'block';
+                });
+            }
+            
+            if (btnCancelarEditarLote && modalEditarLote) {
+                btnCancelarEditarLote.addEventListener('click', function() {
+                    modalEditarLote.style.display = 'none';
+                });
+            }
+
+            // Seletor de lote - carregar dados quando selecionado
+            var seletorLote = document.getElementById('editar-lote-selecao');
+            if (seletorLote) {
+                seletorLote.addEventListener('change', function() {
+                    const loteId = this.value;
+                    if (loteId) {
+                        carregarDadosLote(loteId);
+                    } else {
+                        // Limpar campos se desselecionar
+                        document.getElementById('editar-unidades-lista').innerHTML = '';
+                    }
+                });
+            }
+
+            // Submit do formulário de edição
+            var formEditarLote = document.getElementById('form-editar-lote');
+            if (formEditarLote) {
+                formEditarLote.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    const loteId = document.getElementById('editar-lote-selecao').value;
+                    if (!loteId) {
+                        alert('Selecione um lote para editar');
+                        return;
+                    }
+
+                    // Coletar dados do formulário
+                    const nome_empresa = document.getElementById('editar-lote-empresa').value.trim();
+                    const numero_contrato = document.getElementById('editar-lote-contrato').value.trim();
+                    const data_inicio = document.getElementById('editar-lote-inicio').value;
+                    const valor_contratual = document.getElementById('editar-lote-valor-contratual').value;
+                    const ativo = document.getElementById('editar-lote-ativo-sim').checked ? 'true' : 'false';
+                    
+                    // Coletar novas unidades (apenas as que não são existentes)
+                    const unidadeInputs = Array.from(document.querySelectorAll('#editar-unidades-lista .unidade-item-editar'));
+                    const novas_unidades = [];
+                    unidadeInputs.forEach(div => {
+                        if (!div.dataset.existing || div.dataset.existing !== 'true') {
+                            const input = div.querySelector('input[name="unidades[]"]');
+                            if (input && input.value.trim()) {
+                                novas_unidades.push(input.value.trim());
+                            }
+                        }
+                    });
+                    
+                    // Coletar preços
+                    const precos = {
+                        cafe: {
+                            interno: document.getElementById('editar-preco-cafe-interno').value,
+                            funcionario: document.getElementById('editar-preco-cafe-funcionario').value
+                        },
+                        almoco: {
+                            interno: document.getElementById('editar-preco-almoco-interno').value,
+                            funcionario: document.getElementById('editar-preco-almoco-funcionario').value
+                        },
+                        lanche: {
+                            interno: document.getElementById('editar-preco-lanche-interno').value,
+                            funcionario: document.getElementById('editar-preco-lanche-funcionario').value
+                        },
+                        jantar: {
+                            interno: document.getElementById('editar-preco-jantar-interno').value,
+                            funcionario: document.getElementById('editar-preco-jantar-funcionario').value
+                        }
+                    };
+                    
+                    // Validação básica
+                    if (!nome_empresa || !numero_contrato || !data_inicio) {
+                        alert('Preencha todos os campos obrigatórios.');
+                        return;
+                    }
+                    
+                    // Enviar para backend
+                    try {
+                        const resp = await fetch(`/api/editar-lote/${loteId}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'same-origin',
+                            body: JSON.stringify({ 
+                                nome_empresa, 
+                                numero_contrato, 
+                                data_inicio, 
+                                valor_contratual,
+                                ativo,
+                                precos,
+                                novas_unidades
+                            })
+                        });
+                        const data = await resp.json();
+                        if (resp.ok && data.success) {
+                            showNotification('success', 'Lote atualizado!', 'As alterações foram salvas com sucesso.');
+                            modalEditarLote.style.display = 'none';
+                            setTimeout(() => window.location.reload(), 1200);
+                        } else {
+                            showNotification('error', 'Erro ao editar lote', data.error || 'Erro ao salvar alterações.');
+                        }
+                    } catch (err) {
+                        alert('Erro de conexão com o servidor.');
+                    }
+                });
+            }
+
             if (btnAdicionarNovoLote && modalNovoLote) {
                 // Substituir o submit padrão para não recarregar a página
                 var formNovoLote = document.getElementById('form-novo-lote');
@@ -396,6 +763,7 @@
                         const nome_empresa = document.getElementById('novo-lote-empresa').value.trim();
                         const numero_contrato = document.getElementById('novo-lote-contrato').value.trim();
                         const data_inicio = document.getElementById('novo-lote-inicio').value;
+                        const valor_contratual = document.getElementById('novo-lote-valor-contratual').value;
                         // Unidades
                         const unidadeInputs = Array.from(document.querySelectorAll('#unidades-lista input[name="unidades[]"]'));
                         const unidades = unidadeInputs.map(i => i.value.trim()).filter(Boolean);
@@ -445,7 +813,7 @@
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 credentials: 'same-origin',
-                                body: JSON.stringify({ nome_lote, nome_empresa, numero_contrato, data_inicio, precos, unidades })
+                                body: JSON.stringify({ nome_lote, nome_empresa, numero_contrato, data_inicio, valor_contratual, precos, unidades })
                             });
                             const data = await resp.json();
                             if (resp.ok && data.success) {
@@ -466,6 +834,15 @@
                 modalNovoLote.addEventListener('click', function(e) {
                     if (e.target === modalNovoLote) {
                         modalNovoLote.style.display = 'none';
+                    }
+                });
+            }
+
+            // Fechar modal de edição ao clicar fora
+            if (modalEditarLote) {
+                modalEditarLote.addEventListener('click', function(e) {
+                    if (e.target === modalEditarLote) {
+                        modalEditarLote.style.display = 'none';
                     }
                 });
             }

@@ -490,7 +490,7 @@
                 <h2>Notificações e Alertas</h2>
                 <div class="card fade-in">
                     <div class="card-body">
-                        <div id="notificacoes-recentes-container" style="display: grid; gap: 1rem;">
+                        <div id="notificacoes-recentes-container" style="display: grid; gap: 0.4rem;">
                             <!-- Notificações serão carregadas dinamicamente via JavaScript -->
                         </div>
 
@@ -1408,7 +1408,7 @@
                                   notif.tipo === 'warning' ? 'alert-warning' : 'alert-info';
                 
                 return `
-                    <div class="alert ${alertClass}" style="display: flex; align-items: center; gap: 1rem;">
+                    <div class="alert ${alertClass}" style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.01rem;">
                         <div style="font-size: 1.5rem;">${notif.icone}</div>
                         <div style="flex: 1;">
                             <strong>${notif.titulo}</strong><br>

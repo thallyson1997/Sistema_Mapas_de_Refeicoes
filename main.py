@@ -17,6 +17,7 @@ from functions.utils import (
     validar_senha,
     validar_login,
     salvar_novo_lote,
+    editar_lote,
     _load_lotes_data,
     _load_unidades_data,
     carregar_lotes_para_dashboard,
@@ -28,7 +29,8 @@ from functions.utils import (
     adicionar_siisp_em_mapa,
     excluir_mapa,
     _load_mapas_partitioned,
-    gerar_excel_exportacao
+    gerar_excel_exportacao,
+    calcular_ultima_atividade_lotes
 )
 
 app = Flask(__name__)
@@ -170,6 +172,19 @@ def api_novo_lote():
     except Exception as e:
         return jsonify({'success': False, 'error': 'Erro interno'}), 500
 
+@app.route('/api/editar-lote/<int:lote_id>', methods=['PUT', 'POST'])
+def api_editar_lote(lote_id):
+    # Endpoint para editar um lote existente via API
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        res = editar_lote(lote_id, data)
+        if res.get('success'):
+            return jsonify({'success': True, 'lote': res.get('lote')}), 200
+        else:
+            return jsonify({'success': False, 'error': res.get('error', 'Erro ao editar')}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': 'Erro interno'}), 500
+
 @app.route('/dashboard')
 def dashboard():
     #Página do dashboard
@@ -191,6 +206,7 @@ def lotes():
     mapas = data.get('mapas_dados', [])
 
     calcular_metricas_lotes(lotes, mapas)
+    calcular_ultima_atividade_lotes(lotes, mapas)
 
     empresas = []
     seen = set()

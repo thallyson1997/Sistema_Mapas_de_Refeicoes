@@ -27,12 +27,12 @@
     <main>
         <div class="container" style="max-width: 600px; margin-top: 2rem;">
             <!-- Breadcrumb -->
-            <nav aria-label="Navegação">
-                <ol style="display: flex; gap: 0.5rem; margin-bottom: 2rem; font-size: 0.875rem; color: var(--gray-500);">
-                    <li><a href="{{ url_for('index') }}" style="color: var(--primary-color); text-decoration: none;">Início</a></li>
-                    <li aria-hidden="true">/</li>
-                    <li aria-current="page">Cadastro</li>
-                </ol>
+            <nav aria-label="Navegação" style="margin-bottom: 2.5rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0.75rem 1.25rem; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                <div style="display: flex; gap: 0.5rem; font-size: 0.95rem; color: var(--gray-500); align-items: center;">
+                    <span><a href="{{ url_for('index') }}" style="color: var(--primary-color); text-decoration: none; font-weight: 500;">Início</a></span>
+                    <span aria-hidden="true" style="font-size: 1.1em; opacity: 0.7;">/</span>
+                    <span aria-current="page" style="color: var(--primary-color); font-weight: 600;">Cadastro</span>
+                </div>
             </nav>
 
             <div class="card fade-in">

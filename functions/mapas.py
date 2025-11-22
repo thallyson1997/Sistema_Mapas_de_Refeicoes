@@ -7,6 +7,90 @@ from datetime import datetime
 from collections import defaultdict
 
 
+
+# ----- Data Validation Helpers -----
+def _get_lote_data_inicio(lote_id):
+	"""
+	Obtém a data de início do contrato de um lote.
+	
+	Args:
+		lote_id: ID do lote
+	
+	Returns:
+		datetime ou None se não encontrado ou inválido
+	"""
+	try:
+		base_dir = os.path.dirname(os.path.dirname(__file__))
+		lotes_path = os.path.join(base_dir, 'dados', 'lotes.json')
+		
+		if not os.path.isfile(lotes_path):
+			return None
+		
+		with open(lotes_path, 'r', encoding='utf-8') as f:
+			lotes = json.load(f)
+		
+		if not isinstance(lotes, list):
+			return None
+		
+		for lote in lotes:
+			if not isinstance(lote, dict):
+				continue
+			
+			try:
+				if int(lote.get('id')) == int(lote_id):
+					data_inicio_str = lote.get('data_inicio')
+					if data_inicio_str:
+						return datetime.strptime(data_inicio_str, '%Y-%m-%d')
+			except Exception:
+				continue
+		
+		return None
+	except Exception as e:
+		print(f"❌ Erro ao buscar data de início do lote {lote_id}: {e}")
+		return None
+
+
+def _get_lote_data_fim(lote_id):
+	"""
+	Obtém a data de fim do contrato de um lote.
+	
+	Args:
+		lote_id: ID do lote
+	
+	Returns:
+		datetime ou None se não encontrado ou inválido
+	"""
+	try:
+		base_dir = os.path.dirname(os.path.dirname(__file__))
+		lotes_path = os.path.join(base_dir, 'dados', 'lotes.json')
+		
+		if not os.path.isfile(lotes_path):
+			return None
+		
+		with open(lotes_path, 'r', encoding='utf-8') as f:
+			lotes = json.load(f)
+		
+		if not isinstance(lotes, list):
+			return None
+		
+		for lote in lotes:
+			if not isinstance(lote, dict):
+				continue
+			
+			try:
+				if int(lote.get('id')) == int(lote_id):
+					data_fim_str = lote.get('data_fim')
+					if data_fim_str:
+						return datetime.strptime(data_fim_str, '%Y-%m-%d')
+			except Exception:
+				continue
+		
+		return None
+	except Exception as e:
+		print(f"❌ Erro ao buscar data de fim do lote {lote_id}: {e}")
+		return None
+
+
 # ----- SIISP Comparison Helpers -----
 def _calcular_campos_comparativos_siisp(record):
 	if not isinstance(record, dict):
@@ -253,11 +337,16 @@ def _get_days_in_month_from_entry(entry):
 
 
 def _validate_map_day_lengths(entry):
-	days = _get_days_in_month_from_entry(entry)
-	if days is None:
-		return (False, 'Mês ou ano inválido ou ausente no registro')
+	# Usar campo 'linhas' se existir (dados já filtrados)
+	# Senão calcular dias do mês
+	if 'linhas' in entry:
+		expected = int(entry['linhas'])
+	else:
+		days = _get_days_in_month_from_entry(entry)
+		if days is None:
+			return (False, 'Mês ou ano inválido ou ausente no registro')
+		expected = int(days)
 
-	expected = int(days)
 	daily_fields = [
 		'dados_siisp',
 		'cafe_interno', 'cafe_funcionario',
@@ -295,19 +384,11 @@ def _get_mapas_filepath(mes, ano):
 def _load_mapas_data():
 	base_dir = os.path.dirname(os.path.dirname(__file__))
 	mapas_path = os.path.join(base_dir, 'dados', 'mapas.json')
-	print(f"🔍 DEBUG: Carregando mapas de: {mapas_path}")
 	if not os.path.isfile(mapas_path):
-		print("❌ Arquivo mapas.json não encontrado!")
 		return None
 	try:
 		with open(mapas_path, 'r', encoding='utf-8') as f:
 			data = json.load(f)
-			if isinstance(data, list) and len(data) > 0:
-				primeiro_mapa = data[0]
-				if 'cafe_funcionario_siisp' in primeiro_mapa:
-					print(f"✅ Primeiro valor cafe_funcionario_siisp no arquivo: {primeiro_mapa['cafe_funcionario_siisp'][0] if primeiro_mapa['cafe_funcionario_siisp'] else 'VAZIO'}")
-				else:
-					print("⚠️ Campo cafe_funcionario_siisp NÃO EXISTE no JSON!")
 			return data
 	except Exception as e:
 		print(f"❌ Erro ao ler mapas.json: {e}")
@@ -377,7 +458,6 @@ def _load_mapas_by_period(mes_inicio, ano_inicio, mes_fim, ano_fim):
 			mes_atual = 1
 			ano_atual += 1
 	
-	print(f"✅ Total de mapas carregados no período: {len(mapas_agregados)}")
 	return mapas_agregados
 
 
@@ -398,17 +478,11 @@ def _load_all_mapas_partitioned():
 					mapas_agregados.extend(data['mapas'])
 				elif isinstance(data, list):
 					mapas_agregados.extend(data)
-				
-				filename = os.path.basename(filepath)
-				print(f"📂 Carregado: {filename} ({len(data) if isinstance(data, list) else len(data.get('mapas', []))} mapas)")
 		except Exception as e:
 			print(f"❌ Erro ao carregar {filepath}: {e}")
 			continue
 	
-	print(f"✅ Total de mapas particionados carregados: {len(mapas_agregados)}")
 	return mapas_agregados
-
-
 def _detect_mes_ano_from_entry(entry):
 	if not isinstance(entry, dict):
 		return (None, None)
@@ -631,6 +705,52 @@ def salvar_mapas_raw(payload):
 						rec['dados_siisp'] = [0] * dias_no_mes
 					except Exception:
 						rec['dados_siisp'] = [0] * 31
+				
+				# Filtrar por data de início do contrato (se ainda não foi filtrado)
+				if 'linhas' not in rec or rec.get('linhas') >= len(rec.get('datas', [])):
+					lote_id_rec = rec.get('lote_id')
+					if lote_id_rec:
+						try:
+							data_inicio = _get_lote_data_inicio(int(lote_id_rec))
+							data_fim = _get_lote_data_fim(int(lote_id_rec))
+							if data_inicio or data_fim:
+								mes_rec = int(rec.get('mes'))
+								ano_rec = int(rec.get('ano'))
+								meal_fields = [
+									'cafe_interno', 'cafe_funcionario',
+									'almoco_interno', 'almoco_funcionario',
+									'lanche_interno', 'lanche_funcionario',
+									'jantar_interno', 'jantar_funcionario'
+								]
+								indices_validos = []
+								datas = rec.get('datas', [])
+								for idx, data_str in enumerate(datas):
+									try:
+										dia = int(data_str.split('/')[0])
+										data_dia = datetime(ano_rec, mes_rec, dia)
+										valido = True
+										if data_inicio and data_dia < data_inicio:
+											valido = False
+										if data_fim and data_dia > data_fim:
+											valido = False
+										if valido:
+											indices_validos.append(idx)
+									except:
+										indices_validos.append(idx)
+								
+								if len(indices_validos) < len(datas):
+									# Filtrar arrays
+									for field in meal_fields:
+										if field in rec and isinstance(rec[field], list):
+											arr = rec[field]
+											rec[field] = [arr[i] for i in indices_validos if i < len(arr)]
+									if 'dados_siisp' in rec and isinstance(rec['dados_siisp'], list):
+										arr_siisp = rec['dados_siisp']
+										rec['dados_siisp'] = [arr_siisp[i] for i in indices_validos if i < len(arr_siisp)]
+									rec['datas'] = [datas[i] for i in indices_validos]
+									rec['linhas'] = len(indices_validos)
+						except:
+							pass
 				if 'criado_em' not in rec and matched_record.get('criado_em'):
 					rec['criado_em'] = matched_record.get('criado_em')
 				rec['atualizado_em'] = datetime.now().isoformat()
@@ -741,6 +861,53 @@ def salvar_mapas_raw(payload):
 				except Exception:
 					rec['dados_siisp'] = [0] * 31
 			
+			
+			# Filtrar por data de início do contrato (se ainda não foi filtrado)
+			if 'linhas' not in rec or rec.get('linhas') >= len(rec.get('datas', [])):
+				lote_id_rec = rec.get('lote_id')
+				if lote_id_rec:
+					try:
+						data_inicio = _get_lote_data_inicio(int(lote_id_rec))
+						data_fim = _get_lote_data_fim(int(lote_id_rec))
+						if data_inicio or data_fim:
+							mes_rec = int(rec.get('mes'))
+							ano_rec = int(rec.get('ano'))
+							meal_fields = [
+								'cafe_interno', 'cafe_funcionario',
+								'almoco_interno', 'almoco_funcionario',
+								'lanche_interno', 'lanche_funcionario',
+								'jantar_interno', 'jantar_funcionario'
+							]
+							indices_validos = []
+							datas = rec.get('datas', [])
+							for idx, data_str in enumerate(datas):
+								try:
+									dia = int(data_str.split('/')[0])
+									data_dia = datetime(ano_rec, mes_rec, dia)
+									valido = True
+									if data_inicio and data_dia < data_inicio:
+										valido = False
+									if data_fim and data_dia > data_fim:
+										valido = False
+									if valido:
+										indices_validos.append(idx)
+								except:
+									indices_validos.append(idx)
+							
+							if len(indices_validos) < len(datas):
+								# Filtrar arrays
+								for field in meal_fields:
+									if field in rec and isinstance(rec[field], list):
+										arr = rec[field]
+										rec[field] = [arr[i] for i in indices_validos if i < len(arr)]
+								if 'dados_siisp' in rec and isinstance(rec['dados_siisp'], list):
+									arr_siisp = rec['dados_siisp']
+									rec['dados_siisp'] = [arr_siisp[i] for i in indices_validos if i < len(arr_siisp)]
+								rec['datas'] = [datas[i] for i in indices_validos]
+								rec['linhas'] = len(indices_validos)
+					except:
+						pass
+			
 			_calcular_campos_comparativos_siisp(rec)
 			
 			valid_ok, valid_msg = _validate_map_day_lengths(rec)
@@ -846,6 +1013,18 @@ def preparar_dados_entrada_manual(data):
 		
 		mes = processed.get('mes')
 		ano = processed.get('ano')
+		
+		# Verificar data de início e fim do contrato
+		lote_id = processed.get('lote_id')
+		data_inicio = None
+		data_fim = None
+		if lote_id:
+			try:
+				data_inicio = _get_lote_data_inicio(int(lote_id))
+				data_fim = _get_lote_data_fim(int(lote_id))
+			except:
+				pass
+		
 		datas = []
 		
 		if mes and ano:
@@ -855,13 +1034,33 @@ def preparar_dados_entrada_manual(data):
 				days_in_month = calendar.monthrange(ano, mes)[1]
 				num_days = min(max_days, days_in_month) if max_days > 0 else days_in_month
 				
+				# Filtrar por data de início e fim
+				indices_validos = []
 				for dia in range(1, num_days + 1):
-					data_str = f"{dia:02d}/{mes:02d}/{ano}"
-					datas.append(data_str)
+					data_dia = datetime(ano, mes, dia)
+					valido = True
+					if data_inicio and data_dia < data_inicio:
+						valido = False
+					if data_fim and data_dia > data_fim:
+						valido = False
+					if valido:
+						indices_validos.append(dia - 1)
+						datas.append(f"{dia:02d}/{mes:02d}/{ano}")
+				
+				# Filtrar arrays
+				if (data_inicio or data_fim) and len(indices_validos) < num_days:
+					for field in meal_fields:
+						if field in processed and isinstance(processed[field], list):
+							arr = processed[field]
+							processed[field] = [arr[i] if i < len(arr) else 0 for i in indices_validos]
+					max_days = len(indices_validos)
 			except:
 				for dia in range(1, max_days + 1):
 					data_str = f"{dia:02d}/01/2025"
 					datas.append(data_str)
+		
+		if len(datas) == 0 and (data_inicio or data_fim):
+			return {'success': False, 'error': f'Todos os dias estão fora do período do contrato.'}
 		
 		processed['datas'] = datas
 		processed['linhas'] = len(datas)
@@ -873,18 +1072,12 @@ def preparar_dados_entrada_manual(data):
 			processed['dados_siisp'] = []
 		
 		if not processed.get('dados_siisp') or len(processed.get('dados_siisp', [])) == 0:
-			try:
-				mes = int(processed.get('mes') or datetime.now().month)
-				ano = int(processed.get('ano') or datetime.now().year)
-				dias_no_mes = calendar.monthrange(ano, mes)[1]
-				processed['dados_siisp'] = [0] * dias_no_mes
-			except Exception:
-				processed['dados_siisp'] = [0] * len(datas)
+			# Usar tamanho filtrado
+			processed['dados_siisp'] = [0] * len(datas) if len(datas) > 0 else []
 		
 		_calcular_campos_comparativos_siisp(processed)
 		
 		return {'success': True, 'data': processed}
-		
 	except Exception as e:
 		return {'success': False, 'error': f'Erro ao preparar dados: {str(e)}'}
 
@@ -1142,12 +1335,36 @@ def calcular_metricas_lotes(lotes, mapas):
 	# Atualizar os lotes com as métricas calculadas
 	for lote in lotes:
 		lote_id = lote.get('id')
-		lote['meses_cadastrados'] = len(meses_por_lote.get(lote_id, []))
-		lote['refeicoes_mes'] = totais_refeicoes_por_lote.get(lote_id, 0)
-		lote['custo_mes'] = totais_custos_por_lote.get(lote_id, 0.0)
-		lote['desvio_mes'] = totais_desvios_por_lote.get(lote_id, 0.0)
+		meses_count = len(meses_por_lote.get(lote_id, []))
+		lote['meses_cadastrados'] = meses_count
 		
-		# Calcular conformidade baseada em impacto financeiro
+		# Totais acumulados (sem dividir)
+		custo_total = totais_custos_por_lote.get(lote_id, 0.0)
+		desvio_total = totais_desvios_por_lote.get(lote_id, 0.0)
+		
+		# Dividir por quantidade de meses para obter MÉDIA mensal
+		if meses_count > 0:
+			lote['refeicoes_mes'] = totais_refeicoes_por_lote.get(lote_id, 0) / meses_count
+			lote['custo_mes'] = custo_total / meses_count
+			lote['desvio_mes'] = desvio_total / meses_count
+		else:
+			lote['refeicoes_mes'] = 0
+			lote['custo_mes'] = 0.0
+			lote['desvio_mes'] = 0.0
+		
+		# Calcular percentual executado: (custo total / valor contratual) * 100
+		valor_contratual = lote.get('valor_contratual', 0)
+		try:
+			valor_contratual = float(valor_contratual)
+		except (ValueError, TypeError):
+			valor_contratual = 0.0
+		
+		if valor_contratual > 0:
+			lote['percentual_executado'] = round((custo_total / valor_contratual) * 100, 1)
+		else:
+			lote['percentual_executado'] = 0.0
+		
+		# Manter conformidade para compatibilidade com dashboard.html e lote-detalhes.html
 		if lote['custo_mes'] > 0:
 			lote['conformidade'] = round(max(0, ((lote['custo_mes'] - lote['desvio_mes']) / lote['custo_mes']) * 100), 1)
 		else:

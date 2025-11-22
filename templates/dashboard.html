@@ -504,7 +504,7 @@
             </section>
 
             <!-- Ações Rápidas -->
-            <section style="margin-top: 3rem; margin-bottom: 2rem;">
+            <section style="margin-top: 3rem; margin-bottom: 2rem; display: none;">
                 <h2>Ações Rápidas</h2>
                 <div class="grid grid-cols-3">
                     <div class="card fade-in" style="cursor: pointer;" onclick="window.location.href='lote-detalhes.html?lote=1&acao=importar'">
@@ -1150,6 +1150,25 @@
 
         // ===== Sistema de Notificações e Alertas =====
         
+        // Função auxiliar para parsear datas ISO com microsegundos
+        function parsearDataSegura(dataString) {
+            if (!dataString) return null;
+            
+            // Se a data tem microsegundos (formato Python), remover antes de parsear
+            // Exemplo: "2025-11-20T10:42:20.741714" -> "2025-11-20T10:42:20.741"
+            const dataSemMicrosegundos = dataString.replace(/(\.\d{3})\d+/, '$1');
+            
+            const data = new Date(dataSemMicrosegundos);
+            
+            // Verificar se a data é válida
+            if (isNaN(data.getTime())) {
+                console.error(`Data inválida: ${dataString}`);
+                return null;
+            }
+            
+            return data;
+        }
+        
         function calcularConformidadeMapa(mapa) {
             // Calcula conformidade financeira do mapa (baseado em preços e diferenças SIISP)
             const lote = lotesGlobal.find(l => l.id === mapa.lote_id);
@@ -1231,58 +1250,73 @@
             const dataLimite = new Date(agora);
             dataLimite.setDate(dataLimite.getDate() - 30); // Últimos 30 dias
             
+            console.log('=== DEBUG NOTIFICAÇÕES ===');
+            console.log('Data atual:', agora);
+            console.log('Data limite (30 dias atrás):', dataLimite);
+            console.log('Total de lotes:', lotesGlobal.length);
+            
             // Obter filtros atuais
             const mes = parseInt(document.getElementById('filtro-mes').value);
             const ano = parseInt(document.getElementById('filtro-ano').value);
             const loteId = parseInt(document.getElementById('filtro-lote').value);
             
-            // Filtrar mapas
+            console.log('Filtros ativos:', { mes, ano, loteId });
+            
+            // Filtrar mapas APENAS por lote (NÃO filtrar por mês/ano para notificações)
             let mapasFiltrados = mapasDados;
-            if (mes) {
-                mapasFiltrados = mapasFiltrados.filter(mapa => mapa.mes === mes);
-            }
-            if (ano) {
-                mapasFiltrados = mapasFiltrados.filter(mapa => mapa.ano === ano);
-            }
             if (loteId) {
-                mapasFiltrados = mapasFiltrados.filter(mapa => mapa.lote_id === loteId);
+                mapasFiltrados = mapasFiltrados.filter(mapa => parseInt(mapa.lote_id) === loteId || mapa.lote_id === loteId.toString());
             }
+            
+            console.log('Total de mapas após filtro de lote:', mapasFiltrados.length);
             
             // Processar cada mapa
             mapasFiltrados.forEach(mapa => {
-                const lote = lotesGlobal.find(l => l.id === mapa.lote_id);
+                const lote = lotesGlobal.find(l => l.id === parseInt(mapa.lote_id) || l.id === mapa.lote_id);
                 const nomeLote = lote ? lote.nome : `Lote ${mapa.lote_id}`;
-                const nomeUnidade = mapa.nome_unidade || 'Unidade';
+                const nomeUnidade = mapa.unidade || mapa.nome_unidade || 'Unidade';
                 const mesNome = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
                                  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'][mapa.mes - 1];
                 
-                // Usar data real de criação/atualização do mapa
+                console.log(`\nProcessando mapa: ${nomeUnidade} - ${mesNome}/${mapa.ano}`);
+                console.log('  criado_em:', mapa.criado_em);
+                
+                // Usar data real de criação/atualização do mapa com parsearDataSegura
                 let dataNotificacao = agora;
                 if (mapa.atualizado_em) {
-                    dataNotificacao = new Date(mapa.atualizado_em);
+                    dataNotificacao = parsearDataSegura(mapa.atualizado_em);
                 } else if (mapa.criado_em) {
-                    dataNotificacao = new Date(mapa.criado_em);
+                    dataNotificacao = parsearDataSegura(mapa.criado_em);
                 }
                 
-                if (dataNotificacao < dataLimite || dataNotificacao > agora) {
+                console.log('  Data parseada:', dataNotificacao);
+                console.log('  Está no período?', dataNotificacao >= dataLimite && dataNotificacao <= agora);
+                
+                if (!dataNotificacao || dataNotificacao < dataLimite || dataNotificacao > agora) {
+                    console.log('  ❌ Fora do período de 30 dias');
                     return; // Pular mapas fora do período de 30 dias
                 }
                 
                 // Verificar se o mapa tem dados SIISP
-                const temSIISP = mapa.n_siisp && mapa.n_siisp.length > 0 && 
-                                 mapa.n_siisp.some(val => val > 0);
+                const temSIISP = mapa.dados_siisp && mapa.dados_siisp.length > 0 && 
+                                 mapa.dados_siisp.some(val => val > 0);
+                console.log('  Tem SIISP?', temSIISP);
                 
                 // Notificação de criação do mapa (se criado nos últimos 30 dias)
                 if (mapa.criado_em) {
-                    const dataCriacao = new Date(mapa.criado_em);
-                    if (dataCriacao >= dataLimite && dataCriacao <= agora) {
-                        const totalRefeicoes = mapa.data.reduce((total, _, i) => {
+                    const dataCriacao = parsearDataSegura(mapa.criado_em);
+                    if (dataCriacao && dataCriacao >= dataLimite && dataCriacao <= agora) {
+                        // Calcular total de refeições usando o tamanho correto do array
+                        const numDias = (mapa.datas || mapa.cafe_interno || []).length;
+                        const totalRefeicoes = Array.from({ length: numDias }, (_, i) => i).reduce((total, i) => {
                             return total + 
                                 (mapa.cafe_interno[i] || 0) + (mapa.cafe_funcionario[i] || 0) +
                                 (mapa.almoco_interno[i] || 0) + (mapa.almoco_funcionario[i] || 0) +
                                 (mapa.lanche_interno[i] || 0) + (mapa.lanche_funcionario[i] || 0) +
                                 (mapa.jantar_interno[i] || 0) + (mapa.jantar_funcionario[i] || 0);
                         }, 0);
+                        
+                        console.log(`  ✅ Adicionando notificação de criação (${totalRefeicoes} refeições)`);
                         
                         notificacoes.push({
                             tipo: 'info',
@@ -1299,11 +1333,13 @@
                 if (temSIISP) {
                     // Usar atualizado_em se existir, senão usar criado_em
                     const dataConformidade = mapa.atualizado_em ? 
-                        new Date(mapa.atualizado_em) : 
-                        (mapa.criado_em ? new Date(mapa.criado_em) : null);
+                        parsearDataSegura(mapa.atualizado_em) : 
+                        (mapa.criado_em ? parsearDataSegura(mapa.criado_em) : null);
                     
                     if (dataConformidade && dataConformidade >= dataLimite && dataConformidade <= agora) {
                         const conformidade = calcularConformidadeMapa(mapa);
+                        
+                        console.log(`  ✅ Adicionando notificação de conformidade (${conformidade.toFixed(1)}%)`);
                         
                         if (conformidade > 95) {
                             // Notificação azul: Excelente conformidade (> 95%)
@@ -1340,26 +1376,83 @@
                 }
             });
             
-            // Adicionar notificações de novos lotes (simulado - seria do backend na implementação real)
-            // Por enquanto, apenas listamos lotes recentes
+            // Adicionar notificações de novos lotes
+            // IMPORTANTE: Lotes NÃO são filtrados por mês/ano, apenas por lote específico e período de 30 dias
+            console.log('--- Processando lotes para notificações ---');
             lotesGlobal.forEach(lote => {
+                console.log(`Lote: ${lote.nome} (ID: ${lote.id})`);
+                console.log(`  criado_em: ${lote.criado_em}`);
+                console.log(`  atualizado_em: ${lote.atualizado_em}`);
+                
+                // Aplicar filtro de lote se houver um selecionado (mas NÃO filtrar por mês/ano)
+                if (loteId && lote.id !== loteId) {
+                    console.log(`  -> Pulado (filtro de lote ativo: ${loteId})`);
+                    return; // Pular lotes não selecionados
+                }
+                
                 if (lote.criado_em) {
-                    const dataCriacao = new Date(lote.criado_em);
+                    const dataCriacao = parsearDataSegura(lote.criado_em);
+                    console.log(`  Data de criação parseada: ${dataCriacao}`);
+                    console.log(`  dataLimite: ${dataLimite}`);
+                    console.log(`  agora: ${agora}`);
+                    
+                    if (!dataCriacao) {
+                        console.log(`  ❌ Erro ao parsear data de criação`);
+                        return;
+                    }
+                    
+                    console.log(`  dataCriacao >= dataLimite? ${dataCriacao >= dataLimite}`);
+                    console.log(`  dataCriacao <= agora? ${dataCriacao <= agora}`);
+                    console.log(`  Está no período? ${dataCriacao >= dataLimite && dataCriacao <= agora}`);
+                    
                     if (dataCriacao >= dataLimite && dataCriacao <= agora) {
+                        console.log(`  ✅ Adicionando notificação de criação`);
                         notificacoes.push({
-                            tipo: 'success',
+                            tipo: 'info',
                             icone: '🎉',
                             titulo: 'Novo Lote Cadastrado',
                             mensagem: `${lote.nome} - ${lote.empresa} (${lote.unidades.length} unidades)`,
                             data: dataCriacao,
                             timestamp: dataCriacao.getTime()
                         });
+                    } else {
+                        console.log(`  ❌ Não está no período de 30 dias`);
+                    }
+                }
+                
+                // Adicionar notificação de atualização do lote se foi editado
+                if (lote.atualizado_em && lote.atualizado_em !== lote.criado_em) {
+                    const dataAtualizacao = parsearDataSegura(lote.atualizado_em);
+                    console.log(`  Data de atualização parseada: ${dataAtualizacao}`);
+                    
+                    if (!dataAtualizacao) {
+                        console.log(`  ❌ Erro ao parsear data de atualização`);
+                        return;
+                    }
+                    
+                    console.log(`  Está no período? ${dataAtualizacao >= dataLimite && dataAtualizacao <= agora}`);
+                    
+                    if (dataAtualizacao >= dataLimite && dataAtualizacao <= agora) {
+                        console.log(`  ✅ Adicionando notificação de atualização`);
+                        notificacoes.push({
+                            tipo: 'info',
+                            icone: '✏️',
+                            titulo: 'Lote Atualizado',
+                            mensagem: `${lote.nome} - Informações atualizadas`,
+                            data: dataAtualizacao,
+                            timestamp: dataAtualizacao.getTime()
+                        });
+                    } else {
+                        console.log(`  ❌ Atualização não está no período de 30 dias`);
                     }
                 }
             });
             
             // Ordenar por data (mais recente primeiro)
             notificacoes.sort((a, b) => b.timestamp - a.timestamp);
+            
+            console.log(`Total de notificações geradas: ${notificacoes.length}`);
+            console.log('=== FIM DEBUG NOTIFICAÇÕES ===');
             
             return notificacoes;
         }
@@ -1499,29 +1592,6 @@
         window.addEventListener('load', function() {
             setTimeout(renderizarNotificacoesRecentes, 500);
         });
-    </script>
-    <script type="module">
-    // Import the functions you need from the SDKs you need
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-analytics.js";
-    // TODO: Add SDKs for Firebase products that you want to use
-    // https://firebase.google.com/docs/web/setup#available-libraries
-
-    // Your web app's Firebase configuration
-    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-    const firebaseConfig = {
-        apiKey: "AIzaSyAp2Xg1g5MwxuD3m6QlroJVmi6V6SEYeGo",
-        authDomain: "sgmrp-sfa-seap.firebaseapp.com",
-        projectId: "sgmrp-sfa-seap",
-        storageBucket: "sgmrp-sfa-seap.firebasestorage.app",
-        messagingSenderId: "890046403125",
-        appId: "1:890046403125:web:36c3cb60d4e6960f1a977c",
-        measurementId: "G-Z0KXSCHS4Q"
-    };
-
-    // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const analytics = getAnalytics(app);
     </script>
 </body>
 </html>

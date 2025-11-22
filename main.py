@@ -282,11 +282,27 @@ def api_adicionar_dados():
                 'mensagem_geral': 'Dados salvos'
             }
 
+            # Calcular estatísticas
+            dias_salvos = registros_processados
+            total_refeicoes = 0
+            if isinstance(registro, dict):
+                meal_fields = []
+                for key in ['cafe_interno', 'cafe_funcionario', 'almoco_interno', 'almoco_funcionario', 'lanche_interno', 'lanche_funcionario', 'jantar_interno', 'jantar_funcionario']:
+                    vals = registro.get(key, [])
+                    if isinstance(vals, list):
+                        meal_fields.extend(vals)
+                total_refeicoes = sum(meal_fields)
+            
+            estatisticas = {
+                'registros_processados': dias_salvos,
+                'total_refeicoes': total_refeicoes
+            }
+
             operacao = res.get('operacao')
             if not operacao and isinstance(res.get('operacoes'), list) and len(res.get('operacoes')) == 1:
                 operacao = res.get('operacoes')[0]
 
-            resp = {'success': True, 'registro': registro, 'validacao': validacao}
+            resp = {'success': True, 'registro': registro, 'validacao': validacao, 'estatisticas': estatisticas}
             if extra_id is not None:
                 resp['id'] = extra_id
             if operacao is not None:
@@ -315,22 +331,45 @@ def api_entrada_manual():
             
             reordenar_registro_mapas(extra_id)
             
-            dias_esperados = len(registro.get('datas', []))
+            # Usar 'linhas' que reflete os dados realmente salvos (após filtragem)
+            # Se 'linhas' não existir, usar o tamanho do array 'datas'
+            dias_salvos = int(registro.get('linhas', 0))
+            if dias_salvos == 0 and 'datas' in registro:
+                dias_salvos = len(registro.get('datas', []))
+            
+            print(f"🔍 DEBUG entrada-manual: linhas={registro.get('linhas')}, len(datas)={len(registro.get('datas', []))}, dias_salvos={dias_salvos}")
+            
+            # Calcular total de refeições
+            meal_fields = [
+                'cafe_interno', 'cafe_funcionario',
+                'almoco_interno', 'almoco_funcionario',
+                'lanche_interno', 'lanche_funcionario',
+                'jantar_interno', 'jantar_funcionario'
+            ]
+            total_refeicoes = 0
+            for field in meal_fields:
+                if field in registro and isinstance(registro[field], list):
+                    total_refeicoes += sum(int(x) if x is not None else 0 for x in registro[field])
             
             validacao = {
                 'valido': True,
                 'refeicoes': {
-                    'registros_processados': dias_esperados,
-                    'dias_esperados': dias_esperados
+                    'registros_processados': dias_salvos,
+                    'dias_esperados': dias_salvos
                 },
                 'mensagem_geral': 'Dados salvos via entrada manual'
+            }
+            
+            estatisticas = {
+                'registros_processados': dias_salvos,
+                'total_refeicoes': total_refeicoes
             }
 
             operacao = res.get('operacao')
             if not operacao and isinstance(res.get('operacoes'), list) and len(res.get('operacoes')) == 1:
                 operacao = res.get('operacoes')[0]
 
-            resp = {'success': True, 'registro': registro, 'validacao': validacao}
+            resp = {'success': True, 'registro': registro, 'validacao': validacao, 'estatisticas': estatisticas}
             if extra_id is not None:
                 resp['id'] = extra_id
             if operacao is not None:

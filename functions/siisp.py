@@ -5,7 +5,9 @@ from .mapas import (
 	_calcular_campos_comparativos_siisp,
 	parse_texto_tabular,
 	_load_mapas_partitioned,
-	_save_mapas_partitioned
+	_save_mapas_partitioned,
+	_get_lote_data_inicio,
+	_get_lote_data_fim
 )
 
 
@@ -73,6 +75,58 @@ def adicionar_siisp_em_mapa(payload):
 			'error': f'Quantidade de dados SIISP ({len(dados_siisp_list)}) não corresponde aos dias do mês ({dias_esperados} dias em {mes:02d}/{ano})'
 		}
 	
+	# Validar data de início e fim do contrato
+	data_inicio = _get_lote_data_inicio(lote_id)
+	data_fim = _get_lote_data_fim(lote_id)
+	
+	if data_inicio or data_fim:
+		# Verificar se o mês/ano está fora do período do contrato
+		data_primeiro_dia_mes = datetime(ano, mes, 1)
+		try:
+			data_ultimo_dia_mes = datetime(ano, mes, dias_esperados)
+		except:
+			data_ultimo_dia_mes = datetime(ano, mes, 28)
+		
+		# Se o último dia do mês é anterior ao início do contrato, rejeitar
+		if data_inicio and data_ultimo_dia_mes < data_inicio:
+			return {
+				'success': False,
+				'error': f'Mês {mes:02d}/{ano} é anterior à data de início do contrato ({data_inicio.strftime("%d/%m/%Y")}). Dados SIISP não podem ser adicionados.'
+			}
+		
+		# Se o primeiro dia do mês é posterior ao fim do contrato, rejeitar
+		if data_fim and data_primeiro_dia_mes > data_fim:
+			return {
+				'success': False,
+				'error': f'Mês {mes:02d}/{ano} é posterior à data de fim do contrato ({data_fim.strftime("%d/%m/%Y")}). Dados SIISP não podem ser adicionados.'
+			}
+		
+		# Filtrar dados: considerar apenas dias dentro do período do contrato
+		indices_validos = []
+		for dia in range(1, dias_esperados + 1):
+			data_dia = datetime(ano, mes, dia)
+			valido = True
+			if data_inicio and data_dia < data_inicio:
+				valido = False
+			if data_fim and data_dia > data_fim:
+				valido = False
+			if valido:
+				indices_validos.append(dia - 1)  # índice 0-based
+		
+		if len(indices_validos) < len(dados_siisp_list):
+			dados_siisp_filtrados = [dados_siisp_list[i] for i in indices_validos]
+			
+			msg_filtro = f"📅 Filtrando SIISP: Contrato"
+			if data_inicio:
+				msg_filtro += f" inicia em {data_inicio.strftime('%d/%m/%Y')}"
+			if data_fim:
+				msg_filtro += f" termina em {data_fim.strftime('%d/%m/%Y')}"
+			print(msg_filtro)
+			print(f"   Original: {len(dados_siisp_list)} elementos")
+			print(f"   Filtrado: {len(dados_siisp_filtrados)} elementos")
+			
+			dados_siisp_list = dados_siisp_filtrados
+	
 	mapas_existentes = _load_mapas_partitioned(mes, ano)
 	if mapas_existentes is None:
 		return {
@@ -106,6 +160,22 @@ def adicionar_siisp_em_mapa(payload):
 			'success': False,
 			'error': f'Mapa não encontrado para Unidade "{unidade}", Lote {lote_id}, período {mes:02d}/{ano}. Adicione dados de refeições primeiro.'
 		}
+	
+	# Verificar se o mapa já está filtrado (campo 'linhas' indica dados filtrados)
+	linhas_mapa = mapa_encontrado.get('linhas')
+	if linhas_mapa and linhas_mapa < dias_esperados:
+		# Mapa está filtrado, ajustar SIISP para o mesmo tamanho
+		if len(dados_siisp_list) != linhas_mapa:
+			# Se SIISP tem mais elementos, usar apenas os necessários
+			if len(dados_siisp_list) > linhas_mapa:
+				# Pegar os últimos N elementos (dias válidos do final do mês)
+				dados_siisp_list = dados_siisp_list[-linhas_mapa:]
+				print(f"⚠️ Ajustando SIISP para {linhas_mapa} elementos (mapa filtrado)")
+			else:
+				return {
+					'success': False,
+					'error': f'Dados SIISP insuficientes: mapa possui {linhas_mapa} dias, mas SIISP tem apenas {len(dados_siisp_list)} elementos'
+				}
 	
 	mapa_encontrado['dados_siisp'] = dados_siisp_list
 	mapa_encontrado['atualizado_em'] = datetime.now().isoformat()

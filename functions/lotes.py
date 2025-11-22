@@ -124,6 +124,7 @@ def salvar_novo_lote(payload: dict):
 	empresa = payload.get('nome_empresa') or payload.get('empresa') or payload.get('empresa_nome') or ''
 	numero_contrato = payload.get('numero_contrato') or payload.get('contrato') or ''
 	data_inicio = payload.get('data_inicio') or payload.get('inicio_contrato') or ''
+	data_fim = payload.get('data_fim') or payload.get('fim_contrato') or ''
 	valor_contratual = payload.get('valor_contratual') or payload.get('valorContratual') or 0
 	unidades = payload.get('unidades') or payload.get('unidades[]') or []
 
@@ -149,7 +150,7 @@ def salvar_novo_lote(payload: dict):
 		for k in ['cafe_interno','cafe_funcionario','almoco_interno','almoco_funcionario','lanche_interno','lanche_funcionario','jantar_interno','jantar_funcionario']:
 			precos[k] = payload.get(k)
 
-	if not nome or not empresa or not numero_contrato or not data_inicio:
+	if not nome or not empresa or not numero_contrato or not data_inicio or not data_fim:
 		return {'success': False, 'error': 'Campos obrigatórios faltando'}
 	if not unidades or not isinstance(unidades, list) or len(unidades) == 0:
 		return {'success': False, 'error': 'Adicione pelo menos uma unidade'}
@@ -272,6 +273,7 @@ def salvar_novo_lote(payload: dict):
 		'empresa': str(empresa),
 		'numero_contrato': str(numero_contrato),
 		'data_inicio': str(data_inicio),
+		'data_fim': str(data_fim),
 		'valor_contratual': float(valor_contratual) if valor_contratual else 0.0,
 		'unidades': unit_ids,
 		'precos': precos,
@@ -343,6 +345,8 @@ def editar_lote(lote_id, payload: dict):
 		lote_encontrado['numero_contrato'] = payload.get('numero_contrato') or payload.get('contrato')
 	if 'data_inicio' in payload:
 		lote_encontrado['data_inicio'] = payload.get('data_inicio')
+	if 'data_fim' in payload:
+		lote_encontrado['data_fim'] = payload.get('data_fim')
 	if 'valor_contratual' in payload or 'valorContratual' in payload:
 		valor = payload.get('valor_contratual') or payload.get('valorContratual')
 		lote_encontrado['valor_contratual'] = float(valor) if valor else 0.0

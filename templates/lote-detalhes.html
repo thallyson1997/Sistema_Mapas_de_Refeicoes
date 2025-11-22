@@ -2669,8 +2669,6 @@
                 return response.json();
             })
             .then(data => {
-                console.log('🔍 Debug - Resposta da API:', data);
-                
                 if (data.success) {
                     const meses = [
                         'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -2678,13 +2676,24 @@
                     ];
                     const mesNome = meses[parseInt(mes) - 1];
                     
-                    // Acessar dados de validação corretamente
-                    const refeicoes = data.validacao.refeicoes;
-                    const registros = refeicoes.registros_processados || 0;
+                    // Usar estatísticas retornadas pelo backend
+                    const stats = data.estatisticas || {};
+                    const diasSalvos = stats.registros_processados || 0;
+                    const totalRefeicoes = stats.total_refeicoes || 0;
                     
-                    const mensagem = `${registros} registros importados para ${unidade} em ${mesNome}/${ano}.`;
+                    // Verificar se houve filtragem (linhas < dias do mês)
+                    const mesNumero = parseInt(mes);
+                    const anoNumero = parseInt(ano);
+                    const diasNoMes = new Date(anoNumero, mesNumero, 0).getDate();
                     
-                    showNotification('success', 'Dados importados com sucesso!', mensagem);
+                    let mensagem;
+                    if (diasSalvos < diasNoMes) {
+                        mensagem = `${diasSalvos} de ${diasNoMes} dias foram salvos para ${unidade} em ${mesNome}/${ano} (filtrados por período de contrato). Total de refeições: ${totalRefeicoes}.`;
+                    } else {
+                        mensagem = `${diasSalvos} registros salvos para ${unidade} em ${mesNome}/${ano}. Total de refeições: ${totalRefeicoes}.`;
+                    }
+                    
+                    showNotification('success', 'Dados salvos com sucesso!', mensagem);
                     
                     document.getElementById('secao-importacao').style.display = 'none';
                     
@@ -2796,7 +2805,20 @@
                 if (data.success) {
                     // Mostrar notificação de sucesso
                     const stats = data.estatisticas || {};
-                    const mensagem = `${stats.registros_processados || dadosTabela.length} registros salvos para ${unidade} em ${mes}/${ano}. Total de refeições: ${stats.total_refeicoes || 0}.`;
+                    const diasSalvos = stats.registros_processados || 0;
+                    const totalRefeicoes = stats.total_refeicoes || 0;
+                    
+                    // Verificar se houve filtragem
+                    const mesNumero = parseInt(mes);
+                    const anoNumero = parseInt(ano);
+                    const diasNoMes = new Date(anoNumero, mesNumero, 0).getDate();
+                    
+                    let mensagem;
+                    if (diasSalvos < diasNoMes) {
+                        mensagem = `${diasSalvos} de ${diasNoMes} dias foram salvos para ${unidade} em ${mes}/${ano} (filtrados por período de contrato). Total de refeições: ${totalRefeicoes}.`;
+                    } else {
+                        mensagem = `${diasSalvos} registros salvos para ${unidade} em ${mes}/${ano}. Total de refeições: ${totalRefeicoes}.`;
+                    }
                     
                     showNotification('success', 'Dados salvos com sucesso!', mensagem);
                     
@@ -2806,7 +2828,6 @@
                     gerarTabelaManual(); // Regenerar tabela vazia
                     
                     // Atualizar dados na tela (se aplicável)
-                    console.log('✅ Entrada manual salva:', data.registro);
                     
                     // Recarregar a página com filtros aplicados para a unidade e período recém-adicionados
                     setTimeout(() => {

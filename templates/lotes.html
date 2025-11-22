@@ -73,12 +73,12 @@
                         </select>
                     </div>
                     <div>
-                        <label for="filtro-conformidade" class="form-label">Conformidade</label>
-                        <select id="filtro-conformidade" class="form-select">
+                        <label for="filtro-percentual" class="form-label">% Executado</label>
+                        <select id="filtro-percentual" class="form-select">
                             <option value="">Todos os níveis</option>
-                            <option value="alta">Alta (95%+)</option>
-                            <option value="media">Média (85-95%)</option>
-                            <option value="baixa">Baixa (&lt;85%)</option>
+                            <option value="alta">Alto (&gt;80%)</option>
+                            <option value="media">Médio (50-80%)</option>
+                            <option value="baixa">Baixo (&lt;50%)</option>
                         </select>
                     </div>
                 </div>
@@ -115,7 +115,7 @@
             <!-- Lista de Lotes -->
             <section id="lista-lotes">
                 {% for lote in lotes %}
-                <div class="card fade-in lote-item" data-lote="{{ loop.index }}" data-status="{{ 'ativo' if lote.ativo else 'inativo' }}" data-empresa="{{ lote.empresa|lower }}" data-conformidade="{{ lote.conformidade }}">
+                <div class="card fade-in lote-item" data-lote="{{ loop.index }}" data-status="{{ 'ativo' if lote.ativo else 'inativo' }}" data-empresa="{{ lote.empresa|lower }}" data-percentual="{{ lote.percentual_executado }}">
                     <div class="card-body" style="padding: 2rem;">
                         <div style="display: grid; grid-template-columns: 1fr auto; gap: 2rem; align-items: start;">
                             <!-- Informações principais -->
@@ -131,7 +131,7 @@
                                         INATIVO
                                     </div>
                                     {% endif %}
-                                    {% set percentual = lote.saldo_consumido %}
+                                    {% set percentual = lote.percentual_executado %}
                                     {% if percentual < 50 %}
                                         {% set cor_fundo = 'var(--success-color)' %}
                                         {% set cor_texto = 'white' %}
@@ -146,7 +146,7 @@
                                         {% set cor_texto = 'white' %}
                                     {% endif %}
                                     <div style="background-color: {{ cor_fundo }}; color: {{ cor_texto }}; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 500;">
-                                        {{ "%.1f"|format(lote.saldo_consumido) }}% Consumido
+                                        {{ "%.1f"|format(lote.percentual_executado) }}% Executado
                                     </div>
                                 </div>
 
@@ -237,15 +237,19 @@
                             <input type="date" id="novo-lote-inicio" name="data_inicio" class="form-input" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
                         </div>
                         <div>
+                            <label for="novo-lote-fim" class="form-label" style="font-weight: 500;">Data de Fim do Contrato</label>
+                            <input type="date" id="novo-lote-fim" name="data_fim" class="form-input" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                        </div>
+                        <div>
                             <label for="novo-lote-valor-contratual" class="form-label" style="font-weight: 500;">Valor Contratual (R$)</label>
                             <input type="number" step="0.01" min="0" id="novo-lote-valor-contratual" name="valor_contratual" class="form-input" placeholder="0,00" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
                         </div>
                     </div>
                     <!-- Coluna 2: unidades -->
-                    <div style="flex: 1 1 220px; min-width: 180px; display: flex; flex-direction: column; gap: 1rem;">
+                    <div style="flex: 1 1 220px; min-width: 180px; display: flex; flex-direction: column; gap: 0.02rem;">
                         <label class="form-label" style="font-weight: 500;">Unidades do Lote</label>
                         <div id="unidades-lista" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
-                        <input type="text" id="input-unidade" class="form-input" placeholder="Digite o nome da unidade e pressione Enter" style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300); margin-top: 0.5rem;">
+                        <input type="text" id="input-unidade" class="form-input" placeholder="Digite o nome da unidade e pressione Enter" style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
                         <small style="color: var(--gray-500);">Pressione Enter para adicionar cada unidade. Clique no X para remover.</small>
                     </div>
                     <!-- Coluna 3: preços -->
@@ -325,6 +329,10 @@
                             <input type="date" id="editar-lote-inicio" name="data_inicio" class="form-input" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
                         </div>
                         <div>
+                            <label for="editar-lote-fim" class="form-label" style="font-weight: 500;">Data de Fim do Contrato</label>
+                            <input type="date" id="editar-lote-fim" name="data_fim" class="form-input" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                        </div>
+                        <div>
                             <label for="editar-lote-valor-contratual" class="form-label" style="font-weight: 500;">Valor Contratual (R$)</label>
                             <input type="number" step="0.01" min="0" id="editar-lote-valor-contratual" name="valor_contratual" class="form-input" placeholder="0,00" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
                         </div>
@@ -343,10 +351,10 @@
                         </div>
                     </div>
                     <!-- Coluna 2: unidades -->
-                    <div style="flex: 1 1 220px; min-width: 180px; display: flex; flex-direction: column; gap: 1rem;">
+                    <div style="flex: 1 1 220px; min-width: 180px; display: flex; flex-direction: column; gap: 0.02rem;">
                         <label class="form-label" style="font-weight: 500;">Unidades do Lote</label>
                         <div id="editar-unidades-lista" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
-                        <input type="text" id="editar-input-unidade" class="form-input" placeholder="Digite o nome da unidade e pressione Enter" style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300); margin-top: 0.5rem;">
+                        <input type="text" id="editar-input-unidade" class="form-input" placeholder="Digite o nome da unidade e pressione Enter" style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
                         <small style="color: var(--gray-500);">Pressione Enter para adicionar novas unidades. Unidades existentes não podem ser removidas.</small>
                     </div>
                     <!-- Coluna 3: preços -->
@@ -497,6 +505,7 @@
             document.getElementById('editar-lote-empresa').value = lote.empresa || '';
             document.getElementById('editar-lote-contrato').value = lote.numero_contrato || lote.contrato || '';
             document.getElementById('editar-lote-inicio').value = lote.data_inicio || lote.inicio_contrato || '';
+            document.getElementById('editar-lote-fim').value = lote.data_fim || lote.fim_contrato || '';
             document.getElementById('editar-lote-valor-contratual').value = lote.valor_contratual || 0;
             
             // Status
@@ -681,6 +690,7 @@
                     const nome_empresa = document.getElementById('editar-lote-empresa').value.trim();
                     const numero_contrato = document.getElementById('editar-lote-contrato').value.trim();
                     const data_inicio = document.getElementById('editar-lote-inicio').value;
+                    const data_fim = document.getElementById('editar-lote-fim').value;
                     const valor_contratual = document.getElementById('editar-lote-valor-contratual').value;
                     const ativo = document.getElementById('editar-lote-ativo-sim').checked ? 'true' : 'false';
                     
@@ -717,7 +727,7 @@
                     };
                     
                     // Validação básica
-                    if (!nome_empresa || !numero_contrato || !data_inicio) {
+                    if (!nome_empresa || !numero_contrato || !data_inicio || !data_fim) {
                         alert('Preencha todos os campos obrigatórios.');
                         return;
                     }
@@ -731,7 +741,8 @@
                             body: JSON.stringify({ 
                                 nome_empresa, 
                                 numero_contrato, 
-                                data_inicio, 
+                                data_inicio,
+                                data_fim,
                                 valor_contratual,
                                 ativo,
                                 precos,
@@ -763,6 +774,7 @@
                         const nome_empresa = document.getElementById('novo-lote-empresa').value.trim();
                         const numero_contrato = document.getElementById('novo-lote-contrato').value.trim();
                         const data_inicio = document.getElementById('novo-lote-inicio').value;
+                        const data_fim = document.getElementById('novo-lote-fim').value;
                         const valor_contratual = document.getElementById('novo-lote-valor-contratual').value;
                         // Unidades
                         const unidadeInputs = Array.from(document.querySelectorAll('#unidades-lista input[name="unidades[]"]'));
@@ -788,7 +800,7 @@
                         };
                         // Validação: nenhum campo pode estar vazio
                         let erro = '';
-                        if (!nome_lote || !nome_empresa || !numero_contrato || !data_inicio) {
+                        if (!nome_lote || !nome_empresa || !numero_contrato || !data_inicio || !data_fim) {
                             erro = 'Preencha todos os campos obrigatórios.';
                         } else if (unidades.length === 0 || unidadeInputs.some(i => !i.value.trim())) {
                             erro = 'Adicione pelo menos uma unidade e não deixe campos de unidade em branco.';
@@ -813,7 +825,7 @@
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 credentials: 'same-origin',
-                                body: JSON.stringify({ nome_lote, nome_empresa, numero_contrato, data_inicio, valor_contratual, precos, unidades })
+                                body: JSON.stringify({ nome_lote, nome_empresa, numero_contrato, data_inicio, data_fim, valor_contratual, precos, unidades })
                             });
                             const data = await resp.json();
                             if (resp.ok && data.success) {
@@ -892,7 +904,7 @@
             const busca = document.getElementById('filtro-busca-lote')?.value.toLowerCase() || '';
             const status = document.getElementById('filtro-status')?.value || '';
             const empresa = document.getElementById('filtro-empresa')?.value || '';
-            const conformidade = document.getElementById('filtro-conformidade')?.value || '';
+            const percentual = document.getElementById('filtro-percentual')?.value || '';
 
             const lotes = document.querySelectorAll('.lote-item');
             let visibleCount = 0;
@@ -916,18 +928,18 @@
                     show = show && lote.dataset.empresa === empresa;
                 }
 
-                // Filtro de conformidade
-                if (conformidade) {
-                    const conf = parseFloat(lote.dataset.conformidade);
-                    switch(conformidade) {
+                // Filtro de percentual executado
+                if (percentual) {
+                    const perc = parseFloat(lote.dataset.percentual);
+                    switch(percentual) {
                         case 'alta':
-                            show = show && conf >= 95;
+                            show = show && perc > 80;
                             break;
                         case 'media':
-                            show = show && conf >= 85 && conf < 95;
+                            show = show && perc >= 50 && perc <= 80;
                             break;
                         case 'baixa':
-                            show = show && conf < 85;
+                            show = show && perc < 50;
                             break;
                     }
                 }
@@ -950,7 +962,7 @@
             if (document.getElementById('filtro-busca-lote')) document.getElementById('filtro-busca-lote').value = '';
             if (document.getElementById('filtro-status')) document.getElementById('filtro-status').value = '';
             if (document.getElementById('filtro-empresa')) document.getElementById('filtro-empresa').value = '';
-            if (document.getElementById('filtro-conformidade')) document.getElementById('filtro-conformidade').value = '';
+            if (document.getElementById('filtro-percentual')) document.getElementById('filtro-percentual').value = '';
             applyFilters();
         }
 
@@ -964,10 +976,10 @@
                         const nomeA = a.querySelector('h3').textContent;
                         const nomeB = b.querySelector('h3').textContent;
                         return nomeA.localeCompare(nomeB);
-                    case 'conformidade':
-                        const confA = parseFloat(a.dataset.conformidade);
-                        const confB = parseFloat(b.dataset.conformidade);
-                        return confB - confA; // Decrescente
+                    case 'percentual':
+                        const percA = parseFloat(a.dataset.percentual);
+                        const percB = parseFloat(b.dataset.percentual);
+                        return percB - percA; // Decrescente
                     case 'refeicoes':
                         const refA = parseInt(a.querySelector('[data-refeicoes]')?.dataset.refeicoes || a.textContent.match(/(\d+,\d+)/)?.[1]?.replace(',', '') || '0');
                         const refB = parseInt(b.querySelector('[data-refeicoes]')?.dataset.refeicoes || b.textContent.match(/(\d+,\d+)/)?.[1]?.replace(',', '') || '0');

@@ -232,7 +232,7 @@
                     <ul>
                         <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
                         <li><a href="{{ url_for('lotes') }}">Lotes</a></li>
-                        <li><a href="#relatorios">Relatórios</a></li>
+                        <li><a href="{{ url_for('relatorios') }}">Relatórios</a></li>
                         <li><a href="#configuracoes">Configurações</a></li>
                         <li><a href="#" id="logoutLink" style="color: #fed7d7;">Sair</a></li>
                     </ul>
@@ -362,12 +362,18 @@
             </section>
 
             <!-- Filtros e Controles -->
-            <section class="filters" style="margin-bottom: 2rem;">
-                <div style="display: flex; justify-content: space-between; align-items: end; gap: 1rem; flex-wrap: wrap;">
-                    <div style="display: flex; gap: 1rem; align-items: end;">
-                        <div class="periodo-filter-container">
-                            <label class="form-label">Período</label>
-                            <div class="periodo-display" id="periodo-display">
+            <section class="fade-in" style="margin-bottom: 2rem;">
+                <!-- Filtros Compactos -->
+                <div style="background: white; border-radius: 12px; padding: 1rem 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 1rem;">
+                    <div style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="font-size: 1.125rem;">🔍</span>
+                            <span style="font-weight: 500; color: var(--gray-700); font-size: 0.875rem;">Filtros:</span>
+                        </div>
+                        
+                        <div class="periodo-filter-container" style="display: flex; align-items: center; gap: 0.5rem;">
+                            <label style="font-weight: 500; color: var(--gray-600); font-size: 0.875rem;">Período:</label>
+                            <div class="periodo-display" id="periodo-display" style="padding: 0.5rem 0.75rem; font-size: 0.875rem;">
                                 <span class="periodo-text" id="periodo-text">Setembro/2025</span>
                                 <span class="periodo-icon">📅</span>
                             </div>
@@ -427,9 +433,10 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="unidades-filter-container">
-                            <label class="form-label">Unidades</label>
-                            <div class="unidades-display" id="unidades-display">
+                        
+                        <div class="unidades-filter-container" style="display: flex; align-items: center; gap: 0.5rem;">
+                            <label style="font-weight: 500; color: var(--gray-600); font-size: 0.875rem;">Unidades:</label>
+                            <div class="unidades-display" id="unidades-display" style="padding: 0.5rem 0.75rem; font-size: 0.875rem;">
                                 <span class="unidades-text" id="unidades-text">Todas as unidades</span>
                                 <span class="unidades-icon">🏢</span>
                             </div>
@@ -474,18 +481,21 @@
                             </div>
                         </div>
                     </div>
-                    
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; max-width: 400px; margin-left: auto;">
-                        <button class="btn btn-primary" id="btn-adicionar-dados">
+                </div>
+                
+                <!-- Botões de Ação -->
+                <div style="background: white; border-radius: 12px; padding: 1rem 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center;">
+                        <button class="btn btn-primary" id="btn-adicionar-dados" style="font-size: 0.875rem; padding: 0.625rem 1rem;">
                             📤 Adicionar Dados
                         </button>
-                        <button class="btn btn-secondary" id="btn-entrada-manual">
+                        <button class="btn btn-secondary" id="btn-entrada-manual" style="font-size: 0.875rem; padding: 0.625rem 1rem;">
                             ✏️ Entrada Manual
                         </button>
-                        <button class="btn btn-danger" id="btn-excluir-dados">
+                        <button class="btn btn-danger" id="btn-excluir-dados" style="font-size: 0.875rem; padding: 0.625rem 1rem;">
                             🗑️ Excluir Dados
                         </button>
-                        <button class="btn btn-info" id="btn-adicionar-siisp">
+                        <button class="btn btn-info" id="btn-adicionar-siisp" style="font-size: 0.875rem; padding: 0.625rem 1rem;">
                             � Adicionar nº SIISP
                         </button>
                     </div>
@@ -1192,7 +1202,7 @@
             
             // Auto-fechar após tempo determinado
             if (autoClose) {
-                const duration = type === 'error' ? 8000 : 5000; // Erros ficam mais tempo
+                const duration = 60000; // Todas notificações ficam 1 minuto
                 setTimeout(() => {
                     closeNotification(notification.querySelector('.notification-close'));
                 }, duration);
@@ -1306,14 +1316,20 @@
                     // Filtro por período
                     if (filtrosAtivos.dataInicio && filtrosAtivos.dataFim) {
                         // Converter data brasileira (DD/MM/YYYY) para formato Date
-                        const partesData = registro.data.split('/');
-                        const dataRegistro = new Date(partesData[2], partesData[1] - 1, partesData[0]);
+                        let dataRegistro = null;
+                        if (registro.data) {
+                            const partesData = registro.data.split('/');
+                            dataRegistro = new Date(partesData[2], partesData[1] - 1, partesData[0]);
+                        }
                         
                         // Converter strings ISO para Date de forma consistente
-                        const [anoInicio, mesInicio, diaInicio] = filtrosAtivos.dataInicio.split('-');
-                        const [anoFim, mesFim, diaFim] = filtrosAtivos.dataFim.split('-');
-                        const inicio = new Date(parseInt(anoInicio), parseInt(mesInicio) - 1, parseInt(diaInicio));
-                        const fim = new Date(parseInt(anoFim), parseInt(mesFim) - 1, parseInt(diaFim));
+                        let inicio = null, fim = null;
+                        if (filtrosAtivos.dataInicio && filtrosAtivos.dataFim) {
+                            const [anoInicio, mesInicio, diaInicio] = filtrosAtivos.dataInicio.split('-');
+                            const [anoFim, mesFim, diaFim] = filtrosAtivos.dataFim.split('-');
+                            inicio = new Date(parseInt(anoInicio), parseInt(mesInicio) - 1, parseInt(diaInicio));
+                            fim = new Date(parseInt(anoFim), parseInt(mesFim) - 1, parseInt(diaFim));
+                        }
                         
 
                         
@@ -2704,7 +2720,7 @@
                     // Recarregar página com filtros aplicados para a unidade e período recém-adicionados
                     setTimeout(() => {
                         window.location.href = `?unidade=${encodeURIComponent(unidade)}&mes=${mes}&ano=${ano}`;
-                    }, 1500);
+                    }, 1000); // 1 segundo para garantir que a notificação fique visível
                     
                     console.log('✅ Dados salvos:', data.registro);
                 } else {
@@ -3152,6 +3168,7 @@
                     
                     // Contar quantos registros estão no período - converter data brasileira
                     const registrosNoPeriodo = dadosOriginais.filter(registro => {
+                        if (!registro.data) return false;
                         const partesData = registro.data.split('/');
                         const dataRegistro = new Date(partesData[2], partesData[1] - 1, partesData[0]);
                         return dataRegistro >= dataInicio && dataRegistro <= dataFim;
@@ -3175,8 +3192,13 @@
             
             if (dataInicio && dataFim) {
                 // Usar split para evitar problemas de timezone
-                const [anoInicio, mesInicio, diaInicio] = dataInicio.split('-');
-                const [anoFim, mesFim, diaFim] = dataFim.split('-');
+                let anoInicio, mesInicio, diaInicio, anoFim, mesFim, diaFim;
+                if (dataInicio) {
+                    [anoInicio, mesInicio, diaInicio] = dataInicio.split('-');
+                }
+                if (dataFim) {
+                    [anoFim, mesFim, diaFim] = dataFim.split('-');
+                }
                 
                 console.log('🔍 DEBUG Split dates:', 
                     'inicio:', diaInicio, '/', mesInicio, '/', anoInicio,
@@ -3218,12 +3240,20 @@
             const btnCancelar = document.getElementById('btn-cancelar-unidades');
             const btnSelecionarTodas = document.getElementById('btn-selecionar-todas');
             const btnLimparTodas = document.getElementById('btn-limpar-todas');
-            
+
+            // Depuração: garantir que todos os elementos existem
+            if (!unidadesDisplay || !unidadesPopup || !unidadesOverlay || !btnAplicar || !btnCancelar || !btnSelecionarTodas || !btnLimparTodas) {
+                console.error('Filtro de unidades: elemento(s) não encontrado(s)!', {
+                    unidadesDisplay, unidadesPopup, unidadesOverlay, btnAplicar, btnCancelar, btnSelecionarTodas, btnLimparTodas
+                });
+                return;
+            }
+
             let unidadesSelecionadasBackup = [];
-            
+
             // Verificar se há unidades pré-selecionadas vindas da URL
             const unidadesPreSelecionadas = filtrosAtivos.unidadesSelecionadas;
-            
+
             // Inicializar checkboxes
             const checkboxes = document.querySelectorAll('.unidade-checkbox');
             if (unidadesPreSelecionadas && unidadesPreSelecionadas.length > 0) {
@@ -3239,44 +3269,43 @@
                 // Definir como null (todas selecionadas = sem filtro)
                 filtrosAtivos.unidadesSelecionadas = null;
             }
-            
+
             atualizarDisplayUnidades();
-            
+
             // Abrir popup de unidades
             unidadesDisplay.addEventListener('click', function() {
+                console.log('DEBUG: Clique no filtro de unidades');
                 // Fazer backup das seleções atuais
                 unidadesSelecionadasBackup = getUnidadesSelecionadas();
-                
                 unidadesPopup.style.display = 'block';
                 unidadesOverlay.style.display = 'block';
                 unidadesDisplay.classList.add('active');
                 atualizarCountUnidades();
             });
-            
+
             // Fechar popup de unidades
             function fecharUnidadesPopup() {
                 unidadesPopup.style.display = 'none';
                 unidadesOverlay.style.display = 'none';
                 unidadesDisplay.classList.remove('active');
             }
-            
+
             unidadesOverlay.addEventListener('click', function() {
                 // Restaurar seleções anteriores ao cancelar
                 restaurarSelecoes(unidadesSelecionadasBackup);
                 fecharUnidadesPopup();
             });
-            
+
             btnCancelar.addEventListener('click', function() {
                 // Restaurar seleções anteriores ao cancelar
                 restaurarSelecoes(unidadesSelecionadasBackup);
                 fecharUnidadesPopup();
             });
-            
+
             // Aplicar seleção de unidades
             btnAplicar.addEventListener('click', function() {
                 const unidadesSelecionadas = getUnidadesSelecionadas();
                 const totalCheckboxes = document.querySelectorAll('.unidade-checkbox').length;
-                
                 // Se todas as unidades estão selecionadas, limpar filtro (mostrar todas) -> usar null como sentinel
                 if (unidadesSelecionadas.length === totalCheckboxes) {
                     filtrosAtivos.unidadesSelecionadas = null;
@@ -3284,17 +3313,15 @@
                     // Pode ser array com 0 elementos (nenhuma selecionada) ou >0 (algumas selecionadas)
                     filtrosAtivos.unidadesSelecionadas = unidadesSelecionadas;
                 }
-                
                 atualizarDisplayUnidades();
                 fecharUnidadesPopup();
-                
                 // Aplicar filtros e atualizar tabela
                 console.log('Aplicando filtro de unidades:', filtrosAtivos.unidadesSelecionadas);
                 console.log('Dados originais:', dadosOriginais.length, 'registros');
                 aplicarFiltros();
                 console.log('Dados filtrados:', dadosRefeicoes.length, 'registros');
             });
-            
+
             // Selecionar todas as unidades
             btnSelecionarTodas.addEventListener('click', function() {
                 checkboxes.forEach(checkbox => {
@@ -3302,7 +3329,7 @@
                 });
                 atualizarCountUnidades();
             });
-            
+
             // Limpar todas as seleções
             btnLimparTodas.addEventListener('click', function() {
                 checkboxes.forEach(checkbox => {
@@ -3310,12 +3337,12 @@
                 });
                 atualizarCountUnidades();
             });
-            
+
             // Atualizar contador quando checkboxes mudarem
             checkboxes.forEach(checkbox => {
                 checkbox.addEventListener('change', atualizarCountUnidades);
             });
-            
+
             // Permitir clicar no item todo para marcar/desmarcar
             document.querySelectorAll('.unidade-item').forEach(item => {
                 item.addEventListener('click', function(e) {

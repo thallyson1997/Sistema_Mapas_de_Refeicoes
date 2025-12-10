@@ -92,27 +92,31 @@ def save_json_file(filepath: str, data: Any, indent: int = 2) -> bool:
 def load_json_from_dados(filename: str, default: Any = None) -> Any:
 	"""
 	Carrega um arquivo JSON do diretório de dados
-	
+	"""
+	Carrega um arquivo JSON do diretório de dados
+
 	Args:
-		filename: Nome do arquivo (ex: 'lotes.json')
-		default: Valor padrão a retornar se o arquivo não existir
-	
+		filename: Nome do arquivo (ex: 'usuarios.json', 'unidades.json', etc.)
+		default: Valor padrão a retornar se o arquivo não existir ou houver erro
+
+	ATENÇÃO: Para dados de lotes, utilize sempre o banco de dados (SQLAlchemy) e não arquivos JSON.
+
 	Returns:
 		Dados do JSON ou valor padrão
 	"""
-	filepath = get_file_path(filename)
-	return load_json_file(filepath, default)
 
 
 def save_json_to_dados(filename: str, data: Any, indent: int = 2) -> bool:
 	"""
 	Salva dados em um arquivo JSON no diretório de dados
-	
+
 	Args:
-		filename: Nome do arquivo (ex: 'lotes.json')
+		filename: Nome do arquivo (ex: 'usuarios.json', 'unidades.json', etc.)
 		data: Dados a salvar
 		indent: Indentação do JSON (padrão: 2)
-	
+
+	ATENÇÃO: Para dados de lotes, utilize sempre o banco de dados (SQLAlchemy) e não arquivos JSON.
+
 	Returns:
 		True se salvou com sucesso, False caso contrário
 	"""

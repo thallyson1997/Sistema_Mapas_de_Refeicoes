@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatórios - SGMRP</title>
+    <meta name="description" content="Análise gráfica e relatórios de consumo de refeições">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .chart-placeholder {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .chart-placeholder::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 10px,
+                rgba(255,255,255,.1) 10px,
+                rgba(255,255,255,.1) 20px
+            );
+        }
+        
+        .chart-content {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .metric-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+            border: 1px solid var(--gray-200);
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+        }
+        
+        .metric-label {
+            font-size: 0.875rem;
+            color: var(--gray-600);
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .metric-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 0.25rem;
+        }
+        
+        .metric-subtitle {
+            font-size: 0.75rem;
+            color: var(--gray-500);
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: flex-end;
+        }
+        
+        .filter-item {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        .btn-projection {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 0.875rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-projection:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        
+        .section-divider {
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary-color), transparent);
+            margin: 3rem 0;
+            opacity: 0.3;
+        }
+        
+        .legend-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .tab-buttons {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid var(--gray-200);
+            padding-bottom: 0;
+        }
+        
+        .tab-btn {
+            padding: 0.75rem 1.5rem;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--gray-600);
+            transition: all 0.3s ease;
+            margin-bottom: -2px;
+        }
+        
+        .tab-btn:hover {
+            color: var(--primary-color);
+            background: var(--gray-50);
+        }
+        
+        .tab-btn.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+        
+        .projection-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <a href="{{ url_for('dashboard') }}" class="logo">SGMRP</a>
+                <nav>
+                    <ul>
+                        <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                        <li><a href="{{ url_for('lotes') }}">Lotes</a></li>
+                        <li><a href="{{ url_for('relatorios') }}" class="active">Relatórios</a></li>
+                        <li><a href="#configuracoes">Configurações</a></li>
+                        <li><a href="#" id="logoutLink" style="color: #fed7d7;">Sair</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <!-- Breadcrumb -->
+            <nav aria-label="Navegação" style="margin-bottom: 2.5rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0.75rem 1.25rem; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                <div style="display: flex; gap: 0.5rem; font-size: 0.95rem; color: var(--gray-500); align-items: center;">
+                    <span><a href="{{ url_for('dashboard') }}" style="color: var(--primary-color); text-decoration: none; font-weight: 500;">Dashboard</a></span>
+                    <span aria-hidden="true" style="font-size: 1.1em; opacity: 0.7;">/</span>
+                    <span aria-current="page" style="color: var(--primary-color); font-weight: 600;">Relatórios</span>
+                </div>
+            </nav>
+
+            <!-- Header da Página -->
+            <section style="margin-bottom: 2.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 2rem;">
+                    <div>
+                        <h1 style="margin-bottom: 0.5rem; color: var(--primary-color); font-size: 2.1rem; font-weight: 700; letter-spacing: -1px;">
+                            📊 Relatórios e Análises
+                        </h1>
+                        <p style="color: var(--gray-600); margin: 0; font-size: 1.05rem;">Visualização gráfica e estatísticas de consumo de refeições</p>
+                    </div>
+                    <div style="display: flex; gap: 1rem; align-items: flex-end;">
+                        <button class="btn btn-secondary" id="btn-exportar-relatorio" style="font-size: 1rem; padding: 0.7rem 1.3rem; border-radius: 8px;">
+                            📥 Exportar Relatório
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Filtros Avançados -->
+            <section class="fade-in" style="margin-bottom: 2rem; position: relative; z-index: 100;">
+                <div style="background: white; border-radius: 12px; padding: 1rem 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                    <div style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="font-size: 1.125rem;">🔍</span>
+                            <span style="font-weight: 500; color: var(--gray-700); font-size: 0.875rem;">Filtros:</span>
+                        </div>
+                        
+                        <!-- Filtro Lotes (Multi-Select) -->
+                        <div class="lotes-filter-container" style="display: flex; align-items: center; gap: 0.5rem; position: relative;">
+                            <label style="font-weight: 500; color: var(--gray-600); font-size: 0.875rem;">Lotes:</label>
+                            <div class="lotes-display" id="lotes-display" style="padding: 0.5rem 0.75rem; font-size: 0.875rem; cursor: pointer; border: 1px solid var(--gray-300); border-radius: 6px; background: white; min-width: 180px; display: flex; justify-content: space-between; align-items: center;">
+                                <span class="lotes-text" id="lotes-text">Todos os lotes</span>
+                                <span class="lotes-icon">📦</span>
+                            </div>
+                            
+                            <!-- Overlay para fechar popup de lotes -->
+                            <div class="lotes-overlay" id="lotes-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 998;"></div>
+                            
+                            <!-- Popup de seleção de lotes -->
+                            <div class="lotes-popup" id="lotes-popup" style="display: none; position: absolute; top: 100%; left: 0; margin-top: 0.5rem; background: white; border: 1px solid var(--gray-300); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 350px; z-index: 999;">
+                                <div class="lotes-header" style="padding: 1rem; border-bottom: 1px solid var(--gray-200);">
+                                    <h4 style="margin: 0; color: var(--primary-color); font-size: 1rem;">📦 Selecionar Lotes</h4>
+                                    <p style="margin: 0.5rem 0 0 0; font-size: 0.75rem; color: var(--gray-600);">Escolha os lotes para filtrar os dados</p>
+                                </div>
+                                
+                                <div class="lotes-body" style="padding: 1rem;">
+                                    <div class="lotes-controls" style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                                        <button class="control-btn" id="btn-selecionar-todos-lotes" style="flex: 1; padding: 0.5rem; background: var(--primary-color); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem;">✅ Todos</button>
+                                        <button class="control-btn" id="btn-limpar-todos-lotes" style="flex: 1; padding: 0.5rem; background: var(--gray-200); color: var(--gray-700); border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem;">❌ Limpar</button>
+                                    </div>
+                                    
+                                    <div class="lotes-list" id="lotes-list" style="max-height: 250px; overflow-y: auto;">
+                                        <div class="lote-item" data-value="1" style="padding: 0.5rem; display: flex; align-items: center; gap: 0.5rem; border-radius: 4px; transition: background 0.2s;">
+                                            <input type="checkbox" class="lote-checkbox" id="checkbox-lote1" value="1" checked>
+                                            <label class="lote-label" for="checkbox-lote1" style="cursor: pointer; flex: 1; font-size: 0.875rem;">Lote 01 - Empresa ABC</label>
+                                        </div>
+                                        <div class="lote-item" data-value="2" style="padding: 0.5rem; display: flex; align-items: center; gap: 0.5rem; border-radius: 4px; transition: background 0.2s;">
+                                            <input type="checkbox" class="lote-checkbox" id="checkbox-lote2" value="2" checked>
+                                            <label class="lote-label" for="checkbox-lote2" style="cursor: pointer; flex: 1; font-size: 0.875rem;">Lote 02 - Empresa XYZ</label>
+                                        </div>
+                                        <div class="lote-item" data-value="3" style="padding: 0.5rem; display: flex; align-items: center; gap: 0.5rem; border-radius: 4px; transition: background 0.2s;">
+                                            <input type="checkbox" class="lote-checkbox" id="checkbox-lote3" value="3" checked>
+                                            <label class="lote-label" for="checkbox-lote3" style="cursor: pointer; flex: 1; font-size: 0.875rem;">Lote 03 - Empresa DEF</label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="lotes-actions" style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid var(--gray-200);">
+                                        <div class="lotes-info">
+                                            <span id="lotes-selecionados-count" style="font-size: 0.875rem; color: var(--gray-600);">3 lotes selecionados</span>
+                                        </div>
+                                        <div class="action-buttons" style="display: flex; gap: 0.5rem;">
+                                            <button class="btn-calendario" id="btn-cancelar-lotes" style="padding: 0.5rem 1rem; background: var(--gray-200); border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem;">❌ Cancelar</button>
+                                            <button class="btn-calendario primary" id="btn-aplicar-lotes" style="padding: 0.5rem 1rem; background: var(--primary-color); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem;">✅ Aplicar</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Filtro Unidades (Multi-Select) -->
+                        <div class="unidades-filter-container" style="display: flex; align-items: center; gap: 0.5rem; position: relative;">
+                            <label style="font-weight: 500; color: var(--gray-600); font-size: 0.875rem;">Unidades:</label>
+                            <div class="unidades-display" id="unidades-display" style="padding: 0.5rem 0.75rem; font-size: 0.875rem; cursor: pointer; border: 1px solid var(--gray-300); border-radius: 6px; background: white; min-width: 180px; display: flex; justify-content: space-between; align-items: center;">
+                                <span class="unidades-text" id="unidades-text">Todas as unidades</span>
+                                <span class="unidades-icon">🏢</span>
+                            </div>
+                            
+                            <!-- Overlay para fechar popup de unidades -->
+                            <div class="unidades-overlay" id="unidades-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 998;"></div>
+                            
+                            <!-- Popup de seleção de unidades -->
+                            <div class="unidades-popup" id="unidades-popup" style="display: none; position: absolute; top: 100%; left: 0; margin-top: 0.5rem; background: white; border: 1px solid var(--gray-300); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 350px; z-index: 999;">
+                                <div class="unidades-header" style="padding: 1rem; border-bottom: 1px solid var(--gray-200);">
+                                    <h4 style="margin: 0; color: var(--primary-color); font-size: 1rem;">🏢 Selecionar Unidades</h4>
+                                    <p style="margin: 0.5rem 0 0 0; font-size: 0.75rem; color: var(--gray-600);">Escolha as unidades para filtrar os dados</p>
+                                </div>
+                                
+                                <div class="unidades-body" style="padding: 1rem;">
+                                    <div class="unidades-controls" style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                                        <button class="control-btn" id="btn-selecionar-todas-unidades" style="flex: 1; padding: 0.5rem; background: var(--primary-color); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem;">✅ Todas</button>
+                                        <button class="control-btn" id="btn-limpar-todas-unidades" style="flex: 1; padding: 0.5rem; background: var(--gray-200); color: var(--gray-700); border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem;">❌ Limpar</button>
+                                    </div>
+                                    
+                                    <div class="unidades-list" id="unidades-list" style="max-height: 250px; overflow-y: auto;">
+                                        <div class="unidade-item" data-value="1" style="padding: 0.5rem; display: flex; align-items: center; gap: 0.5rem; border-radius: 4px; transition: background 0.2s;">
+                                            <input type="checkbox" class="unidade-checkbox" id="checkbox-unidade1" value="1" checked>
+                                            <label class="unidade-label" for="checkbox-unidade1" style="cursor: pointer; flex: 1; font-size: 0.875rem;">CDP - Casa de Detenção</label>
+                                        </div>
+                                        <div class="unidade-item" data-value="2" style="padding: 0.5rem; display: flex; align-items: center; gap: 0.5rem; border-radius: 4px; transition: background 0.2s;">
+                                            <input type="checkbox" class="unidade-checkbox" id="checkbox-unidade2" value="2" checked>
+                                            <label class="unidade-label" for="checkbox-unidade2" style="cursor: pointer; flex: 1; font-size: 0.875rem;">PEM - Presídio Estadual</label>
+                                        </div>
+                                        <div class="unidade-item" data-value="3" style="padding: 0.5rem; display: flex; align-items: center; gap: 0.5rem; border-radius: 4px; transition: background 0.2s;">
+                                            <input type="checkbox" class="unidade-checkbox" id="checkbox-unidade3" value="3" checked>
+                                            <label class="unidade-label" for="checkbox-unidade3" style="cursor: pointer; flex: 1; font-size: 0.875rem;">CPFEM - Centro Provisório Feminino</label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="unidades-actions" style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid var(--gray-200);">
+                                        <div class="unidades-info">
+                                            <span id="unidades-selecionadas-count" style="font-size: 0.875rem; color: var(--gray-600);">3 unidades selecionadas</span>
+                                        </div>
+                                        <div class="action-buttons" style="display: flex; gap: 0.5rem;">
+                                            <button class="btn-calendario" id="btn-cancelar-unidades" style="padding: 0.5rem 1rem; background: var(--gray-200); border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem;">❌ Cancelar</button>
+                                            <button class="btn-calendario primary" id="btn-aplicar-unidades" style="padding: 0.5rem 1rem; background: var(--primary-color); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem;">✅ Aplicar</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Filtro Período (Single Select) -->
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <label for="filtro-periodo" style="font-weight: 500; color: var(--gray-600); font-size: 0.875rem;">Período:</label>
+                            <select id="filtro-periodo" class="form-input" style="padding: 0.5rem 0.75rem; font-size: 0.875rem; border-radius: 6px;">
+                                <option value="dia">Diário</option>
+                                <option value="semana">Semanal</option>
+                                <option value="mes" selected>Mensal</option>
+                                <option value="trimestre">Trimestral</option>
+                                <option value="ano">Anual</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Abas de Visualização -->
+            <div class="tab-buttons">
+                <button class="tab-btn active" data-tab="refeicoes">📈 Evolução de Refeições</button>
+                <button class="tab-btn" data-tab="gastos">💰 Análise de Gastos</button>
+                <button class="tab-btn" data-tab="desvios">⚠️ Desvios e Conformidade</button>
+                <button class="tab-btn" data-tab="comparativo">📊 Comparativo</button>
+            </div>
+
+            <!-- Gráfico Principal -->
+            <section class="card fade-in" style="margin-bottom: 2rem;">
+                <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="margin: 0;" id="chart-title">📈 Gráfico de Evolução - Refeições por Período</h3>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <span id="projecao-info" style="display: none; font-size: 0.875rem; color: var(--gray-600); margin-right: 1rem;">
+                            <span class="projection-badge">PROJEÇÃO ATIVA</span>
+                            Dados históricos + Projeção até <strong id="data-fim-contrato">Dez/2026</strong>
+                        </span>
+                        <button class="btn btn-secondary btn-sm" id="btn-toggle-projecao" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
+                            🔮 Ativar Projeção
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Gráfico Real -->
+                    <div id="chart-container" style="position: relative;">
+                        <div class="chart-placeholder" id="chart-principal">
+                            <div class="chart-content">
+                                <div style="font-size: 4rem; margin-bottom: 1rem;">📊</div>
+                                <h3 style="color: var(--gray-700); margin-bottom: 0.5rem;">Gráfico de Série Temporal</h3>
+                                <p style="color: var(--gray-600); max-width: 500px; margin: 0 auto;">
+                                    Aqui será exibido um gráfico interativo com a evolução do consumo de refeições ao longo do tempo.
+                                    <strong>Ao clicar em "Ativar Projeção"</strong>, o mesmo gráfico expandirá mostrando dados projetados até o fim do contrato.
+                                </p>
+                                <div style="margin-top: 1.5rem; padding: 1rem; background: rgba(255,255,255,0.8); border-radius: 8px; display: inline-block;">
+                                    <strong>Funcionalidades Planejadas:</strong>
+                                    <ul style="text-align: left; margin: 0.5rem 0 0 0; padding-left: 1.5rem;">
+                                        <li>Linhas de tendência por tipo de refeição</li>
+                                        <li><strong style="color: #667eea;">🔮 Projeção integrada no mesmo gráfico</strong></li>
+                                        <li>Linha divisória entre dados reais e projetados</li>
+                                        <li>Área sombreada para indicar período de projeção</li>
+                                        <li>Zoom e navegação temporal</li>
+                                        <li>Comparação entre unidades</li>
+                                        <li>Exportação de imagem/PDF</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Indicador de Projeção (aparece quando ativada) -->
+                        <div id="projecao-overlay" style="display: none; position: absolute; bottom: 1rem; right: 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 0.75rem 1rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); z-index: 10;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; font-weight: 600;">
+                                <span>🔮</span>
+                                <span>Projeção até <span id="projecao-data-fim">Dez/2026</span></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Legenda do Gráfico -->
+                    <div style="margin-top: 1.5rem; padding: 1rem; background: var(--gray-50); border-radius: 8px; display: flex; justify-content: center; gap: 2rem; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <div style="width: 30px; height: 3px; background: #3b82f6;"></div>
+                            <span style="font-size: 0.875rem; color: var(--gray-700);">Dados Reais</span>
+                        </div>
+                        <div id="legenda-projecao" style="display: none;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <div style="width: 30px; height: 3px; background: #667eea; border-top: 2px dashed #764ba2;"></div>
+                                <span style="font-size: 0.875rem; color: var(--gray-700);">Projeção (IA)</span>
+                            </div>
+                        </div>
+                        <div id="legenda-linha-divisoria" style="display: none;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <div style="width: 30px; height: 2px; background: #f59e0b; opacity: 0.6;"></div>
+                                <span style="font-size: 0.875rem; color: var(--gray-700);">Último Dado Real</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Divisor -->
+            <div class="section-divider"></div>
+
+            <!-- Métricas de Projeção (aparecem quando projeção está ativa) -->
+            <section id="metricas-projecao" class="card fade-in" style="display: none; margin-bottom: 2rem; border: 2px solid #667eea;">
+                <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                    <h3 style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                        🎯 Indicadores da Projeção
+                        <span class="projection-badge" style="background: rgba(255,255,255,0.2);">IA</span>
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem;">
+                        <div class="metric-card" style="border: 2px solid #667eea;">
+                            <div class="metric-label">📅 Previsão de Esgotamento</div>
+                            <div class="metric-value" style="color: #667eea;">Março/2026</div>
+                            <div class="metric-subtitle">Baseado na tendência atual</div>
+                        </div>
+                        
+                        <div class="metric-card" style="border: 2px solid #10b981;">
+                            <div class="metric-label">📈 Tendência de Crescimento</div>
+                            <div class="metric-value" style="color: #10b981;">+3.2%</div>
+                            <div class="metric-subtitle">Crescimento mensal médio</div>
+                        </div>
+                        
+                        <div class="metric-card" style="border: 2px solid #f59e0b;">
+                            <div class="metric-label">⚠️ Nível de Alerta</div>
+                            <div class="metric-value" style="color: #f59e0b;">Médio</div>
+                            <div class="metric-subtitle">Monitoramento recomendado</div>
+                        </div>
+                        
+                        <div class="metric-card" style="border: 2px solid #8b5cf6;">
+                            <div class="metric-label">💰 Saldo Projetado</div>
+                            <div class="metric-value" style="color: #8b5cf6;">R$ 45.000</div>
+                            <div class="metric-subtitle">Em 31/12/2025</div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 1.5rem; padding: 1rem; background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 4px;">
+                        <p style="margin: 0; font-size: 0.875rem; color: #92400e;">
+                            <strong>💡 Nota:</strong> A projeção é calculada com base nos dados históricos e padrões de consumo identificados. 
+                            Os valores são estimativas e podem variar conforme mudanças no cenário real.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Legenda e Estatísticas -->
+            <section style="margin-bottom: 2rem;">
+                <h2 style="color: var(--primary-color); font-size: 1.5rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                    📋 Estatísticas Consolidadas
+                    <span style="font-size: 0.875rem; color: var(--gray-500); font-weight: 400;">(Período Selecionado)</span>
+                </h2>
+                
+                <!-- Abas de Estatísticas -->
+                <div class="tab-buttons">
+                    <button class="tab-btn active" data-stat-tab="refeicoes-stats">🍽️ Refeições</button>
+                    <button class="tab-btn" data-stat-tab="gastos-stats">💵 Gastos</button>
+                    <button class="tab-btn" data-stat-tab="desvios-stats">📉 Desvios</button>
+                </div>
+
+                <!-- Estatísticas de Refeições -->
+                <div id="refeicoes-stats" class="stat-content">
+                    <div class="legend-grid">
+                        <!-- Café da Manhã -->
+                        <div class="metric-card">
+                            <div class="metric-label">
+                                <span>☕</span>
+                                <span>Café da Manhã</span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                                <div>
+                                    <div class="metric-subtitle">MÉDIA DIÁRIA</div>
+                                    <div class="metric-value" style="font-size: 1.5rem;">1.234</div>
+                                </div>
+                                <div>
+                                    <div class="metric-subtitle">TOTAL</div>
+                                    <div class="metric-value" style="font-size: 1.5rem;">37.020</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Almoço -->
+                        <div class="metric-card">
+                            <div class="metric-label">
+                                <span>🍽️</span>
+                                <span>Almoço</span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                                <div>
+                                    <div class="metric-subtitle">MÉDIA DIÁRIA</div>
+                                    <div class="metric-value" style="font-size: 1.5rem;">1.456</div>
+                                </div>
+                                <div>
+                                    <div class="metric-subtitle">TOTAL</div>
+                                    <div class="metric-value" style="font-size: 1.5rem;">43.680</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Lanche -->
+                        <div class="metric-card">
+                            <div class="metric-label">
+                                <span>🥪</span>
+                                <span>Lanche</span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                                <div>
+                                    <div class="metric-subtitle">MÉDIA DIÁRIA</div>
+                                    <div class="metric-value" style="font-size: 1.5rem;">1.198</div>
+                                </div>
+                                <div>
+                                    <div class="metric-subtitle">TOTAL</div>
+                                    <div class="metric-value" style="font-size: 1.5rem;">35.940</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Jantar -->
+                        <div class="metric-card">
+                            <div class="metric-label">
+                                <span>🌙</span>
+                                <span>Jantar</span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                                <div>
+                                    <div class="metric-subtitle">MÉDIA DIÁRIA</div>
+                                    <div class="metric-value" style="font-size: 1.5rem;">1.387</div>
+                                </div>
+                                <div>
+                                    <div class="metric-subtitle">TOTAL</div>
+                                    <div class="metric-value" style="font-size: 1.5rem;">41.610</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Estatísticas de Gastos (oculto inicialmente) -->
+                <div id="gastos-stats" class="stat-content" style="display: none;">
+                    <div class="legend-grid">
+                        <!-- Café da Manhã -->
+                        <div class="metric-card">
+                            <div class="metric-label">
+                                <span>☕</span>
+                                <span>Café da Manhã</span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                                <div>
+                                    <div class="metric-subtitle">MÉDIA MENSAL</div>
+                                    <div class="metric-value" style="font-size: 1.5rem;">R$ 12.340</div>
+                                </div>
+                                <div>
+                                    <div class="metric-subtitle">TOTAL</div>
+                                    <div class="metric-value" style="font-size: 1.5rem;">R$ 148.080</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Almoço -->
+                        <div class="metric-card">
+                            <div class="metric-label">
+                                <span>🍽️</span>
+                                <span>Almoço</span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                                <div>
+                                    <div class="metric-subtitle">MÉDIA MENSAL</div>
+                                    <div class="metric-value" style="font-size: 1.5rem;">R$ 18.720</div>
+                                </div>
+                                <div>
+                                    <div class="metric-subtitle">TOTAL</div>
+                                    <div class="metric-value" style="font-size: 1.5rem;">R$ 224.640</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Lanche -->
+                        <div class="metric-card">
+                            <div class="metric-label">
+                                <span>🥪</span>
+                                <span>Lanche</span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                                <div>
+                                    <div class="metric-subtitle">MÉDIA MENSAL</div>
+                                    <div class="metric-value" style="font-size: 1.5rem;">R$ 10.782</div>
+                                </div>
+                                <div>
+                                    <div class="metric-subtitle">TOTAL</div>
+                                    <div class="metric-value" style="font-size: 1.5rem;">R$ 129.384</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Jantar -->
+                        <div class="metric-card">
+                            <div class="metric-label">
+                                <span>🌙</span>
+                                <span>Jantar</span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                                <div>
+                                    <div class="metric-subtitle">MÉDIA MENSAL</div>
+                                    <div class="metric-value" style="font-size: 1.5rem;">R$ 16.644</div>
+                                </div>
+                                <div>
+                                    <div class="metric-subtitle">TOTAL</div>
+                                    <div class="metric-value" style="font-size: 1.5rem;">R$ 199.728</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Estatísticas de Desvios (oculto inicialmente) -->
+                <div id="desvios-stats" class="stat-content" style="display: none;">
+                    <div class="legend-grid">
+                        <!-- Café da Manhã -->
+                        <div class="metric-card">
+                            <div class="metric-label">
+                                <span>☕</span>
+                                <span>Café da Manhã</span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                                <div>
+                                    <div class="metric-subtitle">MÉDIA MENSAL</div>
+                                    <div class="metric-value" style="font-size: 1.5rem; color: #f59e0b;">R$ 234</div>
+                                </div>
+                                <div>
+                                    <div class="metric-subtitle">TOTAL</div>
+                                    <div class="metric-value" style="font-size: 1.5rem; color: #f59e0b;">R$ 2.808</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Almoço -->
+                        <div class="metric-card">
+                            <div class="metric-label">
+                                <span>🍽️</span>
+                                <span>Almoço</span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                                <div>
+                                    <div class="metric-subtitle">MÉDIA MENSAL</div>
+                                    <div class="metric-value" style="font-size: 1.5rem; color: #f59e0b;">R$ 456</div>
+                                </div>
+                                <div>
+                                    <div class="metric-subtitle">TOTAL</div>
+                                    <div class="metric-value" style="font-size: 1.5rem; color: #f59e0b;">R$ 5.472</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Lanche -->
+                        <div class="metric-card">
+                            <div class="metric-label">
+                                <span>🥪</span>
+                                <span>Lanche</span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                                <div>
+                                    <div class="metric-subtitle">MÉDIA MENSAL</div>
+                                    <div class="metric-value" style="font-size: 1.5rem; color: #f59e0b;">R$ 198</div>
+                                </div>
+                                <div>
+                                    <div class="metric-subtitle">TOTAL</div>
+                                    <div class="metric-value" style="font-size: 1.5rem; color: #f59e0b;">R$ 2.376</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Jantar -->
+                        <div class="metric-card">
+                            <div class="metric-label">
+                                <span>🌙</span>
+                                <span>Jantar</span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                                <div>
+                                    <div class="metric-subtitle">MÉDIA MENSAL</div>
+                                    <div class="metric-value" style="font-size: 1.5rem; color: #f59e0b;">R$ 387</div>
+                                </div>
+                                <div>
+                                    <div class="metric-subtitle">TOTAL</div>
+                                    <div class="metric-value" style="font-size: 1.5rem; color: #f59e0b;">R$ 4.644</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <footer>
+        <div class="container text-center">
+            <p style="margin: 0; color: var(--gray-400); font-size: 0.875rem;">
+                © 2025 SGMRP - Sistema de Gerenciamento de Mapas de Refeições Penitenciário
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Controle das abas de gráficos
+            const tabButtons = document.querySelectorAll('.tab-btn[data-tab]');
+            tabButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    tabButtons.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    const tabName = this.dataset.tab;
+                    console.log('Aba selecionada:', tabName);
+                    // Aqui será implementada a troca de gráficos
+                });
+            });
+
+            // Controle das abas de estatísticas
+            const statTabButtons = document.querySelectorAll('.tab-btn[data-stat-tab]');
+            statTabButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    statTabButtons.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    const statTab = this.dataset.statTab;
+                    document.querySelectorAll('.stat-content').forEach(content => {
+                        content.style.display = 'none';
+                    });
+                    document.getElementById(statTab).style.display = 'block';
+                });
+            });
+
+            // Aplicar filtros automaticamente ao mudar qualquer campo
+            function aplicarFiltrosRelatorios() {
+                const lote = document.getElementById('filtro-lote').value;
+                const unidade = document.getElementById('filtro-unidade').value;
+                const periodo = document.getElementById('filtro-periodo').value;
+                
+                console.log('Filtros aplicados automaticamente:', { lote, unidade, periodo });
+                // Funcionalidade será implementada na próxima fase
+            }
+            
+            // Adicionar listener para período
+            document.getElementById('filtro-periodo').addEventListener('change', aplicarFiltrosRelatorios);
+            
+            // Controle do filtro de Lotes multi-select
+            const lotesDisplay = document.getElementById('lotes-display');
+            const lotesPopup = document.getElementById('lotes-popup');
+            const lotesOverlay = document.getElementById('lotes-overlay');
+            const btnSelecionarTodosLotes = document.getElementById('btn-selecionar-todos-lotes');
+            const btnLimparTodosLotes = document.getElementById('btn-limpar-todos-lotes');
+            const btnAplicarLotes = document.getElementById('btn-aplicar-lotes');
+            const btnCancelarLotes = document.getElementById('btn-cancelar-lotes');
+            
+            // Abrir popup de lotes
+            lotesDisplay.addEventListener('click', function() {
+                lotesPopup.style.display = 'block';
+                lotesOverlay.style.display = 'block';
+            });
+            
+            // Fechar popup de lotes
+            function fecharPopupLotes() {
+                lotesPopup.style.display = 'none';
+                lotesOverlay.style.display = 'none';
+            }
+            
+            lotesOverlay.addEventListener('click', fecharPopupLotes);
+            btnCancelarLotes.addEventListener('click', fecharPopupLotes);
+            
+            // Selecionar todos os lotes
+            btnSelecionarTodosLotes.addEventListener('click', function() {
+                document.querySelectorAll('.lote-checkbox').forEach(cb => cb.checked = true);
+                atualizarCountLotes();
+            });
+            
+            // Limpar todos os lotes
+            btnLimparTodosLotes.addEventListener('click', function() {
+                document.querySelectorAll('.lote-checkbox').forEach(cb => cb.checked = false);
+                atualizarCountLotes();
+            });
+            
+            // Atualizar contagem de lotes
+            function atualizarCountLotes() {
+                const count = document.querySelectorAll('.lote-checkbox:checked').length;
+                document.getElementById('lotes-selecionados-count').textContent = `${count} lote${count !== 1 ? 's' : ''} selecionado${count !== 1 ? 's' : ''}`;
+            }
+            
+            // Atualizar display de lotes
+            function atualizarDisplayLotes() {
+                const checkboxes = document.querySelectorAll('.lote-checkbox');
+                const selecionados = Array.from(checkboxes).filter(cb => cb.checked);
+                const total = checkboxes.length;
+                const lotesText = document.getElementById('lotes-text');
+                
+                if (selecionados.length === 0) {
+                    lotesText.textContent = 'Nenhum lote';
+                } else if (selecionados.length === total) {
+                    lotesText.textContent = 'Todos os lotes';
+                } else if (selecionados.length === 1) {
+                    lotesText.textContent = selecionados[0].nextElementSibling.textContent;
+                } else {
+                    lotesText.textContent = `${selecionados.length} lotes`;
+                }
+            }
+            
+            // Aplicar filtro de lotes
+            btnAplicarLotes.addEventListener('click', function() {
+                atualizarDisplayLotes();
+                fecharPopupLotes();
+                aplicarFiltrosRelatorios();
+            });
+            
+            // Atualizar contagem ao mudar checkboxes
+            document.querySelectorAll('.lote-checkbox').forEach(cb => {
+                cb.addEventListener('change', atualizarCountLotes);
+            });
+            
+            // Controle do filtro de Unidades multi-select
+            const unidadesDisplay = document.getElementById('unidades-display');
+            const unidadesPopup = document.getElementById('unidades-popup');
+            const unidadesOverlay = document.getElementById('unidades-overlay');
+            const btnSelecionarTodasUnidades = document.getElementById('btn-selecionar-todas-unidades');
+            const btnLimparTodasUnidades = document.getElementById('btn-limpar-todas-unidades');
+            const btnAplicarUnidades = document.getElementById('btn-aplicar-unidades');
+            const btnCancelarUnidades = document.getElementById('btn-cancelar-unidades');
+            
+            // Abrir popup de unidades
+            unidadesDisplay.addEventListener('click', function() {
+                unidadesPopup.style.display = 'block';
+                unidadesOverlay.style.display = 'block';
+            });
+            
+            // Fechar popup de unidades
+            function fecharPopupUnidades() {
+                unidadesPopup.style.display = 'none';
+                unidadesOverlay.style.display = 'none';
+            }
+            
+            unidadesOverlay.addEventListener('click', fecharPopupUnidades);
+            btnCancelarUnidades.addEventListener('click', fecharPopupUnidades);
+            
+            // Selecionar todas as unidades
+            btnSelecionarTodasUnidades.addEventListener('click', function() {
+                document.querySelectorAll('.unidade-checkbox').forEach(cb => cb.checked = true);
+                atualizarCountUnidades();
+            });
+            
+            // Limpar todas as unidades
+            btnLimparTodasUnidades.addEventListener('click', function() {
+                document.querySelectorAll('.unidade-checkbox').forEach(cb => cb.checked = false);
+                atualizarCountUnidades();
+            });
+            
+            // Atualizar contagem de unidades
+            function atualizarCountUnidades() {
+                const count = document.querySelectorAll('.unidade-checkbox:checked').length;
+                document.getElementById('unidades-selecionadas-count').textContent = `${count} unidade${count !== 1 ? 's' : ''} selecionada${count !== 1 ? 's' : ''}`;
+            }
+            
+            // Atualizar display de unidades
+            function atualizarDisplayUnidades() {
+                const checkboxes = document.querySelectorAll('.unidade-checkbox');
+                const selecionados = Array.from(checkboxes).filter(cb => cb.checked);
+                const total = checkboxes.length;
+                const unidadesText = document.getElementById('unidades-text');
+                
+                if (selecionados.length === 0) {
+                    unidadesText.textContent = 'Nenhuma unidade';
+                } else if (selecionados.length === total) {
+                    unidadesText.textContent = 'Todas as unidades';
+                } else if (selecionados.length === 1) {
+                    unidadesText.textContent = selecionados[0].nextElementSibling.textContent;
+                } else {
+                    unidadesText.textContent = `${selecionados.length} unidades`;
+                }
+            }
+            
+            // Aplicar filtro de unidades
+            btnAplicarUnidades.addEventListener('click', function() {
+                atualizarDisplayUnidades();
+                fecharPopupUnidades();
+                aplicarFiltrosRelatorios();
+            });
+            
+            // Atualizar contagem ao mudar checkboxes
+            document.querySelectorAll('.unidade-checkbox').forEach(cb => {
+                cb.addEventListener('change', atualizarCountUnidades);
+            });
+
+            // Toggle de Projeção (integrado no gráfico)
+            let projecaoAtiva = false;
+            document.getElementById('btn-toggle-projecao').addEventListener('click', function() {
+                projecaoAtiva = !projecaoAtiva;
+                
+                const btnProjecao = this;
+                const projecaoInfo = document.getElementById('projecao-info');
+                const projecaoOverlay = document.getElementById('projecao-overlay');
+                const metricasProjecao = document.getElementById('metricas-projecao');
+                const legendaProjecao = document.getElementById('legenda-projecao');
+                const legendaLinhaDivisoria = document.getElementById('legenda-linha-divisoria');
+                
+                if (projecaoAtiva) {
+                    // Ativar projeção
+                    btnProjecao.textContent = '✖️ Desativar Projeção';
+                    btnProjecao.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+                    btnProjecao.style.color = 'white';
+                    projecaoInfo.style.display = 'flex';
+                    projecaoOverlay.style.display = 'block';
+                    metricasProjecao.style.display = 'block';
+                    legendaProjecao.style.display = 'block';
+                    legendaLinhaDivisoria.style.display = 'block';
+                    
+                    // Animação suave
+                    metricasProjecao.style.opacity = '0';
+                    metricasProjecao.style.transform = 'translateY(20px)';
+                    setTimeout(() => {
+                        metricasProjecao.style.transition = 'all 0.5s ease';
+                        metricasProjecao.style.opacity = '1';
+                        metricasProjecao.style.transform = 'translateY(0)';
+                    }, 10);
+                    
+                    // Scroll suave até as métricas
+                    setTimeout(() => {
+                        metricasProjecao.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }, 300);
+                    
+                    console.log('🔮 Projeção ativada - Gráfico expandido com dados projetados');
+                } else {
+                    // Desativar projeção
+                    btnProjecao.textContent = '🔮 Ativar Projeção';
+                    btnProjecao.style.background = '';
+                    btnProjecao.style.color = '';
+                    projecaoInfo.style.display = 'none';
+                    projecaoOverlay.style.display = 'none';
+                    metricasProjecao.style.display = 'none';
+                    legendaProjecao.style.display = 'none';
+                    legendaLinhaDivisoria.style.display = 'none';
+                    
+                    console.log('❌ Projeção desativada - Exibindo apenas dados reais');
+                }
+            });
+
+            // Exportar relatório
+            document.getElementById('btn-exportar-relatorio').addEventListener('click', function() {
+                alert('Funcionalidade de exportação será implementada na próxima fase.\n\nFormatos disponíveis: PDF, Excel, CSV');
+            });
+
+            // Logout
+            document.getElementById('logoutLink').addEventListener('click', function(e) {
+                e.preventDefault();
+                if (confirm('Deseja realmente sair?')) {
+                    fetch('/logout', {
+                        method: 'GET',
+                        headers: { 'Accept': 'application/json' }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.ok) {
+                            window.location.href = '/login';
+                        }
+                    })
+                    .catch(() => {
+                        window.location.href = '/logout';
+                    });
+                }
+            });
+
+            // Animações
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.style.opacity = '1';
+                        entry.target.style.transform = 'translateY(0)';
+                    }
+                });
+            }, {
+                threshold: 0.1,
+                rootMargin: '0px 0px -50px 0px'
+            });
+
+            document.querySelectorAll('.fade-in').forEach(el => {
+                el.style.opacity = '0';
+                el.style.transform = 'translateY(30px)';
+                el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+                observer.observe(el);
+            });
+        });
+    </script>
+    <script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-analytics.js";
+    
+    const firebaseConfig = {
+        apiKey: "AIzaSyAp2Xg1g5MwxuD3m6QlroJVmi6V6SEYeGo",
+        authDomain: "sgmrp-sfa-seap.firebaseapp.com",
+        projectId: "sgmrp-sfa-seap",
+        storageBucket: "sgmrp-sfa-seap.firebasestorage.app",
+        messagingSenderId: "890046403125",
+        appId: "1:890046403125:web:36c3cb60d4e6960f1a977c",
+        measurementId: "G-Z0KXSCHS4Q"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    </script>
+</body>
+</html>

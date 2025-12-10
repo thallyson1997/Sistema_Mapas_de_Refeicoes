@@ -1,6 +1,7 @@
 import json
 import os
 from datetime import datetime
+from .models import Unidade, db
 
 
 # ----- Data Loading/Saving -----
@@ -33,179 +34,82 @@ def _save_unidades_data(data):
 # ----- Main Unidade Operations -----
 def criar_unidade(nome, lote_id=None):
 	"""
-	Cria uma nova unidade
+	Cria uma nova unidade no banco de dados
 	"""
 	if not nome or not isinstance(nome, str):
 		return {'success': False, 'error': 'Nome da unidade é obrigatório'}
-	
 	nome = nome.strip()
 	if not nome:
 		return {'success': False, 'error': 'Nome da unidade não pode ser vazio'}
-	
-	data = _load_unidades_data()
-	unidades_list = []
-	wrapped = None
-	
-	if isinstance(data, list):
-		unidades_list = data
-	elif isinstance(data, dict) and isinstance(data.get('unidades'), list):
-		unidades_list = data.get('unidades')
-		wrapped = data
-	else:
-		unidades_list = []
-	
 	# Verificar se já existe unidade com o mesmo nome
-	for u in unidades_list:
-		if isinstance(u, dict) and isinstance(u.get('nome'), str):
-			if u.get('nome').strip().lower() == nome.lower():
-				return {'success': False, 'error': f'Unidade "{nome}" já existe'}
-	
+	if Unidade.query.filter(Unidade.nome.ilike(nome)).first():
+		return {'success': False, 'error': f'Unidade "{nome}" já existe'}
 	# Gerar novo ID
-	existing_ids = [u.get('id') for u in unidades_list if isinstance(u, dict) and isinstance(u.get('id'), int)]
-	new_id = (max(existing_ids) + 1) if existing_ids else 0
-	
-	# Criar nova unidade
-	nova_unidade = {
-		'id': new_id,
-		'nome': nome,
-		'criado_em': datetime.now().isoformat()
-	}
-	
-	if lote_id is not None:
-		try:
-			nova_unidade['lote_id'] = int(lote_id)
-		except Exception:
-			pass
-	
-	unidades_list.append(nova_unidade)
-	
-	# Salvar
-	if wrapped is not None:
-		wrapped['unidades'] = unidades_list
-		to_write = wrapped
-	else:
-		to_write = unidades_list
-	
-	if not _save_unidades_data(to_write):
-		return {'success': False, 'error': 'Erro ao salvar unidade'}
-	
-	return {'success': True, 'id': new_id, 'unidade': nova_unidade}
+	last_unidade = Unidade.query.order_by(Unidade.id.desc()).first()
+	new_id = (last_unidade.id + 1) if last_unidade else 0
+	nova_unidade = Unidade(
+		id=new_id,
+		nome=nome,
+		lote_id=int(lote_id) if lote_id is not None else None,
+		criado_em=datetime.now().isoformat()
+	)
+	db.session.add(nova_unidade)
+	db.session.commit()
+	return {'success': True, 'id': new_id, 'unidade': {
+		'id': nova_unidade.id,
+		'nome': nova_unidade.nome,
+		'lote_id': nova_unidade.lote_id,
+		'criado_em': nova_unidade.criado_em
+	}}
 
 
 def editar_unidade(unidade_id, novo_nome=None, novo_lote_id=None):
 	"""
-	Edita uma unidade existente
+	Edita uma unidade existente no banco de dados
 	"""
 	try:
 		unidade_id = int(unidade_id)
 	except Exception:
 		return {'success': False, 'error': 'ID de unidade inválido'}
-	
-	data = _load_unidades_data()
-	unidades_list = []
-	wrapped = None
-	
-	if isinstance(data, list):
-		unidades_list = data
-	elif isinstance(data, dict) and isinstance(data.get('unidades'), list):
-		unidades_list = data.get('unidades')
-		wrapped = data
-	else:
-		return {'success': False, 'error': 'Nenhuma unidade encontrada'}
-	
-	# Encontrar unidade
-	unidade_encontrada = None
-	unidade_index = None
-	for i, u in enumerate(unidades_list):
-		if isinstance(u, dict) and u.get('id') == unidade_id:
-			unidade_encontrada = u
-			unidade_index = i
-			break
-	
-	if unidade_encontrada is None:
+	unidade = Unidade.query.get(unidade_id)
+	if not unidade:
 		return {'success': False, 'error': f'Unidade {unidade_id} não encontrada'}
-	
-	# Atualizar campos
 	if novo_nome is not None:
 		novo_nome = str(novo_nome).strip()
 		if not novo_nome:
 			return {'success': False, 'error': 'Nome da unidade não pode ser vazio'}
-		
-		# Verificar duplicata
-		for u in unidades_list:
-			if isinstance(u, dict) and u.get('id') != unidade_id:
-				if isinstance(u.get('nome'), str) and u.get('nome').strip().lower() == novo_nome.lower():
-					return {'success': False, 'error': f'Já existe uma unidade com o nome "{novo_nome}"'}
-		
-		unidade_encontrada['nome'] = novo_nome
-	
+		if Unidade.query.filter(Unidade.nome.ilike(novo_nome), Unidade.id != unidade_id).first():
+			return {'success': False, 'error': f'Já existe uma unidade com o nome "{novo_nome}"'}
+		unidade.nome = novo_nome
 	if novo_lote_id is not None:
 		try:
-			unidade_encontrada['lote_id'] = int(novo_lote_id)
+			unidade.lote_id = int(novo_lote_id)
 		except Exception:
-			unidade_encontrada['lote_id'] = None
-	
-	unidade_encontrada['atualizado_em'] = datetime.now().isoformat()
-	
-	unidades_list[unidade_index] = unidade_encontrada
-	
-	# Salvar
-	if wrapped is not None:
-		wrapped['unidades'] = unidades_list
-		to_write = wrapped
-	else:
-		to_write = unidades_list
-	
-	if not _save_unidades_data(to_write):
-		return {'success': False, 'error': 'Erro ao salvar alterações'}
-	
-	return {'success': True, 'unidade': unidade_encontrada}
+			unidade.lote_id = None
+	unidade.atualizado_em = datetime.now().isoformat()
+	db.session.commit()
+	return {'success': True, 'unidade': {
+		'id': unidade.id,
+		'nome': unidade.nome,
+		'lote_id': unidade.lote_id,
+		'criado_em': unidade.criado_em,
+		'atualizado_em': unidade.atualizado_em
+	}}
 
 
 def deletar_unidade(unidade_id):
 	"""
-	Deleta uma unidade
+	Deleta uma unidade do banco de dados
 	"""
 	try:
 		unidade_id = int(unidade_id)
 	except Exception:
 		return {'success': False, 'error': 'ID de unidade inválido'}
-	
-	data = _load_unidades_data()
-	unidades_list = []
-	wrapped = None
-	
-	if isinstance(data, list):
-		unidades_list = data
-	elif isinstance(data, dict) and isinstance(data.get('unidades'), list):
-		unidades_list = data.get('unidades')
-		wrapped = data
-	else:
-		return {'success': False, 'error': 'Nenhuma unidade encontrada'}
-	
-	# Encontrar unidade
-	unidade_index = None
-	for i, u in enumerate(unidades_list):
-		if isinstance(u, dict) and u.get('id') == unidade_id:
-			unidade_index = i
-			break
-	
-	if unidade_index is None:
+	unidade = Unidade.query.get(unidade_id)
+	if not unidade:
 		return {'success': False, 'error': f'Unidade {unidade_id} não encontrada'}
-	
-	# Remover unidade
-	unidades_list.pop(unidade_index)
-	
-	# Salvar
-	if wrapped is not None:
-		wrapped['unidades'] = unidades_list
-		to_write = wrapped
-	else:
-		to_write = unidades_list
-	
-	if not _save_unidades_data(to_write):
-		return {'success': False, 'error': 'Erro ao salvar alterações'}
-	
+	db.session.delete(unidade)
+	db.session.commit()
 	return {'success': True, 'mensagem': f'Unidade {unidade_id} deletada com sucesso'}
 
 

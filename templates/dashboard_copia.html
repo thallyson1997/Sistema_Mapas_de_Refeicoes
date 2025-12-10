@@ -1,0 +1,1597 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - SGMRP</title>
+    <meta name="description" content="Painel principal do Sistema de Gerenciamento de Mapas de Refeições Penitenciário">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        /* Notificação de sucesso */
+        .success-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            animation: slideInRight 0.5s ease-out;
+        }
+
+        .notification-content {
+            background: #16a34a;
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            min-width: 300px;
+            max-width: 400px;
+        }
+
+        .notification-icon {
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .notification-text {
+            flex: 1;
+            line-height: 1.4;
+        }
+
+        .notification-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0;
+            margin-left: 0.5rem;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+            flex-shrink: 0;
+        }
+
+        .notification-close:hover {
+            opacity: 1;
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes slideOutRight {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+        }
+
+        .success-notification.closing {
+            animation: slideOutRight 0.3s ease-in forwards;
+        }
+
+        /* Responsividade */
+        @media (max-width: 480px) {
+            .success-notification {
+                top: 10px;
+                right: 10px;
+                left: 10px;
+            }
+            
+            .notification-content {
+                min-width: auto;
+                max-width: none;
+            }
+        }
+
+        /* Modal de Notificações */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 9998;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-container {
+            background: white;
+            border-radius: 16px;
+            max-width: 900px;
+            width: 90%;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s ease;
+            z-index: 9999;
+        }
+
+        .modal-header {
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            color: var(--gray-900);
+            font-size: 1.5rem;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 2rem;
+            color: var(--gray-500);
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .modal-close:hover {
+            background: var(--gray-100);
+            color: var(--gray-900);
+        }
+
+        .modal-body {
+            padding: 1.5rem 2rem;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .modal-notification-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+            transition: all 0.2s;
+            border-left: 4px solid transparent;
+        }
+
+        .modal-notification-item:hover {
+            background: var(--gray-50);
+        }
+
+        .modal-notification-item.danger {
+            border-left-color: var(--danger-color);
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        .modal-notification-item.warning {
+            border-left-color: var(--warning-color);
+            background: rgba(245, 158, 11, 0.05);
+        }
+
+        .modal-notification-item.info {
+            border-left-color: var(--info-color);
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .modal-notification-item.success {
+            border-left-color: var(--success-color);
+            background: rgba(34, 197, 94, 0.05);
+        }
+
+        .modal-notification-icon {
+            font-size: 1.75rem;
+            flex-shrink: 0;
+        }
+
+        .modal-notification-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .modal-notification-title {
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: 0.25rem;
+            font-size: 0.95rem;
+        }
+
+        .modal-notification-message {
+            color: var(--gray-600);
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+
+        .modal-notification-time {
+            color: var(--gray-500);
+            font-size: 0.75rem;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .modal-footer {
+            padding: 1rem 2rem;
+            border-top: 1px solid var(--gray-200);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-footer-info {
+            color: var(--gray-600);
+            font-size: 0.875rem;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .modal-container {
+                width: 95%;
+                max-height: 90vh;
+            }
+
+            .modal-header, .modal-body, .modal-footer {
+                padding: 1rem 1.25rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <a href="{{ url_for('dashboard') }}" class="logo">SGMRP</a>
+                <nav>
+                    <ul>
+                        <li><a href="{{ url_for('dashboard') }}" class="active">Dashboard</a></li>
+                        <li><a href="{{ url_for('lotes') }}">Lotes</a></li>
+                        <li><a href="#relatorios">Relatórios</a></li>
+                        <li><a href="#configuracoes">Configurações</a></li>
+                        <li><a href="#" id="logoutLink" style="color: #fed7d7;">Sair</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Notificação de Login Bem-sucedido -->
+    {% if mostrar_login_sucesso %}
+    <div id="loginSuccessNotification" class="success-notification">
+        <div class="notification-content">
+            <div class="notification-icon">✅</div>
+            <div class="notification-text">
+                <strong>Login realizado com sucesso!</strong>
+                <br>Bem-vindo(a), {{ usuario_nome or 'Usuário' }}!
+            </div>
+            <button type="button" class="notification-close" onclick="closeNotification()">×</button>
+        </div>
+    </div>
+    {% endif %}
+
+    <main>
+        <div class="container">
+            <!-- Boas-vindas e informações do usuário -->
+            <section style="background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; padding: 2rem; border-radius: var(--border-radius-xl); margin-bottom: 2rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <h1 style="color: white; margin-bottom: 0.5rem;">
+                            Bem-vindo ao SGMRP
+                        </h1>
+                        <p style="margin-bottom: 0; opacity: 0.9;">
+                            <span id="usuario-nome">Usuário</span> - <span id="usuario-cargo">Funcionário da SFA</span>
+                        </p>
+                        <p style="margin-bottom: 0; font-size: 0.875rem; opacity: 0.8;">
+                            Último acesso: <span id="ultimo-acesso">19/10/2025 - 14:30</span>
+                        </p>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 2rem; margin-bottom: 0.5rem;">📊</div>
+                        <div style="font-size: 0.875rem; opacity: 0.9;">
+                            Sistema Operacional
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Filtros Globais -->
+            <section class="filters fade-in">
+                <h3 style="margin-bottom: 1rem;">Filtros Globais</h3>
+                <div class="filters-row">
+                    <div style="flex: 1;">
+                        <label for="filtro-mes" class="form-label">Mês</label>
+                        <select id="filtro-mes" class="form-select">
+                            <option value="">Todos os meses</option>
+                            <option value="1">Janeiro</option>
+                            <option value="2">Fevereiro</option>
+                            <option value="3">Março</option>
+                            <option value="4">Abril</option>
+                            <option value="5">Maio</option>
+                            <option value="6">Junho</option>
+                            <option value="7">Julho</option>
+                            <option value="8">Agosto</option>
+                            <option value="9">Setembro</option>
+                            <option value="10">Outubro</option>
+                            <option value="11">Novembro</option>
+                            <option value="12">Dezembro</option>
+                        </select>
+                    </div>
+                    <div style="flex: 1;">
+                        <label for="filtro-ano" class="form-label">Ano</label>
+                        <select id="filtro-ano" class="form-select">
+                            <option value="2023">2023</option>
+                            <option value="2024">2024</option>
+                            <option value="2025" selected>2025</option>
+                        </select>
+                    </div>
+                    <div style="flex: 2;">
+                        <label for="filtro-lote" class="form-label">Lote</label>
+                        <select id="filtro-lote" class="form-select">
+                            <option value="">Todos os lotes</option>
+                            {% for lote in lotes %}
+                            <option value="{{ lote.id }}">{{ lote.nome }} - {{ lote.empresa }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Resumo Estatístico -->
+            <section style="margin-bottom: 3rem;">
+                <h2>Resumo do Período</h2>
+                <div class="grid grid-cols-4">
+                    <div class="card fade-in">
+                        <div class="card-body" style="text-align: center; padding: 2rem 1rem;">
+                            <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🏢</div>
+                            <h3 style="color: var(--primary-color); margin-bottom: 0.25rem;" id="resumo-unidades">15</h3>
+                            <p style="color: var(--gray-600); margin: 0; font-size: 0.875rem;">Unidades Ativas</p>
+                        </div>
+                    </div>
+                    <div class="card fade-in">
+                        <div class="card-body" style="text-align: center; padding: 2rem 1rem;">
+                            <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🍽️</div>
+                            <h3 style="color: var(--success-color); margin-bottom: 0.25rem;" id="resumo-refeicoes">124,350</h3>
+                            <p style="color: var(--gray-600); margin: 0; font-size: 0.875rem;">Refeições Servidas</p>
+                        </div>
+                    </div>
+                    <div class="card fade-in">
+                        <div class="card-body" style="text-align: center; padding: 2rem 1rem;">
+                            <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">⚠️</div>
+                            <h3 style="color: var(--warning-color); margin-bottom: 0.25rem;" id="resumo-discrepancias">8</h3>
+                            <p style="color: var(--gray-600); margin: 0; font-size: 0.875rem;">Discrepâncias</p>
+                        </div>
+                    </div>
+                    <div class="card fade-in">
+                        <div class="card-body" style="text-align: center; padding: 2rem 1rem;">
+                            <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">✅</div>
+                            <h3 style="color: var(--success-color); margin-bottom: 0.25rem;" id="resumo-conformidade">94.2%</h3>
+                            <p style="color: var(--gray-600); margin: 0; font-size: 0.875rem;">Conformidade</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Lotes Contratuais -->
+            <section>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <h2>Lotes Contratuais</h2>
+                    <a href="{{ url_for('lotes') }}" class="btn btn-secondary">
+                        Ver Todos os Lotes
+                    </a>
+                </div>
+
+                <div class="lote-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem;">
+                    {% for lote in lotes %}
+                    <!-- Lote {{ lote.id }} -->
+                    <a href="{{ url_for('lote_detalhes', lote_id=lote.id) }}" class="lote-card fade-in" data-lote-id="{{ lote.id }}" style="min-width:0;">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                            <div>
+                                <h3 style="margin-bottom: 0.25rem;">{{ lote.nome }}</h3>
+                                <div style="font-size: 0.75rem; opacity: 0.8;">
+                                    <strong>{{ lote.contrato }}</strong> -
+                                    {% if lote.data_inicio %}
+                                        {% set dt = lote.data_inicio|string %}
+                                        {% if dt|length >= 10 and '-' in dt %}
+                                            {% set parts = dt.split(' ')[0].split('-') %}
+                                            {{ parts[2] }}/{{ parts[1] }}/{{ parts[0] }}
+                                        {% else %}
+                                            {{ lote.data_inicio }}
+                                        {% endif %}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="badge" style="background-color: rgba(255, 255, 255, 0.2); color: white; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;">
+                                {% if lote.ativo %}ATIVO{% else %}INATIVO{% endif %}
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 1rem;">
+                            <p class="presidios-count" style="margin: 0;">
+                                <strong><span class="unidades-count" data-lote-id="{{ lote.id }}">{{ lote.unidades | length }}</span> unidades</strong> • {{ lote.empresa }}
+                            </p>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 1.5rem;">🍽️</div>
+                                <div style="font-size: 0.875rem; opacity: 0.9;" class="refeicoes-count" data-lote-id="{{ lote.id }}">{{ "{:,}".format(lote.refeicoes | default(15000 + (lote.id * 2000), true)).replace(',', '.') }}</div>
+                                <div style="font-size: 0.75rem; opacity: 0.8;">Refeições</div>
+                            </div>
+                            <div style="text-align: center;">
+                                {% set conformidade = lote.conformidade | default(85 + (lote.id % 3 * 5), true) %}
+                                <div style="font-size: 1.5rem;" class="conformidade-icon" data-lote-id="{{ lote.id }}">
+                                    {% if conformidade >= 95 %}✅{% elif conformidade >= 90 %}⚠️{% else %}🚨{% endif %}
+                                </div>
+                                <div style="font-size: 0.875rem; opacity: 0.9;" class="conformidade-percent" data-lote-id="{{ lote.id }}">{{ conformidade }}%</div>
+                                <div style="font-size: 0.75rem; opacity: 0.8;">Conformidade</div>
+                            </div>
+                            <div style="text-align: center;">
+                                {% set alertas = lote.alertas | default(lote.id % 4, true) %}
+                                <div style="font-size: 1.5rem;" class="alertas-icon" data-lote-id="{{ lote.id }}">
+                                    {% if alertas == 0 %}✅{% else %}⚠️{% endif %}
+                                </div>
+                                <div style="font-size: 0.875rem; opacity: 0.9;" class="discrepancias-count" data-lote-id="{{ lote.id }}">{{ alertas }}</div>
+                                <div style="font-size: 0.75rem; opacity: 0.8;">Discrepâncias</div>
+                            </div>
+                        </div>
+                        <div style="font-size: 0.75rem; opacity: 0.8;">
+                            Última atualização: 19/10/2025
+                        </div>
+                    </a>
+                    {% endfor %}
+                    {% set lotes_faltando = 3 - (lotes|length % 3) if (lotes|length % 3) != 0 else 0 %}
+                    {% for i in range(lotes_faltando) %}
+                    <div style="visibility: hidden;"></div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <!-- Notificações e Alertas -->
+            <section style="margin-top: 3rem;">
+                <h2>Notificações e Alertas</h2>
+                <div class="card fade-in">
+                    <div class="card-body">
+                        <div id="notificacoes-recentes-container" style="display: grid; gap: 0.4rem;">
+                            <!-- Notificações serão carregadas dinamicamente via JavaScript -->
+                        </div>
+
+                        <div style="text-align: center; margin-top: 1.5rem;">
+                            <button type="button" id="btn-ver-todas-notificacoes" class="btn btn-secondary">
+                                Ver Todas as Notificações
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Ações Rápidas -->
+            <section style="margin-top: 3rem; margin-bottom: 2rem; display: none;">
+                <h2>Ações Rápidas</h2>
+                <div class="grid grid-cols-3">
+                    <div class="card fade-in" style="cursor: pointer;" onclick="window.location.href='lote-detalhes.html?lote=1&acao=importar'">
+                        <div class="card-body" style="text-align: center; padding: 2rem;">
+                            <div style="font-size: 3rem; margin-bottom: 1rem;">📤</div>
+                            <h4>Importar Dados</h4>
+                            <p style="color: var(--gray-600); margin: 0;">
+                                Importar novos mapas de refeição via PDF
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="card fade-in" style="cursor: pointer;" onclick="window.location.href='lote-detalhes.html?acao=manual'">
+                        <div class="card-body" style="text-align: center; padding: 2rem;">
+                            <div style="font-size: 3rem; margin-bottom: 1rem;">✏️</div>
+                            <h4>Entrada Manual</h4>
+                            <p style="color: var(--gray-600); margin: 0;">
+                                Registrar dados manualmente
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="card fade-in" style="cursor: pointer;" onclick="alert('Funcionalidade de relatórios será implementada em versões futuras.')">
+                        <div class="card-body" style="text-align: center; padding: 2rem;">
+                            <div style="font-size: 3rem; margin-bottom: 1rem;">📊</div>
+                            <h4>Gerar Relatório</h4>
+                            <p style="color: var(--gray-600); margin: 0;">
+                                Criar relatório consolidado
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container text-center">
+            <p style="margin: 0; color: var(--gray-400); font-size: 0.875rem;">
+                © 2025 SGMRP - Sistema de Gerenciamento de Mapas de Refeições Penitenciário
+            </p>
+        </div>
+    </footer>
+
+    <!-- Modal de Notificações -->
+    <div id="modal-notificacoes" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2>Todas as Notificações e Alertas</h2>
+                <button type="button" class="modal-close" onclick="fecharModalNotificacoes()">×</button>
+            </div>
+            <div class="modal-body" id="modal-notificacoes-body">
+                <!-- Notificações serão carregadas dinamicamente -->
+            </div>
+            <div class="modal-footer">
+                <span class="modal-footer-info">Exibindo notificações dos últimos 30 dias</span>
+                <button type="button" class="btn btn-secondary" onclick="fecharModalNotificacoes()">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Dados dos mapas e lotes vindos do Flask
+        const mapasDados = {{ mapas_dados | tojson }};
+        const lotesGlobal = {{ lotes | tojson }};
+        
+        // Verificar se usuário está logado (simulação)
+        window.addEventListener('load', function() {
+            // Usuário já está autenticado via sessão Flask
+            // Atualizar informações do usuário na interface
+            document.getElementById('usuario-nome').textContent = '{{ usuario_nome }}' || 'Usuário';
+            
+            // Definir mês anterior como padrão no filtro
+            setDefaultPreviousMonth();
+            
+            // Calcular resumo inicial baseado no filtro padrão
+            atualizarResumo();
+        });
+
+        // Função para definir o mês anterior como padrão
+        function setDefaultPreviousMonth() {
+            const now = new Date();
+            let previousMonth = now.getMonth(); // getMonth() retorna 0-11 (Janeiro=0)
+            let previousYear = now.getFullYear();
+            
+            // Se estamos em Janeiro, o mês anterior é Dezembro do ano passado
+            if (previousMonth === 0) {
+                previousMonth = 12;
+                previousYear--;
+            }
+            
+            // Selecionar o mês anterior no filtro
+            const filtroMes = document.getElementById('filtro-mes');
+            const filtroAno = document.getElementById('filtro-ano');
+            
+            if (filtroMes && filtroAno) {
+                filtroMes.value = previousMonth.toString();
+                filtroAno.value = previousYear.toString();
+            }
+        }
+
+        // Função para calcular e atualizar o resumo baseado nos filtros
+        function atualizarResumo() {
+            const mes = parseInt(document.getElementById('filtro-mes').value);
+            const ano = parseInt(document.getElementById('filtro-ano').value);
+            const loteId = parseInt(document.getElementById('filtro-lote').value);
+            
+            console.log('Atualizando resumo para:', { mes, ano, loteId });
+            
+            // Filtrar mapas baseado nos critérios
+            let mapasFiltrados = mapasDados;
+            
+            if (mes) {
+                mapasFiltrados = mapasFiltrados.filter(mapa => mapa.mes === mes);
+            }
+            
+            if (ano) {
+                mapasFiltrados = mapasFiltrados.filter(mapa => mapa.ano === ano);
+            }
+            
+            if (loteId) {
+                mapasFiltrados = mapasFiltrados.filter(mapa => mapa.lote_id === loteId);
+            }
+            
+            console.log('Mapas filtrados:', mapasFiltrados.length);
+            
+            // Calcular estatísticas
+            const estatisticas = calcularEstatisticas(mapasFiltrados);
+            
+            // Atualizar interface do resumo
+            document.getElementById('resumo-unidades').textContent = estatisticas.unidades.toString();
+            document.getElementById('resumo-refeicoes').textContent = estatisticas.refeicoes.toLocaleString('pt-BR');
+            document.getElementById('resumo-discrepancias').textContent = estatisticas.discrepancias.toString();
+            document.getElementById('resumo-conformidade').textContent = estatisticas.conformidade + '%';
+            
+            // Atualizar cards dos lotes
+            atualizarCardsLotes();
+            
+            console.log('Resumo atualizado:', estatisticas);
+        }
+        
+        // Função para calcular estatísticas dos mapas filtrados
+        function calcularEstatisticas(mapas) {
+            // Calcular número total de unidades dos lotes ativos (independente dos mapas)
+            const loteIdSelecionado = parseInt(document.getElementById('filtro-lote').value);
+            let totalUnidadesLotes = 0;
+            
+            if (loteIdSelecionado) {
+                // Se um lote específico está selecionado, mostrar apenas suas unidades
+                const loteEspecifico = lotesGlobal.find(l => l.id === loteIdSelecionado);
+                totalUnidadesLotes = loteEspecifico ? loteEspecifico.unidades.length : 0;
+            } else {
+                // Se nenhum lote específico, mostrar total de todas as unidades de todos os lotes
+                totalUnidadesLotes = lotesGlobal.reduce((total, lote) => total + lote.unidades.length, 0);
+            }
+            
+            if (!mapas || mapas.length === 0) {
+                return {
+                    unidades: totalUnidadesLotes,
+                    refeicoes: 0,
+                    discrepancias: 0,
+                    conformidade: '0.0'
+                };
+            }
+            
+            const unidadesUnicas = new Set();
+            let totalRefeicoes = 0;
+            let totalRegistros = 0;
+            let registrosComDiscrepancia = 0;
+            
+            // Usar preços reais do lote se possível
+            let precos = null;
+            if (mapas && mapas.length > 0) {
+                // Tenta pegar o lote do primeiro mapa
+                const loteId = mapas[0].lote_id;
+                const loteObj = lotesGlobal.find(l => l.id === loteId);
+                if (loteObj && loteObj.precos) {
+                    precos = loteObj.precos;
+                }
+            }
+            // Fallback para preços simulados se não houver preços reais
+            if (!precos) {
+                precos = {
+                    cafe: { interno: 4.50, funcionario: 5.00 },
+                    almoco: { interno: 12.00, funcionario: 13.50 },
+                    lanche: { interno: 6.00, funcionario: 6.50 },
+                    jantar: { interno: 10.00, funcionario: 11.00 }
+                };
+            }
+            
+            let valorTotal = 0;
+            let valorDesvio = 0;
+            
+            mapas.forEach(mapa => {
+                unidadesUnicas.add(mapa.nome_unidade);
+                
+                // Calcular total de refeições e valores financeiros para cada dia do mês
+                for (let i = 0; i < mapa.data.length; i++) {
+                    const refeicoesDia = 
+                        mapa.cafe_interno[i] + mapa.cafe_funcionario[i] +
+                        mapa.almoco_interno[i] + mapa.almoco_funcionario[i] +
+                        mapa.lanche_interno[i] + mapa.lanche_funcionario[i] +
+                        mapa.jantar_interno[i] + mapa.jantar_funcionario[i];
+                    
+                    totalRefeicoes += refeicoesDia;
+                    totalRegistros++;
+                    
+                    // Calcular valores financeiros
+                    const valorDia = 
+                        (mapa.cafe_interno[i] * precos.cafe.interno) +
+                        (mapa.cafe_funcionario[i] * precos.cafe.funcionario) +
+                        (mapa.almoco_interno[i] * precos.almoco.interno) +
+                        (mapa.almoco_funcionario[i] * precos.almoco.funcionario) +
+                        (mapa.lanche_interno[i] * precos.lanche.interno) +
+                        (mapa.lanche_funcionario[i] * precos.lanche.funcionario) +
+                        (mapa.jantar_interno[i] * precos.jantar.interno) +
+                        (mapa.jantar_funcionario[i] * precos.jantar.funcionario);
+                    
+                    valorTotal += valorDia;
+                    
+                    // Calcular desvios financeiros usando colunas _siisp quando disponíveis
+                    const siisp = (mapa.n_siisp && mapa.n_siisp.length > i) ? mapa.n_siisp[i] : 0;
+                    
+                    // Usar colunas _siisp se disponíveis (já calculadas), senão calcular na hora
+                    const usarColunasSiisp = mapa.cafe_interno_siisp && mapa.cafe_interno_siisp.length > i;
+                    
+                    if (usarColunasSiisp) {
+                        // Usar valores já calculados das colunas _siisp para detectar discrepâncias
+                        // INCLUIR TODOS OS EXCEDENTES no desvio (mesmo os pequenos)
+                        const excedenteCafe = mapa.cafe_interno_siisp[i] > 0 ? mapa.cafe_interno_siisp[i] : 0;
+                        const excedenteAlmoco = mapa.almoco_interno_siisp[i] > 0 ? mapa.almoco_interno_siisp[i] : 0;
+                        const excedenteLanche = mapa.lanche_interno_siisp[i] > 0 ? mapa.lanche_interno_siisp[i] : 0;
+                        const excedenteJantar = mapa.jantar_interno_siisp[i] > 0 ? mapa.jantar_interno_siisp[i] : 0;
+                        
+                        valorDesvio += 
+                            (excedenteCafe * precos.cafe.interno) +
+                            (excedenteAlmoco * precos.almoco.interno) +
+                            (excedenteLanche * precos.lanche.interno) +
+                            (excedenteJantar * precos.jantar.interno);
+                        
+                        // Contar discrepâncias críticas usando colunas _siisp (apenas > 5)
+                        if (mapa.cafe_interno_siisp[i] > 5) registrosComDiscrepancia++;
+                        if (mapa.almoco_interno_siisp[i] > 5) registrosComDiscrepancia++;
+                        if (mapa.lanche_interno_siisp[i] > 5) registrosComDiscrepancia++;
+                        if (mapa.jantar_interno_siisp[i] > 5) registrosComDiscrepancia++;
+                        
+                        // Verificar funcionários SIISP usando colunas calculadas
+                        if (mapa.cafe_funcionario_siisp && mapa.cafe_funcionario_siisp[i] > 0) {
+                            registrosComDiscrepancia++;
+                            valorDesvio += mapa.cafe_funcionario_siisp[i] * precos.cafe.funcionario;
+                        }
+                        if (mapa.almoco_funcionario_siisp && mapa.almoco_funcionario_siisp[i] > 0) {
+                            registrosComDiscrepancia++;
+                            valorDesvio += mapa.almoco_funcionario_siisp[i] * precos.almoco.funcionario;
+                        }
+                        if (mapa.lanche_funcionario_siisp && mapa.lanche_funcionario_siisp[i] > 0) {
+                            registrosComDiscrepancia++;
+                            valorDesvio += mapa.lanche_funcionario_siisp[i] * precos.lanche.funcionario;
+                        }
+                        if (mapa.jantar_funcionario_siisp && mapa.jantar_funcionario_siisp[i] > 0) {
+                            registrosComDiscrepancia++;
+                            valorDesvio += mapa.jantar_funcionario_siisp[i] * precos.jantar.funcionario;
+                        }
+                    } else if (siisp > 0) {
+                        // Fallback: calcular na hora se não há colunas _siisp
+                        const excedenteCafe = Math.max(0, mapa.cafe_interno[i] - siisp);
+                        const excedenteAlmoco = Math.max(0, mapa.almoco_interno[i] - siisp);
+                        const excedenteLanche = Math.max(0, mapa.lanche_interno[i] - siisp);
+                        const excedenteJantar = Math.max(0, mapa.jantar_interno[i] - siisp);
+                        
+                        valorDesvio += 
+                            (excedenteCafe * precos.cafe.interno) +
+                            (excedenteAlmoco * precos.almoco.interno) +
+                            (excedenteLanche * precos.lanche.interno) +
+                            (excedenteJantar * precos.jantar.interno);
+                        
+                        // Contar discrepâncias críticas
+                        if (excedenteCafe > 5) registrosComDiscrepancia++;
+                        if (excedenteAlmoco > 5) registrosComDiscrepancia++;
+                        if (excedenteLanche > 5) registrosComDiscrepancia++;
+                        if (excedenteJantar > 5) registrosComDiscrepancia++;
+                    }
+                }
+            });
+            
+            // Calcular conformidade baseada em impacto financeiro
+            const conformidade = valorTotal > 0 ? 
+                Math.max(0, ((valorTotal - valorDesvio) / valorTotal) * 100).toFixed(1) : 
+                '0.0';
+            
+            return {
+                unidades: totalUnidadesLotes, // Usar total de unidades dos lotes, não das unidades únicas nos mapas
+                refeicoes: totalRefeicoes,
+                discrepancias: registrosComDiscrepancia,
+                conformidade: conformidade
+            };
+        }
+        
+        // Função para calcular estatísticas individuais de cada lote
+        function calcularEstatisticasLote(loteId, mapasFiltrados) {
+            // Obter número total de unidades do lote (independente dos mapas)
+            const lote = lotesGlobal.find(l => l.id === loteId);
+            const totalUnidadesLote = lote ? lote.unidades.length : 0;
+            
+            // Filtrar mapas apenas para o lote específico
+            const mapasDoLote = mapasFiltrados.filter(mapa => mapa.lote_id === loteId);
+            
+            if (!mapasDoLote || mapasDoLote.length === 0) {
+                return {
+                    unidades: totalUnidadesLote, // Mostrar sempre o número total de unidades do lote
+                    refeicoes: 0,
+                    conformidade: '0.0',
+                    discrepancias: 0
+                };
+            }
+            
+            const unidadesUnicas = new Set();
+            let totalRefeicoes = 0;
+            let totalRegistros = 0;
+            let registrosComProblema = 0;
+            
+            // Usar preços reais do lote se possível
+            let precos = null;
+            const loteObj = lotesGlobal.find(l => l.id === loteId);
+            if (loteObj && loteObj.precos) {
+                precos = loteObj.precos;
+            }
+            // Fallback para preços simulados se não houver preços reais
+            if (!precos) {
+                precos = {
+                    cafe: { interno: 4.50, funcionario: 5.00 },
+                    almoco: { interno: 12.00, funcionario: 13.50 },
+                    lanche: { interno: 6.00, funcionario: 6.50 },
+                    jantar: { interno: 10.00, funcionario: 11.00 }
+                };
+            }
+            
+            let valorTotal = 0;
+            let valorDesvio = 0;
+            
+            mapasDoLote.forEach(mapa => {
+                unidadesUnicas.add(mapa.nome_unidade);
+                
+                // Calcular total de refeições e valores financeiros para cada dia do mês
+                for (let i = 0; i < mapa.data.length; i++) {
+                    const refeicoesDia = 
+                        mapa.cafe_interno[i] + mapa.cafe_funcionario[i] +
+                        mapa.almoco_interno[i] + mapa.almoco_funcionario[i] +
+                        mapa.lanche_interno[i] + mapa.lanche_funcionario[i] +
+                        mapa.jantar_interno[i] + mapa.jantar_funcionario[i];
+                    
+                    totalRefeicoes += refeicoesDia;
+                    totalRegistros++;
+                    
+                    // Calcular valores financeiros
+                    const valorDia = 
+                        (mapa.cafe_interno[i] * precos.cafe.interno) +
+                        (mapa.cafe_funcionario[i] * precos.cafe.funcionario) +
+                        (mapa.almoco_interno[i] * precos.almoco.interno) +
+                        (mapa.almoco_funcionario[i] * precos.almoco.funcionario) +
+                        (mapa.lanche_interno[i] * precos.lanche.interno) +
+                        (mapa.lanche_funcionario[i] * precos.lanche.funcionario) +
+                        (mapa.jantar_interno[i] * precos.jantar.interno) +
+                        (mapa.jantar_funcionario[i] * precos.jantar.funcionario);
+                    
+                    valorTotal += valorDia;
+                    
+                    // Calcular desvios financeiros usando colunas _siisp quando disponíveis
+                    const siisp = (mapa.n_siisp && mapa.n_siisp.length > i) ? mapa.n_siisp[i] : 0;
+                    
+                    // Usar colunas _siisp se disponíveis (já calculadas), senão calcular na hora
+                    const usarColunasSiisp = mapa.cafe_interno_siisp && mapa.cafe_interno_siisp.length > i;
+                    
+                    if (usarColunasSiisp) {
+                        // Usar valores já calculados das colunas _siisp para detectar discrepâncias
+                        // INCLUIR TODOS OS EXCEDENTES no desvio (mesmo os pequenos)
+                        const excedenteCafe = mapa.cafe_interno_siisp[i] > 0 ? mapa.cafe_interno_siisp[i] : 0;
+                        const excedenteAlmoco = mapa.almoco_interno_siisp[i] > 0 ? mapa.almoco_interno_siisp[i] : 0;
+                        const excedenteLanche = mapa.lanche_interno_siisp[i] > 0 ? mapa.lanche_interno_siisp[i] : 0;
+                        const excedenteJantar = mapa.jantar_interno_siisp[i] > 0 ? mapa.jantar_interno_siisp[i] : 0;
+                        
+                        valorDesvio += 
+                            (excedenteCafe * precos.cafe.interno) +
+                            (excedenteAlmoco * precos.almoco.interno) +
+                            (excedenteLanche * precos.lanche.interno) +
+                            (excedenteJantar * precos.jantar.interno);
+                        
+                        // Contar discrepâncias críticas usando colunas _siisp (apenas > 5)
+                        if (mapa.cafe_interno_siisp[i] > 5) registrosComProblema++;
+                        if (mapa.almoco_interno_siisp[i] > 5) registrosComProblema++;
+                        if (mapa.lanche_interno_siisp[i] > 5) registrosComProblema++;
+                        if (mapa.jantar_interno_siisp[i] > 5) registrosComProblema++;
+                        
+                        // Verificar funcionários SIISP usando colunas calculadas
+                        if (mapa.cafe_funcionario_siisp && mapa.cafe_funcionario_siisp[i] > 0) {
+                            registrosComProblema++;
+                            valorDesvio += mapa.cafe_funcionario_siisp[i] * precos.cafe.funcionario;
+                        }
+                        if (mapa.almoco_funcionario_siisp && mapa.almoco_funcionario_siisp[i] > 0) {
+                            registrosComProblema++;
+                            valorDesvio += mapa.almoco_funcionario_siisp[i] * precos.almoco.funcionario;
+                        }
+                        if (mapa.lanche_funcionario_siisp && mapa.lanche_funcionario_siisp[i] > 0) {
+                            registrosComProblema++;
+                            valorDesvio += mapa.lanche_funcionario_siisp[i] * precos.lanche.funcionario;
+                        }
+                        if (mapa.jantar_funcionario_siisp && mapa.jantar_funcionario_siisp[i] > 0) {
+                            registrosComProblema++;
+                            valorDesvio += mapa.jantar_funcionario_siisp[i] * precos.jantar.funcionario;
+                        }
+                    } else if (siisp > 0) {
+                        // Fallback: calcular na hora se não há colunas _siisp
+                        const excedenteCafe = Math.max(0, mapa.cafe_interno[i] - siisp);
+                        const excedenteAlmoco = Math.max(0, mapa.almoco_interno[i] - siisp);
+                        const excedenteLanche = Math.max(0, mapa.lanche_interno[i] - siisp);
+                        const excedenteJantar = Math.max(0, mapa.jantar_interno[i] - siisp);
+                        
+                        valorDesvio += 
+                            (excedenteCafe * precos.cafe.interno) +
+                            (excedenteAlmoco * precos.almoco.interno) +
+                            (excedenteLanche * precos.lanche.interno) +
+                            (excedenteJantar * precos.jantar.interno);
+                        
+                        // Contar discrepâncias críticas
+                        if (excedenteCafe > 5) registrosComProblema++;
+                        if (excedenteAlmoco > 5) registrosComProblema++;
+                        if (excedenteLanche > 5) registrosComProblema++;
+                        if (excedenteJantar > 5) registrosComProblema++;
+                    }
+                }
+            });
+            
+            // Calcular conformidade baseada em impacto financeiro
+            const conformidade = valorTotal > 0 ? 
+                Math.max(0, ((valorTotal - valorDesvio) / valorTotal) * 100).toFixed(1) : 
+                '0.0';
+            
+            // Retornar discrepâncias críticas calculadas
+            const discrepancias = registrosComProblema;
+            
+            return {
+                unidades: totalUnidadesLote, // Usar sempre o número total de unidades do lote
+                refeicoes: totalRefeicoes,
+                conformidade: conformidade,
+                discrepancias: discrepancias
+            };
+        }
+        
+        // Função para atualizar cards dos lotes
+        function atualizarCardsLotes() {
+            const mes = parseInt(document.getElementById('filtro-mes').value);
+            const ano = parseInt(document.getElementById('filtro-ano').value);
+            const loteId = parseInt(document.getElementById('filtro-lote').value);
+            
+            // Filtrar mapas baseado nos critérios
+            let mapasFiltrados = mapasDados;
+            
+            if (mes) {
+                mapasFiltrados = mapasFiltrados.filter(mapa => mapa.mes === mes);
+            }
+            
+            if (ano) {
+                mapasFiltrados = mapasFiltrados.filter(mapa => mapa.ano === ano);
+            }
+            
+            if (loteId) {
+                mapasFiltrados = mapasFiltrados.filter(mapa => mapa.lote_id === loteId);
+            }
+            
+            // Atualizar cada card de lote
+            document.querySelectorAll('.lote-card').forEach(card => {
+                const loteId = parseInt(card.getAttribute('data-lote-id'));
+                const estatisticas = calcularEstatisticasLote(loteId, mapasFiltrados);
+                
+                // Atualizar unidades
+                const unidadesElement = card.querySelector('.unidades-count');
+                if (unidadesElement) {
+                    unidadesElement.textContent = estatisticas.unidades;
+                }
+                
+                // Atualizar refeições
+                const refeicoesElement = card.querySelector('.refeicoes-count');
+                if (refeicoesElement) {
+                    refeicoesElement.textContent = estatisticas.refeicoes.toLocaleString('pt-BR');
+                }
+                
+                // Atualizar conformidade
+                const conformidadePercentElement = card.querySelector('.conformidade-percent');
+                const conformidadeIconElement = card.querySelector('.conformidade-icon');
+                if (conformidadePercentElement) {
+                    // Garantir que sempre mostre com uma casa decimal (ex: 0.0%, 95.5%)
+                    const conformidadeFormatada = typeof estatisticas.conformidade === 'string' ? 
+                        estatisticas.conformidade : estatisticas.conformidade.toFixed(1);
+                    conformidadePercentElement.textContent = conformidadeFormatada + '%';
+                }
+                if (conformidadeIconElement) {
+                    const conformidadeNum = parseFloat(estatisticas.conformidade);
+                    if (conformidadeNum >= 95) {
+                        conformidadeIconElement.textContent = '✅';
+                    } else if (conformidadeNum >= 90) {
+                        conformidadeIconElement.textContent = '⚠️';
+                    } else {
+                        conformidadeIconElement.textContent = '🚨';
+                    }
+                }
+                
+                // Atualizar discrepâncias
+                const discrepanciasCountElement = card.querySelector('.discrepancias-count');
+                const discrepanciasIconElement = card.querySelector('.alertas-icon'); // Mantém classe antiga para compatibilidade
+                if (discrepanciasCountElement) {
+                    discrepanciasCountElement.textContent = estatisticas.discrepancias;
+                }
+                if (discrepanciasIconElement) {
+                    discrepanciasIconElement.textContent = estatisticas.discrepancias === 0 ? '✅' : '⚠️';
+                }
+            });
+            
+            console.log('Cards dos lotes atualizados baseado nos filtros');
+        }
+
+        // Logout
+        document.getElementById('logoutLink').addEventListener('click', function(e) {
+            e.preventDefault();
+            if (confirm('Tem certeza que deseja sair do sistema?')) {
+                localStorage.removeItem('sgmrp_usuario');
+                localStorage.removeItem('sgmrp_remember');
+                // Navegar para a rota /logout (tratada pelo Flask). Evita /login.html
+                window.location.href = "{{ url_for('logout') }}";
+            }
+        });
+
+
+
+
+
+        // Filtro de lote em tempo real
+        document.getElementById('filtro-lote').addEventListener('change', function() {
+            const loteId = parseInt(this.value);
+            
+            // Atualizar resumo quando filtro de lote mudar
+            atualizarResumo();
+            
+            // Filtrar cards de lote visualmente
+            const loteCards = document.querySelectorAll('.lote-card');
+            loteCards.forEach(card => {
+                const cardLoteId = parseInt(card.getAttribute('data-lote-id'));
+                if (!loteId || cardLoteId === loteId) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+        
+        // Event listeners para atualização automática do resumo
+        document.getElementById('filtro-mes').addEventListener('change', atualizarResumo);
+        document.getElementById('filtro-ano').addEventListener('change', atualizarResumo);
+        document.getElementById('filtro-lote').addEventListener('change', atualizarResumo);
+
+        // Animações de fade-in
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        // Observar elementos com classe fade-in
+        document.querySelectorAll('.fade-in').forEach(el => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(30px)';
+            el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            observer.observe(el);
+        });
+
+        // Atualizar data/hora do último acesso
+        function updateLastAccess() {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('pt-BR');
+            const timeStr = now.toLocaleTimeString('pt-BR', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+            document.getElementById('ultimo-acesso').textContent = `${dateStr} - ${timeStr}`;
+        }
+
+        updateLastAccess();
+
+        // Efeitos hover nos cards de lote
+        document.querySelectorAll('.lote-card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-8px)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(-6px)';
+            });
+        });
+
+        // Controle da notificação de login bem-sucedido
+        function closeNotification() {
+            const notification = document.getElementById('loginSuccessNotification');
+            if (notification) {
+                notification.classList.add('closing');
+                setTimeout(() => {
+                    notification.remove();
+                }, 300);
+            }
+        }
+
+        // Auto-fechar notificação após 5 segundos
+        window.addEventListener('load', function() {
+            const notification = document.getElementById('loginSuccessNotification');
+            if (notification) {
+                // Efeito visual sutil ao aparecer
+                notification.style.transform = 'scale(0.9)';
+                setTimeout(() => {
+                    notification.style.transition = 'transform 0.2s ease';
+                    notification.style.transform = 'scale(1)';
+                }, 100);
+                
+                // Auto-fechar após 5 segundos
+                setTimeout(() => {
+                    closeNotification();
+                }, 5000);
+            }
+        });
+
+        // Placeholder para funcionalidades futuras
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('a[href="#configuracoes"]')) {
+                e.preventDefault();
+                alert('Módulo de Configurações será implementado na próxima versão do SGMRP.');
+            }
+        });
+
+        // ===== Sistema de Notificações e Alertas =====
+        
+        // Função auxiliar para parsear datas ISO com microsegundos
+        function parsearDataSegura(dataString) {
+            if (!dataString) return null;
+            
+            // Se a data tem microsegundos (formato Python), remover antes de parsear
+            // Exemplo: "2025-11-20T10:42:20.741714" -> "2025-11-20T10:42:20.741"
+            const dataSemMicrosegundos = dataString.replace(/(\.\d{3})\d+/, '$1');
+            
+            const data = new Date(dataSemMicrosegundos);
+            
+            // Verificar se a data é válida
+            if (isNaN(data.getTime())) {
+                console.error(`Data inválida: ${dataString}`);
+                return null;
+            }
+            
+            return data;
+        }
+        
+        function calcularConformidadeMapa(mapa) {
+            // Calcula conformidade financeira do mapa (baseado em preços e diferenças SIISP)
+            const lote = lotesGlobal.find(l => l.id === mapa.lote_id);
+            let precos = null;
+            
+            if (lote && lote.precos) {
+                precos = lote.precos;
+            } else {
+                // Fallback para preços simulados
+                precos = {
+                    cafe: { interno: 4.50, funcionario: 5.00 },
+                    almoco: { interno: 12.00, funcionario: 13.50 },
+                    lanche: { interno: 6.00, funcionario: 6.50 },
+                    jantar: { interno: 10.00, funcionario: 11.00 }
+                };
+            }
+            
+            let valorTotal = 0;
+            let valorDesvio = 0;
+            
+            // Calcular valores para cada dia
+            for (let i = 0; i < mapa.data.length; i++) {
+                // Valor total do dia
+                const valorDia = 
+                    (mapa.cafe_interno[i] * precos.cafe.interno) +
+                    (mapa.cafe_funcionario[i] * precos.cafe.funcionario) +
+                    (mapa.almoco_interno[i] * precos.almoco.interno) +
+                    (mapa.almoco_funcionario[i] * precos.almoco.funcionario) +
+                    (mapa.lanche_interno[i] * precos.lanche.interno) +
+                    (mapa.lanche_funcionario[i] * precos.lanche.funcionario) +
+                    (mapa.jantar_interno[i] * precos.jantar.interno) +
+                    (mapa.jantar_funcionario[i] * precos.jantar.funcionario);
+                
+                valorTotal += valorDia;
+                
+                // Calcular desvios usando colunas _siisp se disponíveis
+                const usarColunasSiisp = mapa.cafe_interno_siisp && mapa.cafe_interno_siisp.length > i;
+                
+                if (usarColunasSiisp) {
+                    // Incluir TODOS os excedentes no desvio
+                    const excedenteCafe = mapa.cafe_interno_siisp[i] > 0 ? mapa.cafe_interno_siisp[i] : 0;
+                    const excedenteAlmoco = mapa.almoco_interno_siisp[i] > 0 ? mapa.almoco_interno_siisp[i] : 0;
+                    const excedenteLanche = mapa.lanche_interno_siisp[i] > 0 ? mapa.lanche_interno_siisp[i] : 0;
+                    const excedenteJantar = mapa.jantar_interno_siisp[i] > 0 ? mapa.jantar_interno_siisp[i] : 0;
+                    
+                    valorDesvio += 
+                        (excedenteCafe * precos.cafe.interno) +
+                        (excedenteAlmoco * precos.almoco.interno) +
+                        (excedenteLanche * precos.lanche.interno) +
+                        (excedenteJantar * precos.jantar.interno);
+                    
+                    // Funcionários SIISP
+                    if (mapa.cafe_funcionario_siisp && mapa.cafe_funcionario_siisp[i] > 0) {
+                        valorDesvio += mapa.cafe_funcionario_siisp[i] * precos.cafe.funcionario;
+                    }
+                    if (mapa.almoco_funcionario_siisp && mapa.almoco_funcionario_siisp[i] > 0) {
+                        valorDesvio += mapa.almoco_funcionario_siisp[i] * precos.almoco.funcionario;
+                    }
+                    if (mapa.lanche_funcionario_siisp && mapa.lanche_funcionario_siisp[i] > 0) {
+                        valorDesvio += mapa.lanche_funcionario_siisp[i] * precos.lanche.funcionario;
+                    }
+                    if (mapa.jantar_funcionario_siisp && mapa.jantar_funcionario_siisp[i] > 0) {
+                        valorDesvio += mapa.jantar_funcionario_siisp[i] * precos.jantar.funcionario;
+                    }
+                }
+            }
+            
+            // Calcular conformidade percentual
+            const conformidade = valorTotal > 0 ? 
+                Math.max(0, ((valorTotal - valorDesvio) / valorTotal) * 100) : 
+                100.0;
+            
+            return conformidade;
+        }
+        
+        function gerarNotificacoesDosSistema() {
+            const notificacoes = [];
+            const agora = new Date();
+            const dataLimite = new Date(agora);
+            dataLimite.setDate(dataLimite.getDate() - 30); // Últimos 30 dias
+            
+            console.log('=== DEBUG NOTIFICAÇÕES ===');
+            console.log('Data atual:', agora);
+            console.log('Data limite (30 dias atrás):', dataLimite);
+            console.log('Total de lotes:', lotesGlobal.length);
+            
+            // Obter filtros atuais
+            const mes = parseInt(document.getElementById('filtro-mes').value);
+            const ano = parseInt(document.getElementById('filtro-ano').value);
+            const loteId = parseInt(document.getElementById('filtro-lote').value);
+            
+            console.log('Filtros ativos:', { mes, ano, loteId });
+            
+            // Filtrar mapas APENAS por lote (NÃO filtrar por mês/ano para notificações)
+            let mapasFiltrados = mapasDados;
+            if (loteId) {
+                mapasFiltrados = mapasFiltrados.filter(mapa => parseInt(mapa.lote_id) === loteId || mapa.lote_id === loteId.toString());
+            }
+            
+            console.log('Total de mapas após filtro de lote:', mapasFiltrados.length);
+            
+            // Processar cada mapa
+            mapasFiltrados.forEach(mapa => {
+                const lote = lotesGlobal.find(l => l.id === parseInt(mapa.lote_id) || l.id === mapa.lote_id);
+                const nomeLote = lote ? lote.nome : `Lote ${mapa.lote_id}`;
+                const nomeUnidade = mapa.unidade || mapa.nome_unidade || 'Unidade';
+                const mesNome = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                                 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'][mapa.mes - 1];
+                
+                console.log(`\nProcessando mapa: ${nomeUnidade} - ${mesNome}/${mapa.ano}`);
+                console.log('  criado_em:', mapa.criado_em);
+                
+                // Usar data real de criação/atualização do mapa com parsearDataSegura
+                let dataNotificacao = agora;
+                if (mapa.atualizado_em) {
+                    dataNotificacao = parsearDataSegura(mapa.atualizado_em);
+                } else if (mapa.criado_em) {
+                    dataNotificacao = parsearDataSegura(mapa.criado_em);
+                }
+                
+                console.log('  Data parseada:', dataNotificacao);
+                console.log('  Está no período?', dataNotificacao >= dataLimite && dataNotificacao <= agora);
+                
+                if (!dataNotificacao || dataNotificacao < dataLimite || dataNotificacao > agora) {
+                    console.log('  ❌ Fora do período de 30 dias');
+                    return; // Pular mapas fora do período de 30 dias
+                }
+                
+                // Verificar se o mapa tem dados SIISP
+                const temSIISP = mapa.dados_siisp && mapa.dados_siisp.length > 0 && 
+                                 mapa.dados_siisp.some(val => val > 0);
+                console.log('  Tem SIISP?', temSIISP);
+                
+                // Notificação de criação do mapa (se criado nos últimos 30 dias)
+                if (mapa.criado_em) {
+                    const dataCriacao = parsearDataSegura(mapa.criado_em);
+                    if (dataCriacao && dataCriacao >= dataLimite && dataCriacao <= agora) {
+                        // Calcular total de refeições usando o tamanho correto do array
+                        const numDias = (mapa.datas || mapa.cafe_interno || []).length;
+                        const totalRefeicoes = Array.from({ length: numDias }, (_, i) => i).reduce((total, i) => {
+                            return total + 
+                                (mapa.cafe_interno[i] || 0) + (mapa.cafe_funcionario[i] || 0) +
+                                (mapa.almoco_interno[i] || 0) + (mapa.almoco_funcionario[i] || 0) +
+                                (mapa.lanche_interno[i] || 0) + (mapa.lanche_funcionario[i] || 0) +
+                                (mapa.jantar_interno[i] || 0) + (mapa.jantar_funcionario[i] || 0);
+                        }, 0);
+                        
+                        console.log(`  ✅ Adicionando notificação de criação (${totalRefeicoes} refeições)`);
+                        
+                        notificacoes.push({
+                            tipo: 'info',
+                            icone: 'ℹ️',
+                            titulo: `Novo mapa adicionado - ${nomeUnidade}`,
+                            mensagem: `${totalRefeicoes.toLocaleString('pt-BR')} refeições registradas para ${mesNome}/${mapa.ano} (${nomeLote})`,
+                            data: dataCriacao,
+                            timestamp: dataCriacao.getTime()
+                        });
+                    }
+                }
+                
+                // Notificação de conformidade (se tem SIISP)
+                if (temSIISP) {
+                    // Usar atualizado_em se existir, senão usar criado_em
+                    const dataConformidade = mapa.atualizado_em ? 
+                        parsearDataSegura(mapa.atualizado_em) : 
+                        (mapa.criado_em ? parsearDataSegura(mapa.criado_em) : null);
+                    
+                    if (dataConformidade && dataConformidade >= dataLimite && dataConformidade <= agora) {
+                        const conformidade = calcularConformidadeMapa(mapa);
+                        
+                        console.log(`  ✅ Adicionando notificação de conformidade (${conformidade.toFixed(1)}%)`);
+                        
+                        if (conformidade > 95) {
+                            // Notificação azul: Excelente conformidade (> 95%)
+                            notificacoes.push({
+                                tipo: 'info',
+                                icone: '✅',
+                                titulo: `Conformidade Excelente - ${nomeUnidade}`,
+                                mensagem: `${mesNome}/${mapa.ano} com ${conformidade.toFixed(1)}% de conformidade (${nomeLote})`,
+                                data: dataConformidade,
+                                timestamp: dataConformidade.getTime()
+                            });
+                        } else if (conformidade >= 90 && conformidade <= 95) {
+                            // Notificação amarela: Conformidade moderada (90-95%)
+                            notificacoes.push({
+                                tipo: 'warning',
+                                icone: '⚠️',
+                                titulo: `Atenção - ${nomeUnidade}`,
+                                mensagem: `${mesNome}/${mapa.ano} com ${conformidade.toFixed(1)}% de conformidade (${nomeLote})`,
+                                data: dataConformidade,
+                                timestamp: dataConformidade.getTime()
+                            });
+                        } else {
+                            // Notificação vermelha: Conformidade crítica (< 90%)
+                            notificacoes.push({
+                                tipo: 'danger',
+                                icone: '🚨',
+                                titulo: `CRÍTICO - ${nomeUnidade}`,
+                                mensagem: `${mesNome}/${mapa.ano} com apenas ${conformidade.toFixed(1)}% de conformidade (${nomeLote})`,
+                                data: dataConformidade,
+                                timestamp: dataConformidade.getTime()
+                            });
+                        }
+                    }
+                }
+            });
+            
+            // Adicionar notificações de novos lotes
+            // IMPORTANTE: Lotes NÃO são filtrados por mês/ano, apenas por lote específico e período de 30 dias
+            console.log('--- Processando lotes para notificações ---');
+            lotesGlobal.forEach(lote => {
+                console.log(`Lote: ${lote.nome} (ID: ${lote.id})`);
+                console.log(`  criado_em: ${lote.criado_em}`);
+                console.log(`  atualizado_em: ${lote.atualizado_em}`);
+                
+                // Aplicar filtro de lote se houver um selecionado (mas NÃO filtrar por mês/ano)
+                if (loteId && lote.id !== loteId) {
+                    console.log(`  -> Pulado (filtro de lote ativo: ${loteId})`);
+                    return; // Pular lotes não selecionados
+                }
+                
+                if (lote.criado_em) {
+                    const dataCriacao = parsearDataSegura(lote.criado_em);
+                    console.log(`  Data de criação parseada: ${dataCriacao}`);
+                    console.log(`  dataLimite: ${dataLimite}`);
+                    console.log(`  agora: ${agora}`);
+                    
+                    if (!dataCriacao) {
+                        console.log(`  ❌ Erro ao parsear data de criação`);
+                        return;
+                    }
+                    
+                    console.log(`  dataCriacao >= dataLimite? ${dataCriacao >= dataLimite}`);
+                    console.log(`  dataCriacao <= agora? ${dataCriacao <= agora}`);
+                    console.log(`  Está no período? ${dataCriacao >= dataLimite && dataCriacao <= agora}`);
+                    
+                    if (dataCriacao >= dataLimite && dataCriacao <= agora) {
+                        console.log(`  ✅ Adicionando notificação de criação`);
+                        notificacoes.push({
+                            tipo: 'info',
+                            icone: '🎉',
+                            titulo: 'Novo Lote Cadastrado',
+                            mensagem: `${lote.nome} - ${lote.empresa} (${lote.unidades.length} unidades)`,
+                            data: dataCriacao,
+                            timestamp: dataCriacao.getTime()
+                        });
+                    } else {
+                        console.log(`  ❌ Não está no período de 30 dias`);
+                    }
+                }
+                
+                // Adicionar notificação de atualização do lote se foi editado
+                if (lote.atualizado_em && lote.atualizado_em !== lote.criado_em) {
+                    const dataAtualizacao = parsearDataSegura(lote.atualizado_em);
+                    console.log(`  Data de atualização parseada: ${dataAtualizacao}`);
+                    
+                    if (!dataAtualizacao) {
+                        console.log(`  ❌ Erro ao parsear data de atualização`);
+                        return;
+                    }
+                    
+                    console.log(`  Está no período? ${dataAtualizacao >= dataLimite && dataAtualizacao <= agora}`);
+                    
+                    if (dataAtualizacao >= dataLimite && dataAtualizacao <= agora) {
+                        console.log(`  ✅ Adicionando notificação de atualização`);
+                        notificacoes.push({
+                            tipo: 'info',
+                            icone: '✏️',
+                            titulo: 'Lote Atualizado',
+                            mensagem: `${lote.nome} - Informações atualizadas`,
+                            data: dataAtualizacao,
+                            timestamp: dataAtualizacao.getTime()
+                        });
+                    } else {
+                        console.log(`  ❌ Atualização não está no período de 30 dias`);
+                    }
+                }
+            });
+            
+            // Ordenar por data (mais recente primeiro)
+            notificacoes.sort((a, b) => b.timestamp - a.timestamp);
+            
+            console.log(`Total de notificações geradas: ${notificacoes.length}`);
+            console.log('=== FIM DEBUG NOTIFICAÇÕES ===');
+            
+            return notificacoes;
+        }
+        
+        function formatarTempoDecorrido(data) {
+            const agora = new Date();
+            const diff = agora - data;
+            const segundos = Math.floor(diff / 1000);
+            const minutos = Math.floor(segundos / 60);
+            const horas = Math.floor(minutos / 60);
+            const dias = Math.floor(horas / 24);
+            
+            if (dias > 0) {
+                return dias === 1 ? 'Há 1 dia' : `Há ${dias} dias`;
+            } else if (horas > 0) {
+                return horas === 1 ? 'Há 1 hora' : `Há ${horas} horas`;
+            } else if (minutos > 0) {
+                return minutos === 1 ? 'Há 1 minuto' : `Há ${minutos} minutos`;
+            } else {
+                return 'Agora mesmo';
+            }
+        }
+        
+        function renderizarNotificacoesRecentes() {
+            const container = document.getElementById('notificacoes-recentes-container');
+            if (!container) return;
+            
+            const todasNotificacoes = gerarNotificacoesDosSistema();
+            const notificacoesRecentes = todasNotificacoes.slice(0, 3); // Mostrar apenas as 3 mais recentes
+            
+            if (notificacoesRecentes.length === 0) {
+                container.innerHTML = `
+                    <div class="alert alert-info" style="display: flex; align-items: center; gap: 1rem; justify-content: center;">
+                        <div style="font-size: 1.5rem;">✅</div>
+                        <div>
+                            <strong>Nenhuma notificação recente</strong><br>
+                            <span style="font-size: 0.875rem;">Não há alertas ou discrepâncias nos últimos 30 dias</span>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = notificacoesRecentes.map(notif => {
+                const alertClass = notif.tipo === 'danger' ? 'alert-danger' : 
+                                  notif.tipo === 'warning' ? 'alert-warning' : 'alert-info';
+                
+                return `
+                    <div class="alert ${alertClass}" style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.01rem;">
+                        <div style="font-size: 1.5rem;">${notif.icone}</div>
+                        <div style="flex: 1;">
+                            <strong>${notif.titulo}</strong><br>
+                            <span style="font-size: 0.875rem;">${notif.mensagem}</span>
+                        </div>
+                        <div style="font-size: 0.875rem; color: var(--gray-500);">
+                            ${formatarTempoDecorrido(notif.data)}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function abrirModalNotificacoes() {
+            const modal = document.getElementById('modal-notificacoes');
+            const body = document.getElementById('modal-notificacoes-body');
+            if (!modal || !body) return;
+            
+            const todasNotificacoes = gerarNotificacoesDosSistema();
+            
+            if (todasNotificacoes.length === 0) {
+                body.innerHTML = `
+                    <div style="text-align: center; padding: 3rem 1rem;">
+                        <div style="font-size: 4rem; margin-bottom: 1rem;">✅</div>
+                        <h3 style="color: var(--gray-600); margin-bottom: 0.5rem;">Nenhuma notificação</h3>
+                        <p style="color: var(--gray-500);">Não há alertas ou notificações nos últimos 30 dias</p>
+                    </div>
+                `;
+            } else {
+                body.innerHTML = todasNotificacoes.map(notif => {
+                    return `
+                        <div class="modal-notification-item ${notif.tipo}">
+                            <div class="modal-notification-icon">${notif.icone}</div>
+                            <div class="modal-notification-content">
+                                <div class="modal-notification-title">${notif.titulo}</div>
+                                <div class="modal-notification-message">${notif.mensagem}</div>
+                            </div>
+                            <div class="modal-notification-time">
+                                ${formatarTempoDecorrido(notif.data)}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+            
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function fecharModalNotificacoes() {
+            const modal = document.getElementById('modal-notificacoes');
+            if (!modal) return;
+            
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+        
+        // Event listeners
+        document.getElementById('btn-ver-todas-notificacoes')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            abrirModalNotificacoes();
+        });
+        
+        // Fechar modal ao clicar no overlay
+        document.getElementById('modal-notificacoes')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                fecharModalNotificacoes();
+            }
+        });
+        
+        // Fechar modal com tecla ESC
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                fecharModalNotificacoes();
+            }
+        });
+        
+        // Atualizar notificações quando os filtros mudarem
+        const filtroMesEl = document.getElementById('filtro-mes');
+        const filtroAnoEl = document.getElementById('filtro-ano');
+        const filtroLoteEl = document.getElementById('filtro-lote');
+        
+        if (filtroMesEl) filtroMesEl.addEventListener('change', renderizarNotificacoesRecentes);
+        if (filtroAnoEl) filtroAnoEl.addEventListener('change', renderizarNotificacoesRecentes);
+        if (filtroLoteEl) filtroLoteEl.addEventListener('change', renderizarNotificacoesRecentes);
+        
+        // Renderizar notificações iniciais após carregar resumo
+        window.addEventListener('load', function() {
+            setTimeout(renderizarNotificacoesRecentes, 500);
+        });
+    </script>
+</body>
+</html>

@@ -1,125 +1,100 @@
+def _check_password(stored_hash, password):
+	"""Verifica se o hash da senha informada corresponde ao hash salvo."""
+	if not isinstance(password, str):
+		password = str(password)
+	return stored_hash == hashlib.sha256(password.encode('utf-8')).hexdigest()
+import hashlib
+
+def _hash_password(password):
+	"""Retorna o hash SHA256 da senha como string hexadecimal."""
+	if not isinstance(password, str):
+		password = str(password)
+	return hashlib.sha256(password.encode('utf-8')).hexdigest()
+def _first_present(d, *keys):
+	"""Retorna o primeiro valor presente e não vazio entre as chaves fornecidas."""
+	for k in keys:
+		v = d.get(k)
+		if v not in (None, '', [], {}):
+			return v
+	return None
+
+from .models import db, Usuario
+from datetime import datetime
 import json
 import re
-import os
-from datetime import datetime
 
-try:
-	import bcrypt
-except Exception:
-	bcrypt = None
+# ----- Main Functions -----
+def cadastrar_novo_usuario(form_data=None):
+	r = validar_cadastro_no_usuario(form_data)
+	if not r.get('valido'):
+		return {'ok': False, 'mensagem': r.get('mensagem', 'Validação falhou'), 'campo': r.get('campo')}
 
-
-# ----- Password Helpers -----
-def _hash_password(senha):
-	if not senha:
-		return ''
-	if bcrypt is None:
-		return str(senha)
 	try:
-		pw = str(senha).encode('utf-8')
-		hashed = bcrypt.hashpw(pw, bcrypt.gensalt())
-		return hashed.decode('utf-8')
-	except Exception:
-		return str(senha)
+		# Calcula novo id
+		last_user = Usuario.query.order_by(Usuario.id.desc()).first()
+		new_id = (last_user.id + 1) if last_user else 1
 
+		registro = Usuario(
+			id=new_id,
+			data_criacao=datetime.now().isoformat(),
+			cpf=re.sub(r'\D', '', str(form_data.get('cpf') or '')),
+			email=str(form_data.get('email') or '').strip(),
+			telefone=re.sub(r'\D', '', str(form_data.get('telefone') or '')),
+			usuario=str(form_data.get('usuario') or '').strip(),
+			nome=str(form_data.get('nome') or form_data.get('nome_completo') or '').strip(),
+			cargo=str(form_data.get('cargo') or '').strip(),
+			unidade=str(form_data.get('unidade') or '').strip(),
+			motivo=str(_first_present(form_data, 'motivo', 'motivo_solicitacao', 'justificativa', 'justificativa_acesso') or '').strip(),
+			concordo=False,
+			ativo=False,
+			senha=_hash_password(form_data.get('senha') or '')
+		)
 
-def _check_password(stored_pw, provided_pw):
-	if stored_pw is None:
-		return False
-	sp = str(stored_pw)
-	if not provided_pw:
-		return False
-	pp = str(provided_pw)
-	if bcrypt is not None and sp.startswith('$2'):
+		_concordo_raw = _first_present(
+			form_data,
+			'concordo',
+			'concordo_termos',
+			'aceito',
+			'aceito_termos',
+			'aceitarTermos',
+			'aceitar_termos'
+		)
+		if _concordo_raw is not None:
+			v = str(_concordo_raw).strip().lower()
+			if v in ('1', 'true', 'on', 'yes', 'sim', 'y'):
+				registro.concordo = True
+
+		db.session.add(registro)
+		db.session.commit()
+		return {'ok': True, 'mensagem': 'Usuário cadastrado com sucesso. Aguarde a aprovação do seu cadastro.', 'id': new_id}
+	except Exception as e:
 		try:
-			return bcrypt.checkpw(pp.encode('utf-8'), sp.encode('utf-8'))
+			print('Erro ao salvar usuário:', e)
 		except Exception:
-			return False
-	return sp == pp
+			pass
+		db.session.rollback()
+		return {'ok': False, 'mensagem': 'Erro ao salvar usuário'}
 
+def validar_login(login_value, senha):
+	if not login_value:
+		return {'ok': False, 'mensagem': 'Informe usuário ou e-mail'}
 
-# ----- Data Loading Helpers -----
-def _load_usuarios_data():
-	base_dir = os.path.dirname(os.path.dirname(__file__))
-	usuarios_path = os.path.join(base_dir, 'dados', 'usuarios.json')
-	if not os.path.isfile(usuarios_path):
-		return None
-	try:
-		with open(usuarios_path, 'r', encoding='utf-8') as f:
-			return json.load(f)
-	except Exception:
-		return None
-
-
-def _first_present(form_data, *names):
-	if not isinstance(form_data, dict):
-		return None
-	for n in names:
-		if n in form_data:
-			return form_data.get(n)
-	return None
-
-
-# ----- User Search Helpers -----
-def _exists_in_usuarios(target, normalize=lambda x: x, active_only=True):
-	if target is None:
-		return False
-	data = _load_usuarios_data()
-	if not data:
-		return False
-
-	def _search(obj):
-		if isinstance(obj, dict):
-			if active_only and ('ativo' in obj) and isinstance(obj.get('ativo'), bool) and not obj.get('ativo'):
-				return False
-			for v in obj.values():
-				if _search(v):
-					return True
-		elif isinstance(obj, list):
-			for item in obj:
-				if _search(item):
-					return True
-		else:
-			try:
-				val = str(obj)
-			except Exception:
-				return False
-			if normalize(val) == normalize(target):
-				return True
-		return False
-
-	return _search(data)
-
-
-def _find_user(login_value, active_only=True):
-	if login_value is None:
-		return None
-	data = _load_usuarios_data()
-	if not data:
-		return None
-	usuarios = None
-	if isinstance(data, list):
-		usuarios = data
-	elif isinstance(data, dict) and isinstance(data.get('usuarios'), list):
-		usuarios = data.get('usuarios')
+	is_email = ('@' in str(login_value))
+	query = Usuario.query.filter_by(ativo=True)
+	if is_email:
+		user = query.filter(db.func.lower(Usuario.email) == str(login_value).lower()).first()
 	else:
-		return None
+		user = query.filter(db.func.lower(Usuario.usuario) == str(login_value).lower()).first()
+	if not user:
+		return {'ok': False, 'mensagem': 'E-mail não cadastrado' if is_email else 'Usuário não cadastrado'}
 
-	lv = str(login_value).strip()
-	is_email = ('@' in lv)
-	for u in usuarios:
-		if not isinstance(u, dict):
-			continue
-		if active_only and isinstance(u.get('ativo'), bool) and not u.get('ativo'):
-			continue
-		email = u.get('email')
-		if is_email and isinstance(email, str) and email.strip().lower() == lv.lower():
-			return u
-		usuario = u.get('usuario')
-		if (not is_email) and isinstance(usuario, str) and usuario.strip().lower() == lv.lower():
-			return u
-	return None
+	stored = user.senha
+	if not _check_password(stored, senha):
+		return {'ok': False, 'mensagem': 'Senha incorreta'}
 
+
+	sanitized = {k: v for k, v in user.__dict__.items() if k != 'senha' and not k.startswith('_')}
+	return {'ok': True, 'mensagem': 'Login efetuado com sucesso', 'user': sanitized}
 
 # ----- Validation Functions -----
 def validar_cpf(cpf):
@@ -150,7 +125,10 @@ def validar_cpf(cpf):
 	if d2 != int(num[10]):
 		return {'valido': False, 'mensagem': 'CPF inválido'}
 
-	if _exists_in_usuarios(num, normalize=lambda x: re.sub(r'\D', '', x)):
+	# Checagem no banco
+	from .models import Usuario
+	exists = Usuario.query.filter_by(cpf=num, ativo=True).first()
+	if exists:
 		return {'valido': False, 'mensagem': 'CPF já cadastrado'}
 
 	return {'valido': True, 'mensagem': 'OK'}
@@ -163,9 +141,15 @@ def validar_email(email):
 	email_regex = re.compile(r'^[^\s@]+@[^\s@]+\.[^\s@]+$')
 	if not email_regex.match(email):
 		return {'valido': False, 'mensagem': 'Email inválido'}
-	if _exists_in_usuarios(email.lower(), normalize=lambda x: x.lower()):
-		return {'valido': False, 'mensagem': 'Email já cadastrado'}
-	return {'valido': True, 'mensagem': 'OK'}
+	try:
+		from .models import db, Usuario
+		email_norm = email.strip().lower()
+		exists = Usuario.query.filter(db.func.lower(db.func.trim(Usuario.email)) == email_norm, Usuario.ativo == True).first()
+		if exists:
+			return {'valido': False, 'mensagem': 'Email já cadastrado'}
+		return {'valido': True, 'mensagem': 'OK'}
+	except Exception as e:
+		return {'valido': False, 'mensagem': f'Erro interno: {str(e)}'}
 
 
 def validar_telefone(telefone):
@@ -176,7 +160,9 @@ def validar_telefone(telefone):
 		return {'valido': False, 'mensagem': 'Telefone inválido'}
 	if re.match(r'^(\d)\1{9,10}$', num):
 		return {'valido': False, 'mensagem': 'Telefone inválido'}
-	if _exists_in_usuarios(num, normalize=lambda x: re.sub(r'\D', '', x)):
+	from .models import Usuario
+	exists = Usuario.query.filter_by(telefone=num, ativo=True).first()
+	if exists:
 		return {'valido': False, 'mensagem': 'Telefone já cadastrado'}
 	return {'valido': True, 'mensagem': 'OK'}
 
@@ -185,7 +171,9 @@ def validar_matricula(matricula):
 	if not matricula:
 		return {'valido': False, 'mensagem': 'Matrícula inválida'}
 	mat = str(matricula).strip()
-	if _exists_in_usuarios(mat, normalize=lambda x: x.strip()):
+	from .models import Usuario
+	exists = Usuario.query.filter_by(matricula=mat, ativo=True).first()
+	if exists:
 		return {'valido': False, 'mensagem': 'Matrícula já cadastrada'}
 	return {'valido': True, 'mensagem': 'OK'}
 
@@ -194,9 +182,15 @@ def validar_username(username):
 	if not username:
 		return {'valido': False, 'mensagem': 'Nome de usuário inválido'}
 	user = str(username).strip()
-	if _exists_in_usuarios(user.lower(), normalize=lambda x: x.lower()):
-		return {'valido': False, 'mensagem': 'Nome de usuário já existe'}
-	return {'valido': True, 'mensagem': 'OK'}
+	try:
+		from .models import db, Usuario
+		user_norm = user.strip().lower()
+		exists = Usuario.query.filter(db.func.lower(db.func.trim(Usuario.usuario)) == user_norm, Usuario.ativo == True).first()
+		if exists:
+			return {'valido': False, 'mensagem': 'Nome de usuário já existe'}
+		return {'valido': True, 'mensagem': 'OK'}
+	except Exception as e:
+		return {'valido': False, 'mensagem': f'Erro interno: {str(e)}'}
 
 
 def validar_senha(senha, confirmar):
@@ -246,83 +240,60 @@ def validar_cadastro_no_usuario(form_data):
 	return {'valido': True, 'mensagem': 'Validação OK'}
 
 
+
 # ----- Main Functions -----
 def cadastrar_novo_usuario(form_data=None):
 	r = validar_cadastro_no_usuario(form_data)
 	if not r.get('valido'):
 		return {'ok': False, 'mensagem': r.get('mensagem', 'Validação falhou'), 'campo': r.get('campo')}
 
-	base_dir = os.path.dirname(os.path.dirname(__file__))
-	usuarios_path = os.path.join(base_dir, 'dados', 'usuarios.json')
-	usuarios = None
-	data_wrapped = None
 	try:
-		data = _load_usuarios_data()
-		if isinstance(data, list):
-			usuarios = data
-		elif isinstance(data, dict) and isinstance(data.get('usuarios'), list):
-			usuarios = data.get('usuarios')
-			data_wrapped = data
-		else:
-			usuarios = []
-	except Exception:
-		usuarios = []
+		# Calcula novo id
+		last_user = Usuario.query.order_by(Usuario.id.desc()).first()
+		new_id = (last_user.id + 1) if last_user else 1
 
-	existing_ids = [u.get('id') for u in usuarios if isinstance(u, dict) and isinstance(u.get('id'), int)]
-	new_id = (max(existing_ids) + 1) if existing_ids else 1
+		registro = Usuario(
+			id=new_id,
+			data_criacao=datetime.now().isoformat(),
+			cpf=re.sub(r'\D', '', str(form_data.get('cpf') or '')),
+			email=str(form_data.get('email') or '').strip(),
+			telefone=re.sub(r'\D', '', str(form_data.get('telefone') or '')),
+			matricula=str(form_data.get('matricula') or '').strip(),
+			usuario=str(form_data.get('usuario') or '').strip(),
+			nome=str(form_data.get('nome') or form_data.get('nome_completo') or '').strip(),
+			cargo=str(form_data.get('cargo') or '').strip(),
+			unidade=str(form_data.get('unidade') or '').strip(),
+			motivo=str(_first_present(form_data, 'motivo', 'motivo_solicitacao', 'justificativa', 'justificativa_acesso') or '').strip(),
+			concordo=False,
+			ativo=False,
+			senha=_hash_password(form_data.get('senha') or '')
+		)
 
-	registro = {
-		'id': new_id,
-		'data_criacao': datetime.now().isoformat(),
-		'cpf': re.sub(r'\D', '', str(form_data.get('cpf') or '')),
-		'email': str(form_data.get('email') or '').strip(),
-		'telefone': re.sub(r'\D', '', str(form_data.get('telefone') or '')),
-		'matricula': str(form_data.get('matricula') or '').strip(),
-		'usuario': str(form_data.get('usuario') or '').strip(),
-		'nome': str(form_data.get('nome') or form_data.get('nome_completo') or '').strip(),
-		'cargo': str(form_data.get('cargo') or '').strip(),
-		'unidade': str(form_data.get('unidade') or '').strip(),
-		'motivo': str(
-			_first_present(form_data, 'motivo', 'motivo_solicitacao', 'justificativa', 'justificativa_acesso') or ''
-		).strip(),
-		'concordo': False,
-		'ativo': False,
-		'senha': _hash_password(form_data.get('senha') or '')
-	}
+		_concordo_raw = _first_present(
+			form_data,
+			'concordo',
+			'concordo_termos',
+			'aceito',
+			'aceito_termos',
+			'aceitarTermos',
+			'aceitar_termos'
+		)
+		if _concordo_raw is not None:
+			v = str(_concordo_raw).strip().lower()
+			if v in ('1', 'true', 'on', 'yes', 'sim', 'y'):
+				registro.concordo = True
 
-	_concordo_raw = _first_present(
-		form_data,
-		'concordo',
-		'concordo_termos',
-		'aceito',
-		'aceito_termos',
-		'aceitarTermos',
-		'aceitar_termos'
-	)
-	if _concordo_raw is not None:
-		v = str(_concordo_raw).strip().lower()
-		if v in ('1', 'true', 'on', 'yes', 'sim', 'y'):
-			registro['concordo'] = True
-
-	try:
-		usuarios.append(registro)
-		os.makedirs(os.path.dirname(usuarios_path), exist_ok=True)
-		if data_wrapped is not None:
-			data_wrapped['usuarios'] = usuarios
-			to_write = data_wrapped
-		else:
-			to_write = usuarios
-		tmp_path = usuarios_path + '.tmp'
-		with open(tmp_path, 'w', encoding='utf-8') as f:
-			json.dump(to_write, f, ensure_ascii=False, indent=2)
-		os.replace(tmp_path, usuarios_path)
+		db.session.add(registro)
+		db.session.commit()
 		return {'ok': True, 'mensagem': 'Usuário cadastrado com sucesso. Aguarde a aprovação do seu cadastro.', 'id': new_id}
 	except Exception as e:
 		try:
 			print('Erro ao salvar usuário:', e)
 		except Exception:
 			pass
+		db.session.rollback()
 		return {'ok': False, 'mensagem': 'Erro ao salvar usuário'}
+
 
 
 def validar_login(login_value, senha):
@@ -330,13 +301,17 @@ def validar_login(login_value, senha):
 		return {'ok': False, 'mensagem': 'Informe usuário ou e-mail'}
 
 	is_email = ('@' in str(login_value))
-	user = _find_user(login_value, active_only=True)
+	query = Usuario.query.filter_by(ativo=True)
+	if is_email:
+		user = query.filter(db.func.lower(Usuario.email) == str(login_value).lower()).first()
+	else:
+		user = query.filter(db.func.lower(Usuario.usuario) == str(login_value).lower()).first()
 	if not user:
 		return {'ok': False, 'mensagem': 'E-mail não cadastrado' if is_email else 'Usuário não cadastrado'}
 
-	stored = user.get('senha')
+	stored = user.senha
 	if not _check_password(stored, senha):
 		return {'ok': False, 'mensagem': 'Senha incorreta'}
 
-	sanitized = {k: v for k, v in user.items() if k != 'senha'}
+	sanitized = {k: v for k, v in user.__dict__.items() if k != 'senha' and not k.startswith('_')}
 	return {'ok': True, 'mensagem': 'Login efetuado com sucesso', 'user': sanitized}

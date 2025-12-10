@@ -1,3 +1,13 @@
+# Função de normalização ultra tolerante para nomes de unidade
+def ultra_normalizar_nome(nome):
+	if not isinstance(nome, str):
+		nome = str(nome)
+	nome = nome.lower().strip()
+	nome = nome.replace('ups', '').replace('upsl', '').replace('unidade', '').replace('posto', '')
+	nome = nome.replace('-', ' ').replace('_', ' ').replace('.', ' ')
+	nome = ''.join(c for c in nome if c.isalnum() or c.isspace())
+	nome = ' '.join(nome.split())
+	return nome
 import json
 import calendar
 from datetime import datetime
@@ -127,12 +137,44 @@ def adicionar_siisp_em_mapa(payload):
 			
 			dados_siisp_list = dados_siisp_filtrados
 	
-	mapas_existentes = _load_mapas_partitioned(mes, ano)
-	if mapas_existentes is None:
+	mapas_raw = _load_mapas_partitioned(mes, ano)
+	from .mapas import serialize_mapa
+	mapas_existentes = [serialize_mapa(m) for m in mapas_raw]
+	if not mapas_existentes:
+		print(f'❌ DEBUG: Nenhum mapa encontrado para mes={mes}, ano={ano} pelo _load_mapas_partitioned.')
 		return {
 			'success': False,
 			'error': f'Nenhum mapa encontrado para {mes:02d}/{ano}. Adicione dados de refeições primeiro.'
 		}
+
+	unidade_normalizada = ultra_normalizar_nome(unidade)
+	print('🔍 DEBUG SIISP: Buscando mapa para:')
+	print(f'    Unidade: "{unidade}" (normalizada: "{unidade_normalizada}")')
+	print(f'    lote_id: {lote_id} | mes: {mes} | ano: {ano}')
+	print(f'    Total de mapas carregados para o período: {len(mapas_existentes)}')
+	for i, m in enumerate(mapas_existentes):
+		if not isinstance(m, dict):
+			continue
+		m_unidade = str(m.get('unidade', '')).strip()
+		m_lote_id = m.get('lote_id')
+		m_mes = m.get('mes')
+		m_ano = m.get('ano')
+		m_unidade_normalizada = ultra_normalizar_nome(m_unidade)
+		print(f'  - [{i}] Unidade: "{m_unidade}" (normalizada: "{m_unidade_normalizada}") | lote_id: {m_lote_id} | mes: {m_mes} | ano: {m_ano}')
+		try:
+			match_unidade = (m_unidade_normalizada == unidade_normalizada)
+			match_lote = (int(m_lote_id) == int(lote_id))
+			match_mes = (int(m_mes) == int(mes))
+			match_ano = (int(m_ano) == int(ano))
+			print(f'      Comparação: unidade={match_unidade}, lote={match_lote}, mes={match_mes}, ano={match_ano}')
+			if match_unidade and match_lote and match_mes and match_ano:
+				print(f'      >>> MAPA ENCONTRADO!')
+				mapa_encontrado = m
+				indice_mapa = i
+				break
+		except Exception as e:
+			print(f'      Erro na comparação: {e}')
+			continue
 	
 	mapa_encontrado = None
 	indice_mapa = None

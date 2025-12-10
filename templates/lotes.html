@@ -16,7 +16,7 @@
                     <ul>
                         <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
                         <li><a href="{{ url_for('lotes') }}" class="active">Lotes</a></li>
-                        <li><a href="#relatorios">Relatórios</a></li>
+                        <li><a href="{{ url_for('relatorios') }}">Relatórios</a></li>
                         <li><a href="#configuracoes">Configurações</a></li>
                         <li><a href="#" id="logoutLink" style="color: #fed7d7;">Sair</a></li>
                     </ul>
@@ -52,39 +52,43 @@
             </section>
 
             <!-- Filtros Avançados -->
-            <section class="filters fade-in">
-                <h3 style="margin-bottom: 1rem;">Filtros</h3>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
-                    <div>
-                        <label for="filtro-status" class="form-label">Status</label>
-                        <select id="filtro-status" class="form-select">
-                            <option value="">Todos os status</option>
-                            <option value="ativo">Ativo</option>
-                            <option value="inativo">Inativo</option>
-                        </select>
+            <section class="fade-in" style="margin-bottom: 2rem;">
+                <div style="background: white; border-radius: 12px; padding: 1rem 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                    <div style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="font-size: 1.125rem;">🔍</span>
+                            <span style="font-weight: 500; color: var(--gray-700); font-size: 0.875rem;">Filtros:</span>
+                        </div>
+                        
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <label for="filtro-status" style="font-weight: 500; color: var(--gray-600); font-size: 0.875rem;">Status:</label>
+                            <select id="filtro-status" class="form-select" style="padding: 0.5rem 0.75rem; font-size: 0.875rem; border-radius: 6px;">
+                                <option value="">Todos</option>
+                                <option value="ativo">Ativo</option>
+                                <option value="inativo">Inativo</option>
+                            </select>
+                        </div>
+                        
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <label for="filtro-empresa" style="font-weight: 500; color: var(--gray-600); font-size: 0.875rem;">Empresa:</label>
+                            <select id="filtro-empresa" class="form-select" style="padding: 0.5rem 0.75rem; font-size: 0.875rem; border-radius: 6px;">
+                                <option value="">Todas</option>
+                                {% for empresa in empresas %}
+                                    <option value="{{ empresa|lower }}">{{ empresa }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <label for="filtro-percentual" style="font-weight: 500; color: var(--gray-600); font-size: 0.875rem;">Executado:</label>
+                            <select id="filtro-percentual" class="form-select" style="padding: 0.5rem 0.75rem; font-size: 0.875rem; border-radius: 6px;">
+                                <option value="">Todos</option>
+                                <option value="alta">Alto (&gt;80%)</option>
+                                <option value="media">Médio (50-80%)</option>
+                                <option value="baixa">Baixo (&lt;50%)</option>
+                            </select>
+                        </div>
                     </div>
-                    <div>
-                        <label for="filtro-empresa" class="form-label">Empresa</label>
-                        <select id="filtro-empresa" class="form-select">
-                            <option value="">Todas as empresas</option>
-                            {% for empresa in empresas %}
-                                <option value="{{ empresa|lower }}">{{ empresa }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div>
-                        <label for="filtro-percentual" class="form-label">% Executado</label>
-                        <select id="filtro-percentual" class="form-select">
-                            <option value="">Todos os níveis</option>
-                            <option value="alta">Alto (&gt;80%)</option>
-                            <option value="media">Médio (50-80%)</option>
-                            <option value="baixa">Baixo (&lt;50%)</option>
-                        </select>
-                    </div>
-                </div>
-                <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
-                    <button class="btn btn-secondary" id="limparFiltros">Limpar Filtros</button>
-                    <button class="btn btn-primary" id="aplicarFiltros">Aplicar Filtros</button>
                 </div>
             </section>
 
@@ -404,9 +408,31 @@
         </div>
     </div>
 
+    <!-- Modal Excluir Lote -->
+    <div id="modal-excluir-lote" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); z-index: 2000;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 16px; padding: 2rem; max-width: 500px; width: 98%; box-shadow: 0 8px 32px rgba(0,0,0,0.18);">
+            <h2 style="margin-bottom: 1.5rem; color: var(--danger-color);">Excluir Lote</h2>
+            <form id="form-excluir-lote" autocomplete="off">
+                <div style="margin-bottom: 1.5rem;">
+                    <label for="excluir-lote-selecao" class="form-label" style="font-weight: 500;">Selecione o Lote para excluir</label>
+                    <select id="excluir-lote-selecao" class="form-select" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                        <option value="">Selecione...</option>
+                        {% for lote in lotes %}
+                            <option value="{{ lote.id }}">Lote {{ lote.id }} - {{ lote.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div style="margin-bottom: 1.5rem; color: var(--danger-color); font-weight: 500;">Esta ação é irreversível. Tem certeza que deseja excluir este lote?</div>
+                <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
+                    <button type="button" id="btn-cancelar-excluir-lote" class="btn btn-secondary">Cancelar</button>
+                    <button type="submit" id="btn-confirmar-excluir-lote" class="btn btn-danger">Excluir</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
-        // Dados dos lotes carregados do backend
-        const lotesData = {{ lotes|tojson|safe }};
+        const lotesData = JSON.parse(`{{ lotes|tojson|safe }}`);
 
         // Campo dinâmico de unidades do lote
         function adicionarCampoUnidade(nome = "") {
@@ -505,7 +531,22 @@
             document.getElementById('editar-lote-empresa').value = lote.empresa || '';
             document.getElementById('editar-lote-contrato').value = lote.numero_contrato || lote.contrato || '';
             document.getElementById('editar-lote-inicio').value = lote.data_inicio || lote.inicio_contrato || '';
-            document.getElementById('editar-lote-fim').value = lote.data_fim || lote.fim_contrato || '';
+            // Formatar data_fim para YYYY-MM-DD se necessário
+            let dataFim = lote.data_fim || lote.fim_contrato || '';
+            if (dataFim && dataFim.length > 0) {
+                // Tenta converter formatos comuns para YYYY-MM-DD
+                const match = dataFim.match(/(\d{4})[-/](\d{2})[-/](\d{2})/);
+                if (match) {
+                    dataFim = `${match[1]}-${match[2]}-${match[3]}`;
+                } else {
+                    // Tenta converter DD/MM/YYYY para YYYY-MM-DD
+                    const matchBr = dataFim.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+                    if (matchBr) {
+                        dataFim = `${matchBr[3]}-${matchBr[2]}-${matchBr[1]}`;
+                    }
+                }
+            }
+            document.getElementById('editar-lote-fim').value = dataFim;
             document.getElementById('editar-lote-valor-contratual').value = lote.valor_contratual || 0;
             
             // Status
@@ -613,14 +654,19 @@
                 });
             }
 
-            // Aplicar filtros
-            var aplicarFiltrosBtn = document.getElementById('aplicarFiltros');
-            if (aplicarFiltrosBtn) {
-                aplicarFiltrosBtn.addEventListener('click', applyFilters);
+            // Aplicar filtros automaticamente ao mudar qualquer select
+            var filtroStatus = document.getElementById('filtro-status');
+            var filtroEmpresa = document.getElementById('filtro-empresa');
+            var filtroPercentual = document.getElementById('filtro-percentual');
+            
+            if (filtroStatus) {
+                filtroStatus.addEventListener('change', applyFilters);
             }
-            var limparFiltrosBtn = document.getElementById('limparFiltros');
-            if (limparFiltrosBtn) {
-                limparFiltrosBtn.addEventListener('click', clearFilters);
+            if (filtroEmpresa) {
+                filtroEmpresa.addEventListener('change', applyFilters);
+            }
+            if (filtroPercentual) {
+                filtroPercentual.addEventListener('change', applyFilters);
             }
 
             // Botão Novo Lote - abrir modal
@@ -855,6 +901,58 @@
                 modalEditarLote.addEventListener('click', function(e) {
                     if (e.target === modalEditarLote) {
                         modalEditarLote.style.display = 'none';
+                    }
+                });
+            }
+
+            // Modal Excluir Lote
+            var excluirLoteBtn = document.getElementById('excluirLote');
+            var modalExcluirLote = document.getElementById('modal-excluir-lote');
+            var btnCancelarExcluirLote = document.getElementById('btn-cancelar-excluir-lote');
+            var formExcluirLote = document.getElementById('form-excluir-lote');
+            if (excluirLoteBtn && modalExcluirLote) {
+                excluirLoteBtn.addEventListener('click', function() {
+                    document.getElementById('excluir-lote-selecao').value = '';
+                    modalExcluirLote.style.display = 'block';
+                });
+            }
+            if (btnCancelarExcluirLote && modalExcluirLote) {
+                btnCancelarExcluirLote.addEventListener('click', function() {
+                    modalExcluirLote.style.display = 'none';
+                });
+            }
+            if (modalExcluirLote) {
+                modalExcluirLote.addEventListener('click', function(e) {
+                    if (e.target === modalExcluirLote) {
+                        modalExcluirLote.style.display = 'none';
+                    }
+                });
+            }
+            if (formExcluirLote) {
+                formExcluirLote.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    const loteId = document.getElementById('excluir-lote-selecao').value;
+                    if (!loteId) {
+                        alert('Selecione um lote para excluir');
+                        return;
+                    }
+                    if (!confirm('Tem certeza que deseja excluir este lote?')) return;
+                    try {
+                        const resp = await fetch(`/api/editar-lote/${loteId}`, {
+                            method: 'DELETE',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'same-origin'
+                        });
+                        const data = await resp.json();
+                        if (resp.ok && data.success) {
+                            showNotification('success', 'Lote excluído!', 'O lote foi excluído com sucesso.');
+                            modalExcluirLote.style.display = 'none';
+                            setTimeout(() => window.location.reload(), 1200);
+                        } else {
+                            showNotification('error', 'Erro ao excluir lote', data.error || 'Erro ao excluir lote.');
+                        }
+                    } catch (err) {
+                        alert('Erro de conexão com o servidor.');
                     }
                 });
             }

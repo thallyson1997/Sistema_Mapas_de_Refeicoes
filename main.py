@@ -270,7 +270,47 @@ def lotes():
     mapas = carregar_mapas_db()
     calcular_metricas_lotes(lotes, mapas)
     calcular_ultima_atividade_lotes(lotes, mapas)
-    # Debug: Verificar se campo de refeições/mês está presente
+
+    # Debug: Mostrar cálculo de refeições por mês
+    for lote in lotes:
+        if 'refeicoes_por_mes' in lote:
+            total_refeicoes = sum(lote['refeicoes_por_mes'].values())
+            num_meses = len(lote['refeicoes_por_mes'])
+            media = total_refeicoes / num_meses if num_meses > 0 else 0
+            print(f"[DEBUG] Lote {lote.get('id')}: Soma das refeições = {total_refeicoes}, Meses = {num_meses}, Média = {media:.2f}")
+
+    # Calcular refeições por mês para cada lote
+    campos_refeicoes = [
+        'cafe_interno', 'cafe_funcionario', 'almoco_interno', 'almoco_funcionario',
+        'lanche_interno', 'lanche_funcionario', 'jantar_interno', 'jantar_funcionario'
+    ]
+    # Agrupar mapas por lote e por mês/ano
+    mapas_por_lote = {}
+    for mapa in mapas:
+        lid = str(mapa.get('lote_id'))
+        mes = mapa.get('mes')
+        ano = mapa.get('ano')
+        key = (lid, mes, ano)
+        if key not in mapas_por_lote:
+            mapas_por_lote[key] = []
+        mapas_por_lote[key].append(mapa)
+
+    for lote in lotes:
+        lid = str(lote.get('id'))
+        refeicoes_por_mes = {}
+        # Buscar todos os mapas desse lote
+        for key in mapas_por_lote:
+            lote_id, mes, ano = key
+            if lote_id == lid:
+                total = 0
+                for mapa in mapas_por_lote[key]:
+                    for campo in campos_refeicoes:
+                        vals = mapa.get(campo, [])
+                        if isinstance(vals, list):
+                            total += sum(int(x) if x is not None else 0 for x in vals)
+                refeicoes_por_mes[f'{mes}/{ano}'] = total
+        lote['refeicoes_por_mes'] = refeicoes_por_mes
+
     empresas = []
     seen = set()
     for l in lotes:
@@ -433,8 +473,8 @@ def api_adicionar_dados():
             except Exception as e:
                 print(f"[DEBUG] Erro ao recortar dados do mapa: {e}")
 
-        # Preencher dados_siisp com zeros se não recebido
-        if 'dados_siisp' not in data or not isinstance(data.get('dados_siisp'), list):
+        # Preencher dados_siisp com zeros apenas se não enviado ou vazio
+        if 'dados_siisp' not in data or not data['dados_siisp']:
             # Tenta usar o número de dias válidos, senão tenta pelo campo 'datas', senão calcula pelo mês
             if num_dias_validos is not None:
                 data['dados_siisp'] = [0] * num_dias_validos

@@ -933,186 +933,116 @@ def calcular_metricas_lotes(lotes, mapas):
 	totais_custos_por_lote = {}
 	totais_desvios_por_lote = {}
 
+	# NOVO: Calcular refeições por mês para cada lote
+	campos_refeicoes = [
+		'cafe_interno', 'cafe_funcionario', 'almoco_interno', 'almoco_funcionario',
+		'lanche_interno', 'lanche_funcionario', 'jantar_interno', 'jantar_funcionario'
+	]
+	mapas_por_lote_mes = defaultdict(lambda: defaultdict(list))
 	for m in (mapas or []):
-		# Se for objeto, converte para dict
+		# Garante que m seja dict
 		if not isinstance(m, dict):
 			try:
 				m = serialize_mapa(m)
 			except Exception:
-				pass
-				pass
 				continue
-		try:
-			lote_id = int(m.get('lote_id'))
-		except Exception:
-			# print removido: [DEBUG] lote_id inválido em mapa
-			continue
+		lote_id = str(m.get('lote_id'))
+		mes = m.get('mes')
+		ano = m.get('ano')
+		mapas_por_lote_mes[lote_id][f'{mes}/{ano}'].append(m)
 
-		mes = m.get('mes') or m.get('month') or m.get('mes_num') or m.get('month_num')
-		ano = m.get('ano') or m.get('year')
-
-		if (mes is None or ano is None) and isinstance(m.get('datas'), list) and len(m.get('datas')) > 0:
-				parts = str(m.get('datas')[0]).split('/')
-				if len(parts) >= 3:
-					mes = int(parts[1])
-					ano = int(parts[2])
-				# print removido: [DEBUG] Erro ao extrair mes/ano de datas
-				pass
-
-		try:
-			mes_i = int(mes)
-			ano_i = int(ano)
-		except Exception:
-			# print removido: [DEBUG] mes/ano inválido
-			continue
-
-		meses_por_lote[lote_id].add((mes_i, ano_i))
-
-		if 'refeicoes_mes' in m and m.get('refeicoes_mes') not in [None, '', 0, '0', 0.0]:
-			try:
-				total = int(m.get('refeicoes_mes') or 0)
-			except Exception:
-				try:
-					total = int(float(m.get('refeicoes_mes') or 0))
-				except Exception:
-					total = 0
-		else:
-			# Calcular somando todos os campos de refeições
-			total = 0
-			for campo in ['cafe_interno', 'cafe_funcionario', 'almoco_interno', 'almoco_funcionario', 'lanche_interno', 'lanche_funcionario', 'jantar_interno', 'jantar_funcionario']:
-				vals = m.get(campo, [])
-				if isinstance(vals, list):
-					soma = sum(int(x) if x is not None else 0 for x in vals)
-					total += soma
-
-		# print removido: [DEBUG] Mapa lote_id=..., total_refeicoes=...
-		def soma_positivos(lista):
-			total = 0
-			for x in lista:
-				try:
-					val = float(x)
-					if val > 0:
-						total += val
-				except (ValueError, TypeError):
-					continue
-			return total
-
-		for l_temp in lotes:
-			try:
-				if int(l_temp.get('id')) == lote_id:
-					precos = l_temp.get('precos', {})
-					break
-			except Exception:
-				continue
-
-		def get_preco(refeicao, tipo):
-			if isinstance(precos.get(refeicao), dict):
-				valor = precos[refeicao].get(tipo, 0)
-			else:
-				chave = f"{refeicao}_{tipo}"
-				valor = precos.get(chave, 0)
-			try:
-				return float(valor)
-			except (ValueError, TypeError):
-				return 0.0
-
-		# print removido: [DEBUG] cafe_interno_siisp soma_positivos
-		# print removido: [DEBUG] dados_siisp
-		# print removido: [DEBUG] cafe_funcionario_siisp soma_positivos
-		# print removido: [DEBUG] almoco_interno_siisp soma_positivos
-		# print removido: [DEBUG] almoco_funcionario_siisp soma_positivos
-		# print removido: [DEBUG] lanche_interno_siisp soma_positivos
-		# print removido: [DEBUG] lanche_funcionario_siisp soma_positivos
-		# print removido: [DEBUG] jantar_interno_siisp soma_positivos
-		# print removido: [DEBUG] jantar_funcionario_siisp soma_positivos
-		desvio_total_produtos = (
-			soma_positivos(m.get('cafe_interno_siisp', [])) * get_preco('cafe', 'interno') +
-			soma_positivos(m.get('cafe_funcionario_siisp', [])) * get_preco('cafe', 'funcionario') +
-			soma_positivos(m.get('almoco_interno_siisp', [])) * get_preco('almoco', 'interno') +
-			soma_positivos(m.get('almoco_funcionario_siisp', [])) * get_preco('almoco', 'funcionario') +
-			soma_positivos(m.get('lanche_interno_siisp', [])) * get_preco('lanche', 'interno') +
-			soma_positivos(m.get('lanche_funcionario_siisp', [])) * get_preco('lanche', 'funcionario') +
-			soma_positivos(m.get('jantar_interno_siisp', [])) * get_preco('jantar', 'interno') +
-			soma_positivos(m.get('jantar_funcionario_siisp', [])) * get_preco('jantar', 'funcionario')
-		)
-
-		custo_mapa = 0.0
-		desvio_mapa = 0.0
-		lote_do_mapa = None
-		for l_temp in lotes:
-			try:
-				if int(l_temp.get('id')) == lote_id:
-					lote_do_mapa = l_temp
-					break
-			except Exception:
-				pass
-
-		# Fim do bloco for/try/except
-		if lote_do_mapa and isinstance(lote_do_mapa.get('precos'), dict):
-			precos = lote_do_mapa.get('precos', {})
-
-			def get_preco(refeicao, tipo):
-				if isinstance(precos.get(refeicao), dict):
-					valor = precos[refeicao].get(tipo, 0)
-				else:
-					chave = f"{refeicao}_{tipo}"
-					valor = precos.get(chave, 0)
-				try:
-					return float(valor)
-				except (ValueError, TypeError):
-					return 0.0
-
-			meal_fields = [
-				('cafe_interno', get_preco('cafe', 'interno')),
-				('cafe_funcionario', get_preco('cafe', 'funcionario')),
-				('almoco_interno', get_preco('almoco', 'interno')),
-				('almoco_funcionario', get_preco('almoco', 'funcionario')),
-				('lanche_interno', get_preco('lanche', 'interno')),
-				('lanche_funcionario', get_preco('lanche', 'funcionario')),
-				('jantar_interno', get_preco('jantar', 'interno')),
-				('jantar_funcionario', get_preco('jantar', 'funcionario'))
-			]
-
-			for field_name, preco_unitario in meal_fields:
-				if field_name in m and isinstance(m[field_name], list):
-					try:
-						quantidade = sum(int(x) if x is not None else 0 for x in m[field_name])
-						custo_mapa += quantidade * preco_unitario
-					except Exception:
-						# print removido: [DEBUG] Erro ao somar ...
-						pass
-
-			# Calcular desvios baseado em discrepâncias SIISP
-			for i in range(len(m.get('data', []))):
-				siisp = m.get('dados_siisp', [])[i] if m.get('dados_siisp') and i < len(m.get('dados_siisp', [])) else 0
-				if siisp > 0:
-					if m.get('cafe_interno_siisp') and i < len(m.get('cafe_interno_siisp', [])):
-						excedente_cafe = max(0, m['cafe_interno_siisp'][i])
-						desvio_mapa += excedente_cafe * get_preco('cafe', 'interno')
-					if m.get('almoco_interno_siisp') and i < len(m.get('almoco_interno_siisp', [])):
-						excedente_almoco = max(0, m['almoco_interno_siisp'][i])
-					if m.get('lanche_interno_siisp') and i < len(m.get('lanche_interno_siisp', [])):
-						excedente_lanche = max(0, m['lanche_interno_siisp'][i])
-						desvio_mapa += excedente_lanche * get_preco('lanche', 'interno')
-					if m.get('jantar_interno_siisp') and i < len(m.get('jantar_interno_siisp', [])):
-						excedente_jantar = max(0, m['jantar_interno_siisp'][i])
-						desvio_mapa += excedente_jantar * get_preco('jantar', 'interno')
-			print(f"[DEBUG] lote_id={lote_id}, custo_mapa={custo_mapa}, desvio_mapa={desvio_mapa}")
-
-		totais_custos_por_lote[lote_id] = totais_custos_por_lote.get(lote_id, 0.0) + custo_mapa
-		totais_desvios_por_lote[lote_id] = totais_desvios_por_lote.get(lote_id, 0.0) + desvio_total_produtos
-
-	# Atualizar os lotes com as métricas calculadas
 	for lote in lotes:
-		lote_id = lote.get('id')
-		meses_count = len(meses_por_lote.get(lote_id, []))
-		lote['meses_cadastrados'] = meses_count
+		lid = str(lote.get('id'))
+		refeicoes_por_mes = {}
+		meses_count = 0
+		custo_total = 0.0
+		desvio_total = 0.0
+		total_refeicoes = 0
 
+		# Para cada mês/ano, agregue os mapas e calcule as métricas
+		for mes_ano, mapas_mes in mapas_por_lote_mes[lid].items():
+			total_mes = 0
+			custo_mes = 0.0
+			desvio_mes = 0.0
+			for mapa in mapas_mes:
+				# Soma refeições
+				for campo in campos_refeicoes:
+					vals = mapa.get(campo, [])
+					if isinstance(vals, list):
+						total_mes += sum(int(x) if x is not None else 0 for x in vals)
+				# Cálculo de custo e desvio por mapa
+				precos = lote.get('precos', {})
+				def get_preco(refeicao, tipo):
+					if isinstance(precos.get(refeicao), dict):
+						valor = precos[refeicao].get(tipo, 0)
+					else:
+						chave = f"{refeicao}_{tipo}"
+						valor = precos.get(chave, 0)
+					try:
+						return float(valor)
+					except (ValueError, TypeError):
+						return 0.0
+				meal_fields = [
+					('cafe_interno', get_preco('cafe', 'interno')),
+					('cafe_funcionario', get_preco('cafe', 'funcionario')),
+					('almoco_interno', get_preco('almoco', 'interno')),
+					('almoco_funcionario', get_preco('almoco', 'funcionario')),
+					('lanche_interno', get_preco('lanche', 'interno')),
+					('lanche_funcionario', get_preco('lanche', 'funcionario')),
+					('jantar_interno', get_preco('jantar', 'interno')),
+					('jantar_funcionario', get_preco('jantar', 'funcionario'))
+				]
+				for field_name, preco_unitario in meal_fields:
+					if field_name in mapa and isinstance(mapa[field_name], list):
+						try:
+							quantidade = sum(int(x) if x is not None else 0 for x in mapa[field_name])
+							custo_mes += quantidade * preco_unitario
+						except Exception:
+							pass
+				# Desvio: soma dos campos *_siisp
+				siisp_fields = [
+					('cafe_interno_siisp', 'cafe', 'interno'),
+					('cafe_funcionario_siisp', 'cafe', 'funcionario'),
+					('almoco_interno_siisp', 'almoco', 'interno'),
+					('almoco_funcionario_siisp', 'almoco', 'funcionario'),
+					('lanche_interno_siisp', 'lanche', 'interno'),
+					('lanche_funcionario_siisp', 'lanche', 'funcionario'),
+					('jantar_interno_siisp', 'jantar', 'interno'),
+					('jantar_funcionario_siisp', 'jantar', 'funcionario')
+				]
+				for field_name, refeicao, tipo in siisp_fields:
+					if field_name in mapa and isinstance(mapa[field_name], list):
+						try:
+							quantidade = sum(max(0, float(x)) if x is not None else 0 for x in mapa[field_name])
+							desvio_mes += quantidade * get_preco(refeicao, tipo)
+						except Exception:
+							pass
+			refeicoes_por_mes[mes_ano] = total_mes
+			total_refeicoes += total_mes
+			custo_total += custo_mes
+			desvio_total += abs(desvio_mes)
+			meses_count += 1
+		lote['refeicoes_por_mes'] = refeicoes_por_mes
+		lote['meses_cadastrados'] = meses_count
+		# Salva os totais para uso posterior
+		lote_id = lote.get('id')
+		totais_custos_por_lote[lote_id] = custo_total
+		totais_desvios_por_lote[lote_id] = desvio_total
+
+		# Mensagem de debug detalhada por mês
+		print(f"[DEBUG] Lote {lote.get('id')}: Refeições por mês:")
+		for mes_ano, total in refeicoes_por_mes.items():
+			print(f"  - {mes_ano}: {total} refeições")
+		media = total_refeicoes / meses_count if meses_count > 0 else 0
+		print(f"[DEBUG] Lote {lote.get('id')}: Soma das refeições = {total_refeicoes}, Meses = {meses_count}, Média = {media:.2f}")
+
+		# Recupera os totais calculados anteriormente
+		lote_id = lote.get('id')
 		custo_total = totais_custos_por_lote.get(lote_id, 0.0)
 		desvio_total = totais_desvios_por_lote.get(lote_id, 0.0)
 
 		if meses_count > 0:
-			lote['refeicoes_mes'] = totais_refeicoes_por_lote.get(lote_id, 0) / meses_count
+			lote['refeicoes_mes'] = media
 			lote['custo_mes'] = custo_total / meses_count
 			lote['desvio_mes'] = desvio_total / meses_count
 		else:
@@ -1126,7 +1056,8 @@ def calcular_metricas_lotes(lotes, mapas):
 		except (ValueError, TypeError):
 			valor_contratual = 0.0
 
-		if valor_contratual > 0:
+		# Garante que o campo sempre existe
+		if valor_contratual > 0 and custo_total > 0:
 			lote['percentual_executado'] = round((custo_total / valor_contratual) * 100, 1)
 		else:
 			lote['percentual_executado'] = 0.0

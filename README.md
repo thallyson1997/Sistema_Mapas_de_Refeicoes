@@ -59,10 +59,6 @@ O sistema implementa operações CRUD (Criar, Ler, Atualizar, Deletar) principal
 
 ![Tela Dashboard](img/dashboard.png)
 
-### Tela de Lotes
-
-![Tela de Lotes](img/dashboard.png)
-
 ### Tela Lote-Detalhe
 
 ![Tela Lote-Detalhe](img/lote-detalhes.png)

@@ -37,7 +37,47 @@ O sistema implementa operações CRUD (Criar, Ler, Atualizar, Deletar) principal
 5. **Acesse:**
   - [http://localhost:5000](http://localhost:5000)
 
-> Para mais detalhes, consulte as seções "Instalação e Execução" e "Credenciais Padrão" acima.
+
+---
+
+## 📸 Screenshots do Sistema
+
+
+### Tela Inicial
+
+![Tela Inicial](img/index.png)
+
+### Tela de Cadastro
+
+![Tela de Cadastro](img/cadastro.png)
+
+### Tela de Login
+
+![Tela de Login](img/login.png)
+
+### Tela Dashboard
+
+![Tela Dashboard](img/dashboard.png)
+
+### Tela de Lotes
+
+![Tela de Lotes](img/dashboard.png)
+
+### Tela Lote-Detalhe
+
+![Tela Lote-Detalhe](img/lote-detalhes.png)
+
+### Pop-up de Adicionar Dados
+
+![Pop-up de Adicionar Dados](img/adicionar-mapas.png)
+
+### Tabela de Dados de Refeições
+
+![Tabela de Dados de Refeições](img/tabela-dados-refeicoes.png)
+
+### Tabela de Dados Comparativo ao SIISP
+
+![Tabela de Dados Comparativo ao SIISP](img/tabela-dados-comparacao-siisp.png)
 # SGMRP - Sistema de Gerenciamento de Mapas de Refeições Penitenciário
 
 ## Sobre o Projeto

@@ -1,3 +1,43 @@
+# CRUD de Lotes e Mapas
+
+O sistema implementa operações CRUD (Criar, Ler, Atualizar, Deletar) principalmente para os módulos de **Lotes** e **Mapas de Refeições**:
+
+### Lotes
+- **Criar**: Adição de novos lotes via modal na interface ou via API (`POST /api/novo-lote`).
+- **Ler**: Listagem de todos os lotes na página principal e detalhamento individual.
+- **Atualizar**: Edição de dados do lote (empresa, contrato, datas, valor, unidades, preços) via modal ou API (`PUT /api/editar-lote/<id>`).
+- **Deletar**: Exclusão de lotes específicos, com confirmação, via interface ou API.
+
+### Mapas de Refeições
+- **Criar**: Importação de dados tabulados, entrada manual ou integração SIISP (`POST /api/adicionar-dados`, `POST /api/entrada-manual`, `POST /api/adicionar-siisp`).
+- **Ler**: Visualização dos mapas por lote, unidade, período e detalhamento diário.
+- **Atualizar**: Edição de registros de mapas por reimportação ou ajuste manual.
+- **Deletar**: Exclusão de registros de mapas por unidade, mês e ano (`DELETE /api/excluir-dados`).
+
+> **Nota:** O CRUD de usuários existe, mas o foco do sistema é a gestão dos dados de lotes e mapas, pois são o núcleo do controle contratual e alimentar.
+
+## Guia de Instalação Rápido
+
+1. **Clone o repositório:**
+  ```bash
+  git clone https://github.com/thallyson1997/Sistema_Gerenciamento_Mapas_de_Refei-es_Penitenci-rio.git
+  cd Sistema_Gerenciamento_Mapas_de_Refei-es_Penitenci-rio
+  ```
+2. **Instale as dependências:**
+  ```bash
+  pip install -r requirements.txt
+  ```
+3. **Prepare os dados:**
+  - Certifique-se de que o arquivo `modelo.xlsx` está em `dados/`.
+  - Crie arquivos JSON de exemplo em `dados/` se necessário (ex: `lotes.json`, `mapas.json`).
+4. **Execute a aplicação:**
+  ```bash
+  python main.py
+  ```
+5. **Acesse:**
+  - [http://localhost:5000](http://localhost:5000)
+
+> Para mais detalhes, consulte as seções "Instalação e Execução" e "Credenciais Padrão" acima.
 # SGMRP - Sistema de Gerenciamento de Mapas de Refeições Penitenciário
 
 ## Sobre o Projeto

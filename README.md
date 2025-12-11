@@ -3,18 +3,18 @@
 O sistema implementa operações CRUD (Criar, Ler, Atualizar, Deletar) principalmente para os módulos de **Lotes** e **Mapas de Refeições**:
 
 ### Lotes
-- **Criar**: Adição de novos lotes via modal na interface ou via API (`POST /api/novo-lote`).
+- **Criar**: Adição de novos lotes via API (`POST /api/novo-lote`).
 - **Ler**: Listagem de todos os lotes na página principal e detalhamento individual.
-- **Atualizar**: Edição de dados do lote (empresa, contrato, datas, valor, unidades, preços) via modal ou API (`PUT /api/editar-lote/<id>`).
-- **Deletar**: Exclusão de lotes específicos, com confirmação, via interface ou API.
+- **Atualizar**: Edição de dados do lote (empresa, contrato, datas, valor, unidades, preços) via API (`PUT /api/editar-lote/<id>`).
+- **Deletar**: Exclusão de lotes específicos, com confirmação, via API (`DELETE /api/editar-lote/<id>`).
 
 ### Mapas de Refeições
 - **Criar**: Importação de dados tabulados, entrada manual ou integração SIISP (`POST /api/adicionar-dados`, `POST /api/entrada-manual`, `POST /api/adicionar-siisp`).
 - **Ler**: Visualização dos mapas por lote, unidade, período e detalhamento diário.
-- **Atualizar**: Edição de registros de mapas por reimportação ou ajuste manual.
+- **Atualizar**: Edição de registros de mapas por reimportação (`POST /api/adicionar-dados`, `POST /api/entrada-manual`, `POST /api/adicionar-siisp`).
 - **Deletar**: Exclusão de registros de mapas por unidade, mês e ano (`DELETE /api/excluir-dados`).
 
-> **Nota:** O CRUD de usuários existe, mas o foco do sistema é a gestão dos dados de lotes e mapas, pois são o núcleo do controle contratual e alimentar.
+> **Nota:** O CRUD de usuários é uma atualização futura, inicialmente está implementado apenas o Create, tendo que ser atualizado manualmente, principalmente para permitir o login do usuário, trocando o campo ativo de `false` para `true`. O foco do sistema é a gestão dos dados de lotes e mapas, pois são o núcleo do controle contratual e alimentar.
 
 ## Guia de Instalação Rápido
 

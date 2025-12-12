@@ -272,7 +272,7 @@
                     <ul>
                         <li><a href="{{ url_for('dashboard') }}" class="active">Dashboard</a></li>
                         <li><a href="{{ url_for('lotes') }}">Lotes</a></li>
-                        <li><a href="#relatorios">Relatórios</a></li>
+                        <li><a href="{{ url_for('relatorios') }}">Relatórios</a></li>
                         <li><a href="#configuracoes">Configurações</a></li>
                         <li><a href="#" id="logoutLink" style="color: #fed7d7;">Sair</a></li>
                     </ul>
@@ -521,7 +521,7 @@
                         </div>
                     </div>
 
-                    <div class="card fade-in" style="cursor: pointer;" onclick="alert('Funcionalidade de relatórios será implementada em versões futuras.')">
+                    <div class="card fade-in" style="cursor: pointer;" onclick="window.location.href='{{ url_for('relatorios') }}'">
                         <div class="card-body" style="text-align: center; padding: 2rem;">
                             <div style="font-size: 3rem; margin-bottom: 1rem;">📊</div>
                             <h4>Gerar Relatório</h4>
@@ -1423,11 +1423,6 @@
 
         // Placeholder para funcionalidades futuras
         document.addEventListener('click', function(e) {
-            if (e.target.closest('a[href="#relatorios"]')) {
-                e.preventDefault();
-                alert('Módulo de Relatórios será implementado na próxima versão do SGMRP.');
-            }
-            
             if (e.target.closest('a[href="#configuracoes"]')) {
                 e.preventDefault();
                 alert('Módulo de Configurações será implementado na próxima versão do SGMRP.');

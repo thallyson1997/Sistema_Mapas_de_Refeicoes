@@ -6,6 +6,7 @@
     <title>Relatórios - SGMRP</title>
     <meta name="description" content="Análise gráfica e relatórios de consumo de refeições">
     <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
         .chart-placeholder {
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
@@ -241,23 +242,17 @@
                                     </div>
                                     
                                     <div class="lotes-list" id="lotes-list" style="max-height: 250px; overflow-y: auto;">
-                                        <div class="lote-item" data-value="1" style="padding: 0.5rem; display: flex; align-items: center; gap: 0.5rem; border-radius: 4px; transition: background 0.2s;">
-                                            <input type="checkbox" class="lote-checkbox" id="checkbox-lote1" value="1" checked>
-                                            <label class="lote-label" for="checkbox-lote1" style="cursor: pointer; flex: 1; font-size: 0.875rem;">Lote 01 - Empresa ABC</label>
+                                        {% for lote in lotes %}
+                                        <div class="lote-item" data-value="{{ lote.id }}" style="padding: 0.5rem; display: flex; align-items: center; gap: 0.5rem; border-radius: 4px; transition: background 0.2s;">
+                                            <input type="checkbox" class="lote-checkbox" id="checkbox-lote{{ lote.id }}" value="{{ lote.id }}" checked>
+                                            <label class="lote-label" for="checkbox-lote{{ lote.id }}" style="cursor: pointer; flex: 1; font-size: 0.875rem;">{{ lote.nome }}{% if lote.empresa %} - {{ lote.empresa }}{% endif %}</label>
                                         </div>
-                                        <div class="lote-item" data-value="2" style="padding: 0.5rem; display: flex; align-items: center; gap: 0.5rem; border-radius: 4px; transition: background 0.2s;">
-                                            <input type="checkbox" class="lote-checkbox" id="checkbox-lote2" value="2" checked>
-                                            <label class="lote-label" for="checkbox-lote2" style="cursor: pointer; flex: 1; font-size: 0.875rem;">Lote 02 - Empresa XYZ</label>
-                                        </div>
-                                        <div class="lote-item" data-value="3" style="padding: 0.5rem; display: flex; align-items: center; gap: 0.5rem; border-radius: 4px; transition: background 0.2s;">
-                                            <input type="checkbox" class="lote-checkbox" id="checkbox-lote3" value="3" checked>
-                                            <label class="lote-label" for="checkbox-lote3" style="cursor: pointer; flex: 1; font-size: 0.875rem;">Lote 03 - Empresa DEF</label>
-                                        </div>
+                                        {% endfor %}
                                     </div>
                                     
                                     <div class="lotes-actions" style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid var(--gray-200);">
                                         <div class="lotes-info">
-                                            <span id="lotes-selecionados-count" style="font-size: 0.875rem; color: var(--gray-600);">3 lotes selecionados</span>
+                                            <span id="lotes-selecionados-count" style="font-size: 0.875rem; color: var(--gray-600);">{{ lotes|length }} lote{{ 's' if lotes|length != 1 else '' }} selecionado{{ 's' if lotes|length != 1 else '' }}</span>
                                         </div>
                                         <div class="action-buttons" style="display: flex; gap: 0.5rem;">
                                             <button class="btn-calendario" id="btn-cancelar-lotes" style="padding: 0.5rem 1rem; background: var(--gray-200); border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem;">❌ Cancelar</button>
@@ -293,23 +288,17 @@
                                     </div>
                                     
                                     <div class="unidades-list" id="unidades-list" style="max-height: 250px; overflow-y: auto;">
-                                        <div class="unidade-item" data-value="1" style="padding: 0.5rem; display: flex; align-items: center; gap: 0.5rem; border-radius: 4px; transition: background 0.2s;">
-                                            <input type="checkbox" class="unidade-checkbox" id="checkbox-unidade1" value="1" checked>
-                                            <label class="unidade-label" for="checkbox-unidade1" style="cursor: pointer; flex: 1; font-size: 0.875rem;">CDP - Casa de Detenção</label>
+                                        {% for unidade in unidades %}
+                                        <div class="unidade-item" data-value="{{ unidade }}" style="padding: 0.5rem; display: flex; align-items: center; gap: 0.5rem; border-radius: 4px; transition: background 0.2s;">
+                                            <input type="checkbox" class="unidade-checkbox" id="checkbox-unidade{{ loop.index }}" value="{{ unidade }}" checked>
+                                            <label class="unidade-label" for="checkbox-unidade{{ loop.index }}" style="cursor: pointer; flex: 1; font-size: 0.875rem;">{{ unidade }}</label>
                                         </div>
-                                        <div class="unidade-item" data-value="2" style="padding: 0.5rem; display: flex; align-items: center; gap: 0.5rem; border-radius: 4px; transition: background 0.2s;">
-                                            <input type="checkbox" class="unidade-checkbox" id="checkbox-unidade2" value="2" checked>
-                                            <label class="unidade-label" for="checkbox-unidade2" style="cursor: pointer; flex: 1; font-size: 0.875rem;">PEM - Presídio Estadual</label>
-                                        </div>
-                                        <div class="unidade-item" data-value="3" style="padding: 0.5rem; display: flex; align-items: center; gap: 0.5rem; border-radius: 4px; transition: background 0.2s;">
-                                            <input type="checkbox" class="unidade-checkbox" id="checkbox-unidade3" value="3" checked>
-                                            <label class="unidade-label" for="checkbox-unidade3" style="cursor: pointer; flex: 1; font-size: 0.875rem;">CPFEM - Centro Provisório Feminino</label>
-                                        </div>
+                                        {% endfor %}
                                     </div>
                                     
                                     <div class="unidades-actions" style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid var(--gray-200);">
                                         <div class="unidades-info">
-                                            <span id="unidades-selecionadas-count" style="font-size: 0.875rem; color: var(--gray-600);">3 unidades selecionadas</span>
+                                            <span id="unidades-selecionadas-count" style="font-size: 0.875rem; color: var(--gray-600);">{{ unidades|length }} unidade{{ 's' if unidades|length != 1 else '' }} selecionada{{ 's' if unidades|length != 1 else '' }}</span>
                                         </div>
                                         <div class="action-buttons" style="display: flex; gap: 0.5rem;">
                                             <button class="btn-calendario" id="btn-cancelar-unidades" style="padding: 0.5rem 1rem; background: var(--gray-200); border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem;">❌ Cancelar</button>
@@ -324,12 +313,25 @@
                         <div style="display: flex; align-items: center; gap: 0.5rem;">
                             <label for="filtro-periodo" style="font-weight: 500; color: var(--gray-600); font-size: 0.875rem;">Período:</label>
                             <select id="filtro-periodo" class="form-input" style="padding: 0.5rem 0.75rem; font-size: 0.875rem; border-radius: 6px;">
-                                <option value="dia">Diário</option>
-                                <option value="semana">Semanal</option>
                                 <option value="mes" selected>Mensal</option>
-                                <option value="trimestre">Trimestral</option>
                                 <option value="ano">Anual</option>
                             </select>
+                        </div>
+                        
+                        <!-- Filtro Modo de Visualização -->
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-left: auto;">
+                            <label style="font-weight: 500; color: var(--gray-600); font-size: 0.875rem;">Visualização:</label>
+                            <div style="display: flex; gap: 0.25rem; background: var(--gray-100); padding: 0.25rem; border-radius: 8px;">
+                                <button id="modo-acumulado" class="btn-modo active" data-modo="acumulado" style="padding: 0.5rem 1rem; font-size: 0.875rem; border: none; border-radius: 6px; cursor: pointer; background: var(--primary-color); color: white; font-weight: 500; transition: all 0.3s;">
+                                    📊 Acumulado
+                                </button>
+                                <button id="modo-unidade" class="btn-modo" data-modo="unidade" style="padding: 0.5rem 1rem; font-size: 0.875rem; border: none; border-radius: 6px; cursor: pointer; background: transparent; color: var(--gray-700); font-weight: 500; transition: all 0.3s;">
+                                    🏢 Por Unidade
+                                </button>
+                                <button id="modo-lote" class="btn-modo" data-modo="lote" style="padding: 0.5rem 1rem; font-size: 0.875rem; border: none; border-radius: 6px; cursor: pointer; background: transparent; color: var(--gray-700); font-weight: 500; transition: all 0.3s;">
+                                    📦 Por Lote
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -360,26 +362,18 @@
                 <div class="card-body">
                     <!-- Gráfico Real -->
                     <div id="chart-container" style="position: relative;">
-                        <div class="chart-placeholder" id="chart-principal">
+                        <canvas id="grafico-principal" style="max-height: 400px;"></canvas>
+                        <div id="chart-loading" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
+                            <div style="font-size: 2rem; margin-bottom: 0.5rem;">⏳</div>
+                            <div style="color: var(--gray-600);">Carregando dados...</div>
+                        </div>
+                        <div class="chart-placeholder" id="chart-placeholder" style="display: none;">
                             <div class="chart-content">
                                 <div style="font-size: 4rem; margin-bottom: 1rem;">📊</div>
                                 <h3 style="color: var(--gray-700); margin-bottom: 0.5rem;">Gráfico de Série Temporal</h3>
                                 <p style="color: var(--gray-600); max-width: 500px; margin: 0 auto;">
-                                    Aqui será exibido um gráfico interativo com a evolução do consumo de refeições ao longo do tempo.
-                                    <strong>Ao clicar em "Ativar Projeção"</strong>, o mesmo gráfico expandirá mostrando dados projetados até o fim do contrato.
+                                    Selecione os filtros acima para visualizar os dados do gráfico.
                                 </p>
-                                <div style="margin-top: 1.5rem; padding: 1rem; background: rgba(255,255,255,0.8); border-radius: 8px; display: inline-block;">
-                                    <strong>Funcionalidades Planejadas:</strong>
-                                    <ul style="text-align: left; margin: 0.5rem 0 0 0; padding-left: 1.5rem;">
-                                        <li>Linhas de tendência por tipo de refeição</li>
-                                        <li><strong style="color: #667eea;">🔮 Projeção integrada no mesmo gráfico</strong></li>
-                                        <li>Linha divisória entre dados reais e projetados</li>
-                                        <li>Área sombreada para indicar período de projeção</li>
-                                        <li>Zoom e navegação temporal</li>
-                                        <li>Comparação entre unidades</li>
-                                        <li>Exportação de imagem/PDF</li>
-                                    </ul>
-                                </div>
                             </div>
                         </div>
                         
@@ -719,7 +713,39 @@
     </footer>
 
     <script>
+        // Mapeamento de lotes para unidades (do backend)
+        const lotesUnidadesMap = {{ lotes_unidades|tojson }};
+        console.log('Mapeamento lotes -> unidades:', lotesUnidadesMap);
+        
+        // Variável global para o gráfico
+        let chartInstance = null;
+        let modoVisualizacao = 'acumulado'; // 'acumulado', 'unidade', 'lote'
+        
         document.addEventListener('DOMContentLoaded', function() {
+            // Controlar botões de modo de visualização
+            document.querySelectorAll('.btn-modo').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    // Remover active de todos
+                    document.querySelectorAll('.btn-modo').forEach(b => {
+                        b.classList.remove('active');
+                        b.style.background = 'transparent';
+                        b.style.color = 'var(--gray-700)';
+                    });
+                    
+                    // Adicionar active ao clicado
+                    this.classList.add('active');
+                    this.style.background = 'var(--primary-color)';
+                    this.style.color = 'white';
+                    
+                    // Atualizar modo
+                    modoVisualizacao = this.dataset.modo;
+                    console.log('🔄 Modo de visualização alterado para:', modoVisualizacao);
+                    
+                    // Recarregar gráfico
+                    carregarGrafico();
+                });
+            });
+            
             // Controle das abas de gráficos
             const tabButtons = document.querySelectorAll('.tab-btn[data-tab]');
             tabButtons.forEach(btn => {
@@ -750,16 +776,249 @@
 
             // Aplicar filtros automaticamente ao mudar qualquer campo
             function aplicarFiltrosRelatorios() {
-                const lote = document.getElementById('filtro-lote').value;
-                const unidade = document.getElementById('filtro-unidade').value;
-                const periodo = document.getElementById('filtro-periodo').value;
+                console.log('Aplicando filtros e recarregando gráfico...');
+                carregarGrafico();
+            }
+            
+            // Garantir que filtros iniciais estejam atualizados antes de carregar o gráfico
+            setTimeout(() => {
+                atualizarCountLotes();
+                atualizarDisplayLotes();
+                atualizarCountUnidades();
+                atualizarDisplayUnidades();
+            }, 100);
+            
+            // Função para carregar dados do gráfico
+            async function carregarGrafico() {
+                try {
+                    // Coletar filtros
+                    const lotesSelecionados = Array.from(document.querySelectorAll('.lote-checkbox:checked')).map(cb => cb.value);
+                    const unidadesSelecionadas = Array.from(document.querySelectorAll('.unidade-checkbox')).filter(cb => {
+                        return cb.checked && cb.closest('.unidade-item').style.display !== 'none';
+                    }).map(cb => cb.value);
+                    const periodo = document.getElementById('filtro-periodo').value;
+                    
+                    console.log('📊 Carregando gráfico:', { lotesSelecionados, unidadesSelecionadas, periodo });
+                    
+                    // Mostrar loading
+                    document.getElementById('chart-loading').style.display = 'block';
+                    document.getElementById('chart-placeholder').style.display = 'none';
+                    
+                    // Fazer requisição
+                    const response = await fetch('/api/relatorios/dados-grafico', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            lotes: lotesSelecionados,
+                            unidades: unidadesSelecionadas,
+                            periodo: periodo,
+                            modo: modoVisualizacao,
+                            projecao: projecaoAtiva
+                        })
+                    });
+                    
+                    const resultado = await response.json();
+                    
+                    document.getElementById('chart-loading').style.display = 'none';
+                    
+                    if (resultado.success) {
+                        console.log('✅ Dados recebidos:', resultado);
+                        
+                        // Verificar se há dados para exibir
+                        if (resultado.total_registros === 0 || !resultado.dados.labels || resultado.dados.labels.length === 0) {
+                            console.log('⚠️ Nenhum dado para exibir');
+                            if (chartInstance) {
+                                chartInstance.destroy();
+                                chartInstance = null;
+                            }
+                            document.getElementById('chart-placeholder').style.display = 'flex';
+                            document.getElementById('grafico-principal').style.display = 'none';
+                        } else {
+                            document.getElementById('chart-placeholder').style.display = 'none';
+                            document.getElementById('grafico-principal').style.display = 'block';
+                            renderizarGrafico(resultado.dados);
+                        }
+                    } else {
+                        console.error('❌ Erro ao buscar dados:', resultado.error);
+                        alert('Erro ao carregar dados do gráfico: ' + resultado.error);
+                    }
+                    
+                } catch (error) {
+                    console.error('❌ Erro na requisição:', error);
+                    document.getElementById('chart-loading').style.display = 'none';
+                    document.getElementById('chart-placeholder').style.display = 'block';
+                }
+            }
+            
+            // Função para renderizar o gráfico com Chart.js
+            function renderizarGrafico(dados) {
+                const ctx = document.getElementById('grafico-principal').getContext('2d');
                 
-                console.log('Filtros aplicados automaticamente:', { lote, unidade, periodo });
-                // Funcionalidade será implementada na próxima fase
+                // Destruir gráfico anterior se existir
+                if (chartInstance) {
+                    chartInstance.destroy();
+                }
+                
+                // Preparar datasets baseado no modo
+                let datasets = [];
+                const cores = [
+                    { border: 'rgb(75, 192, 192)', bg: 'rgba(75, 192, 192, 0.1)' },
+                    { border: 'rgb(255, 99, 132)', bg: 'rgba(255, 99, 132, 0.1)' },
+                    { border: 'rgb(54, 162, 235)', bg: 'rgba(54, 162, 235, 0.1)' },
+                    { border: 'rgb(255, 206, 86)', bg: 'rgba(255, 206, 86, 0.1)' },
+                    { border: 'rgb(153, 102, 255)', bg: 'rgba(153, 102, 255, 0.1)' },
+                    { border: 'rgb(255, 159, 64)', bg: 'rgba(255, 159, 64, 0.1)' },
+                    { border: 'rgb(201, 203, 207)', bg: 'rgba(201, 203, 207, 0.1)' },
+                    { border: 'rgb(83, 211, 87)', bg: 'rgba(83, 211, 87, 0.1)' },
+                    { border: 'rgb(237, 100, 127)', bg: 'rgba(237, 100, 127, 0.1)' },
+                    { border: 'rgb(155, 89, 182)', bg: 'rgba(155, 89, 182, 0.1)' }
+                ];
+                
+                // Preparar labels combinando histórico + projeção
+                let allLabels = dados.labels_formatados || dados.labels;
+                
+                if (dados.projecao && dados.projecao.labels_formatados) {
+                    allLabels = [...allLabels, ...dados.projecao.labels_formatados];
+                }
+                
+                if (dados.modo === 'acumulado') {
+                    // Modo acumulado - uma única linha com total
+                    let dataHistorico = dados.datasets.total_refeicoes;
+                    let dataProjecao = [];
+                    
+                    // Se tem projeção, adicionar valores
+                    if (dados.projecao && dados.projecao.valores) {
+                        dataProjecao = dados.projecao.valores;
+                    }
+                    
+                    // Dataset de dados históricos
+                    datasets.push({
+                        label: 'Total de Refeições (Real)',
+                        data: [...dataHistorico, ...Array(dataProjecao.length).fill(null)],
+                        borderColor: cores[0].border,
+                        backgroundColor: cores[0].bg,
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        segment: {
+                            borderDash: ctx => ctx.p0DataIndex >= dataHistorico.length ? [5, 5] : undefined
+                        }
+                    });
+                    
+                    // Dataset de projeção (se disponível)
+                    if (dataProjecao.length > 0) {
+                        datasets.push({
+                            label: 'Projeção (IA)',
+                            data: [...Array(dataHistorico.length).fill(null), ...dataProjecao],
+                            borderColor: 'rgb(139, 92, 246)',
+                            backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                            borderWidth: 3,
+                            borderDash: [10, 5],
+                            fill: true,
+                            tension: 0.4,
+                            pointStyle: 'triangle',
+                            pointRadius: 6
+                        });
+                        
+                        // Atualizar métricas de projeção
+                        if (dados.projecao.media_historica) {
+                            document.getElementById('media-periodo').textContent = dados.projecao.media_historica.toLocaleString('pt-BR');
+                        }
+                        if (dados.projecao.tendencia) {
+                            const tendenciaTexto = dados.projecao.tendencia === 'crescimento' ? '📈 Crescimento' : 
+                                                   dados.projecao.tendencia === 'decrescimento' ? '📉 Decrescimento' : '➡️ Estável';
+                            document.getElementById('tendencia-dados').textContent = tendenciaTexto;
+                        }
+                        // Atualizar data fim da projeção
+                        if (dados.projecao.labels_formatados && dados.projecao.labels_formatados.length > 0) {
+                            const ultimoMes = dados.projecao.labels_formatados[dados.projecao.labels_formatados.length - 1];
+                            document.getElementById('projecao-data-fim').textContent = ultimoMes;
+                            document.getElementById('data-fim-contrato').textContent = ultimoMes;
+                        }
+                    }
+                } else if (dados.modo === 'unidade' || dados.modo === 'lote') {
+                    // Modo por unidade ou lote - múltiplas linhas
+                    const grupos = dados.grupos || [];
+                    grupos.forEach((grupo, index) => {
+                        const corIndex = index % cores.length;
+                        datasets.push({
+                            label: grupo.nome,
+                            data: grupo.valores,
+                            borderColor: cores[corIndex].border,
+                            backgroundColor: cores[corIndex].bg,
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.4
+                        });
+                    });
+                }
+                
+                // Criar novo gráfico
+                chartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: allLabels,
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                labels: {
+                                    usePointStyle: true,
+                                    padding: 15
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Evolução de Refeições ao Longo do Tempo',
+                                font: {
+                                    size: 16,
+                                    weight: 'bold'
+                                }
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        label += context.parsed.y.toLocaleString('pt-BR');
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return value.toLocaleString('pt-BR');
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                console.log('✅ Gráfico renderizado com sucesso! Modo:', dados.modo);
             }
             
             // Adicionar listener para período
-            document.getElementById('filtro-periodo').addEventListener('change', aplicarFiltrosRelatorios);
+            document.getElementById('filtro-periodo').addEventListener('change', carregarGrafico);
             
             // Controle do filtro de Lotes multi-select
             const lotesDisplay = document.getElementById('lotes-display');
@@ -770,11 +1029,19 @@
             const btnAplicarLotes = document.getElementById('btn-aplicar-lotes');
             const btnCancelarLotes = document.getElementById('btn-cancelar-lotes');
             
+            console.log('Elementos de lotes:', { lotesDisplay, lotesPopup, lotesOverlay });
+            
             // Abrir popup de lotes
-            lotesDisplay.addEventListener('click', function() {
-                lotesPopup.style.display = 'block';
-                lotesOverlay.style.display = 'block';
-            });
+            if (lotesDisplay) {
+                lotesDisplay.addEventListener('click', function(e) {
+                    console.log('Clique no filtro de lotes detectado!');
+                    e.stopPropagation();
+                    lotesPopup.style.display = 'block';
+                    lotesOverlay.style.display = 'block';
+                });
+            } else {
+                console.error('Elemento lotes-display não encontrado!');
+            }
             
             // Fechar popup de lotes
             function fecharPopupLotes() {
@@ -824,13 +1091,17 @@
             // Aplicar filtro de lotes
             btnAplicarLotes.addEventListener('click', function() {
                 atualizarDisplayLotes();
+                atualizarUnidadesDisponiveis();
                 fecharPopupLotes();
-                aplicarFiltrosRelatorios();
+                carregarGrafico();
             });
             
             // Atualizar contagem ao mudar checkboxes
             document.querySelectorAll('.lote-checkbox').forEach(cb => {
-                cb.addEventListener('change', atualizarCountLotes);
+                cb.addEventListener('change', function() {
+                    atualizarCountLotes();
+                    atualizarUnidadesDisponiveis();
+                });
             });
             
             // Controle do filtro de Unidades multi-select
@@ -842,11 +1113,20 @@
             const btnAplicarUnidades = document.getElementById('btn-aplicar-unidades');
             const btnCancelarUnidades = document.getElementById('btn-cancelar-unidades');
             
+            console.log('Elementos de unidades:', { unidadesDisplay, unidadesPopup, unidadesOverlay });
+            
             // Abrir popup de unidades
-            unidadesDisplay.addEventListener('click', function() {
-                unidadesPopup.style.display = 'block';
-                unidadesOverlay.style.display = 'block';
-            });
+            if (unidadesDisplay) {
+                unidadesDisplay.addEventListener('click', function(e) {
+                    console.log('Clique no filtro de unidades detectado!');
+                    e.stopPropagation();
+                    atualizarUnidadesDisponiveis();
+                    unidadesPopup.style.display = 'block';
+                    unidadesOverlay.style.display = 'block';
+                });
+            } else {
+                console.error('Elemento unidades-display não encontrado!');
+            }
             
             // Fechar popup de unidades
             function fecharPopupUnidades() {
@@ -857,34 +1137,61 @@
             unidadesOverlay.addEventListener('click', fecharPopupUnidades);
             btnCancelarUnidades.addEventListener('click', fecharPopupUnidades);
             
-            // Selecionar todas as unidades
+            // Selecionar todas as unidades (apenas as visíveis)
             btnSelecionarTodasUnidades.addEventListener('click', function() {
-                document.querySelectorAll('.unidade-checkbox').forEach(cb => cb.checked = true);
+                document.querySelectorAll('.unidade-checkbox').forEach(cb => {
+                    if (cb.closest('.unidade-item').style.display !== 'none') {
+                        cb.checked = true;
+                    }
+                });
                 atualizarCountUnidades();
             });
             
-            // Limpar todas as unidades
+            // Limpar todas as unidades (apenas as visíveis)
             btnLimparTodasUnidades.addEventListener('click', function() {
-                document.querySelectorAll('.unidade-checkbox').forEach(cb => cb.checked = false);
+                document.querySelectorAll('.unidade-checkbox').forEach(cb => {
+                    if (cb.closest('.unidade-item').style.display !== 'none') {
+                        cb.checked = false;
+                    }
+                });
                 atualizarCountUnidades();
             });
             
-            // Atualizar contagem de unidades
+            // Atualizar contagem de unidades (apenas as visíveis)
             function atualizarCountUnidades() {
-                const count = document.querySelectorAll('.unidade-checkbox:checked').length;
+                const checkboxes = document.querySelectorAll('.unidade-checkbox');
+                let count = 0;
+                checkboxes.forEach(cb => {
+                    if (cb.closest('.unidade-item').style.display !== 'none' && cb.checked) {
+                        count++;
+                    }
+                });
                 document.getElementById('unidades-selecionadas-count').textContent = `${count} unidade${count !== 1 ? 's' : ''} selecionada${count !== 1 ? 's' : ''}`;
             }
             
-            // Atualizar display de unidades
+            // Atualizar display de unidades (considera apenas as visíveis)
             function atualizarDisplayUnidades() {
                 const checkboxes = document.querySelectorAll('.unidade-checkbox');
-                const selecionados = Array.from(checkboxes).filter(cb => cb.checked);
-                const total = checkboxes.length;
                 const unidadesText = document.getElementById('unidades-text');
                 
-                if (selecionados.length === 0) {
+                // Contar visíveis
+                let totalVisiveis = 0;
+                let selecionados = [];
+                
+                checkboxes.forEach(cb => {
+                    if (cb.closest('.unidade-item').style.display !== 'none') {
+                        totalVisiveis++;
+                        if (cb.checked) {
+                            selecionados.push(cb);
+                        }
+                    }
+                });
+                
+                if (totalVisiveis === 0) {
+                    unidadesText.textContent = 'Nenhuma unidade disponível';
+                } else if (selecionados.length === 0) {
                     unidadesText.textContent = 'Nenhuma unidade';
-                } else if (selecionados.length === total) {
+                } else if (selecionados.length === totalVisiveis) {
                     unidadesText.textContent = 'Todas as unidades';
                 } else if (selecionados.length === 1) {
                     unidadesText.textContent = selecionados[0].nextElementSibling.textContent;
@@ -897,13 +1204,79 @@
             btnAplicarUnidades.addEventListener('click', function() {
                 atualizarDisplayUnidades();
                 fecharPopupUnidades();
-                aplicarFiltrosRelatorios();
+                carregarGrafico();
             });
             
             // Atualizar contagem ao mudar checkboxes
             document.querySelectorAll('.unidade-checkbox').forEach(cb => {
                 cb.addEventListener('change', atualizarCountUnidades);
             });
+            
+            // Função para atualizar unidades disponíveis baseado nos lotes selecionados
+            function atualizarUnidadesDisponiveis() {
+                const lotesSelecionados = Array.from(document.querySelectorAll('.lote-checkbox:checked')).map(cb => cb.value);
+                
+                console.log('Lotes selecionados:', lotesSelecionados);
+                
+                // Coletar todas as unidades dos lotes selecionados
+                let unidadesDisponiveis = new Set();
+                
+                if (lotesSelecionados.length === 0) {
+                    // Nenhum lote selecionado = nenhuma unidade disponível
+                    unidadesDisponiveis = new Set();
+                } else {
+                    // Coletar unidades dos lotes selecionados
+                    lotesSelecionados.forEach(loteId => {
+                        const unidadesDoLote = lotesUnidadesMap[loteId] || [];
+                        unidadesDoLote.forEach(unidade => unidadesDisponiveis.add(unidade));
+                    });
+                }
+                
+                console.log('Unidades disponíveis:', Array.from(unidadesDisponiveis));
+                
+                // Atualizar checkboxes de unidades
+                const unidadeItems = document.querySelectorAll('.unidade-item');
+                let unidadesVisiveis = 0;
+                
+                unidadeItems.forEach(item => {
+                    const checkbox = item.querySelector('.unidade-checkbox');
+                    const unidadeNome = checkbox.value;
+                    
+                    if (unidadesDisponiveis.has(unidadeNome)) {
+                        // Mostrar unidade
+                        item.style.display = 'flex';
+                        unidadesVisiveis++;
+                    } else {
+                        // Ocultar unidade e desmarcar
+                        item.style.display = 'none';
+                        checkbox.checked = false;
+                    }
+                });
+                
+                // Atualizar contagem
+                atualizarCountUnidades();
+                
+                // Atualizar display no filtro principal
+                atualizarDisplayUnidades();
+                
+                // Mensagem se nenhuma unidade disponível
+                const unidadesList = document.getElementById('unidades-list');
+                let mensagemVazia = unidadesList.querySelector('.mensagem-vazia');
+                
+                if (unidadesVisiveis === 0) {
+                    if (!mensagemVazia) {
+                        mensagemVazia = document.createElement('div');
+                        mensagemVazia.className = 'mensagem-vazia';
+                        mensagemVazia.style.cssText = 'padding: 2rem; text-align: center; color: var(--gray-500); font-size: 0.875rem;';
+                        mensagemVazia.innerHTML = '📋 Nenhuma unidade disponível<br><small style="font-size: 0.75rem;">Selecione pelo menos um lote</small>';
+                        unidadesList.appendChild(mensagemVazia);
+                    }
+                } else {
+                    if (mensagemVazia) {
+                        mensagemVazia.remove();
+                    }
+                }
+            }
 
             // Toggle de Projeção (integrado no gráfico)
             let projecaoAtiva = false;
@@ -942,7 +1315,8 @@
                         metricasProjecao.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                     }, 300);
                     
-                    console.log('🔮 Projeção ativada - Gráfico expandido com dados projetados');
+                    console.log('🔮 Projeção ativada - Recarregando gráfico com dados projetados');
+                    carregarGrafico();
                 } else {
                     // Desativar projeção
                     btnProjecao.textContent = '🔮 Ativar Projeção';
@@ -954,7 +1328,8 @@
                     legendaProjecao.style.display = 'none';
                     legendaLinhaDivisoria.style.display = 'none';
                     
-                    console.log('❌ Projeção desativada - Exibindo apenas dados reais');
+                    console.log('❌ Projeção desativada - Recarregando apenas dados reais');
+                    carregarGrafico();
                 }
             });
 
@@ -1002,6 +1377,15 @@
                 el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
                 observer.observe(el);
             });
+            
+            // Carregar gráfico inicial após inicialização completa
+            console.log('🚀 Iniciando carregamento do gráfico inicial...');
+            setTimeout(() => {
+                const lotesSelecionados = Array.from(document.querySelectorAll('.lote-checkbox:checked')).map(cb => cb.value);
+                const unidadesSelecionadas = Array.from(document.querySelectorAll('.unidade-checkbox:checked')).map(cb => cb.value);
+                console.log('📊 Filtros iniciais - Lotes:', lotesSelecionados.length, 'Unidades:', unidadesSelecionadas.length);
+                carregarGrafico();
+            }, 200);
         });
     </script>
     <script type="module">

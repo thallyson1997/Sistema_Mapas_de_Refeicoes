@@ -768,7 +768,85 @@ def exportar_tabela():
 @app.route('/relatorios')
 def relatorios():
     #Página de relatórios e análises gráficas
-    return render_template('relatorios.html')
+    data = carregar_lotes_para_dashboard()
+    lotes = data.get('lotes', [])
+    
+    # Criar mapeamento de lote_id -> unidades e lista completa de unidades
+    from functions.unidades import Unidade
+    lotes_unidades = {}  # {lote_id: [unidade1, unidade2, ...]}
+    unidades_set = set()
+    
+    for lote in lotes:
+        lote_id = lote.get('id')
+        unidades_ids = lote.get('unidades') or []
+        lotes_unidades[lote_id] = []
+        
+        if unidades_ids:
+            for uid in unidades_ids:
+                unidade = db.session.get(Unidade, uid)
+                if unidade:
+                    lotes_unidades[lote_id].append(unidade.nome)
+                    unidades_set.add(unidade.nome)
+    
+    unidades = sorted(list(unidades_set))
+    
+    return render_template('relatorios.html', lotes=lotes, unidades=unidades, lotes_unidades=lotes_unidades)
+
+@app.route('/api/relatorios/dados-grafico', methods=['POST'])
+def api_dados_grafico():
+    """Endpoint para buscar dados do gráfico de relatórios"""
+    try:
+        from functions.relatorios import buscar_dados_graficos, formatar_label_periodo
+        
+        data = request.get_json(force=True, silent=True) or {}
+        
+        lotes_ids = data.get('lotes', [])
+        unidades = data.get('unidades', [])
+        periodo = data.get('periodo', 'mes')
+        modo = data.get('modo', 'acumulado')
+        incluir_projecao = data.get('projecao', False)
+        
+        print(f"📊 API Dados Gráfico - Lotes: {lotes_ids}, Unidades: {unidades}, Período: {periodo}, Modo: {modo}, Projeção: {incluir_projecao}")
+        
+        # Converter lotes_ids para inteiros
+        lotes_ids = [int(lid) for lid in lotes_ids if lid]
+        
+        resultado = buscar_dados_graficos(lotes_ids, unidades, periodo, modo=modo)
+        
+        if resultado.get('success'):
+            # Formatar labels
+            dados = resultado['dados']
+            labels_formatados = [formatar_label_periodo(label, periodo) for label in dados['labels']]
+            dados['labels_formatados'] = labels_formatados
+            dados['modo'] = modo
+            
+            # Calcular projeção se solicitada
+            if incluir_projecao:
+                from functions.relatorios import calcular_projecao
+                projecao = calcular_projecao(dados, periodo)
+                
+                # Formatar labels de projeção
+                labels_projecao_formatados = [formatar_label_periodo(label, periodo) for label in projecao['labels_projetados']]
+                
+                dados['projecao'] = {
+                    'labels': projecao['labels_projetados'],
+                    'labels_formatados': labels_projecao_formatados,
+                    'valores': projecao['valores_projetados'],
+                    'media_historica': projecao['media_historica'],
+                    'tendencia': projecao['tendencia']
+                }
+                
+                print(f"🔮 Projeção adicionada: {len(projecao['labels_projetados'])} períodos, tendência: {projecao['tendencia']}")
+            
+            return jsonify(resultado), 200
+        else:
+            return jsonify(resultado), 400
+    
+    except Exception as e:
+        print(f"❌ Erro na API dados gráfico: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 #NÃO FEITOS
 

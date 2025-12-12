@@ -53,13 +53,38 @@ def listar_lotes():
 	return [lote_to_dict(l) for l in lotes]
 
 def deletar_lote(lote_id, db):
-	"""Deleta um lote pelo ID."""
+	"""
+	Deleta um lote pelo ID e todos os dados associados (mapas e unidades).
+	Isso evita dados órfãos e conflitos de integridade referencial.
+	"""
+	from .models import Mapa, Unidade
+	
 	lote = db.session.query(Lote).filter_by(id=lote_id).first()
-	if lote:
+	if not lote:
+		return False
+	
+	try:
+		# 1. Excluir todos os mapas associados ao lote
+		mapas_deletados = db.session.query(Mapa).filter_by(lote_id=lote_id).delete()
+		print(f"🗑️ Excluídos {mapas_deletados} mapas do lote {lote_id}")
+		
+		# 2. Excluir todas as unidades associadas ao lote
+		unidades_deletadas = db.session.query(Unidade).filter_by(lote_id=lote_id).delete()
+		print(f"🗑️ Excluídas {unidades_deletadas} unidades do lote {lote_id}")
+		
+		# 3. Excluir o lote
 		db.session.delete(lote)
+		
+		# 4. Commit de todas as alterações
 		db.session.commit()
+		
+		print(f"✅ Lote {lote_id} e todos os dados associados foram excluídos com sucesso")
 		return True
-	return False
+		
+	except Exception as e:
+		db.session.rollback()
+		print(f"❌ Erro ao excluir lote {lote_id}: {e}")
+		return False
 
 def obter_lote_por_id(lote_id):
 	try:

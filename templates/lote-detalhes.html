@@ -1470,6 +1470,15 @@
                     );
                 }
                 
+                // Atualizar também os seletores de mês/ano do filtro principal
+                const mesPeriodoInput = document.getElementById('mes-periodo');
+                const anoPeriodoInput = document.getElementById('ano-periodo');
+                if (mesPeriodoInput && anoPeriodoInput) {
+                    mesPeriodoInput.value = mesFiltro;
+                    anoPeriodoInput.value = anoFiltro;
+                    console.log('🔍 DEBUG Seletores mes/ano atualizados:', 'mes=', mesFiltro, 'ano=', anoFiltro);
+                }
+                
                 // Atualizar seleção de unidades (será aplicado depois em initUnidadesFilter)
                 filtrosAtivos.unidadesSelecionadas = [unidadeFiltro];
             } else {
@@ -1489,8 +1498,17 @@
             // Inicializar filtro de unidades
             initUnidadesFilter();
             
-            // Inicializar seletor de mês/ano da importação
+            // Inicializar seletor de mês/ano da importação ANTES da sincronização
             initMesAnoImport();
+            
+            // Sincronizar após inicialização dos elementos (se veio da URL)
+            if (unidadeFiltro && mesFiltro && anoFiltro) {
+                setTimeout(() => {
+                    console.log('⏰ Chamando sincronizarSeletoresPopups após carregamento da URL');
+                    console.log('📌 Valores do filtro:', 'mes-periodo=', document.getElementById('mes-periodo')?.value, 'ano-periodo=', document.getElementById('ano-periodo')?.value);
+                    sincronizarSeletoresPopups();
+                }, 500);
+            }
             
             // Aplicar filtros iniciais e carregar dados da tabela
             aplicarFiltros();
@@ -2106,6 +2124,9 @@
             document.getElementById('secao-importacao').style.display = 'block';
             document.getElementById('secao-manual').style.display = 'none';
             document.getElementById('secao-importacao').scrollIntoView({ behavior: 'smooth' });
+            
+            // Sincronizar com o filtro principal
+            sincronizarSeletoresPopups();
         }
 
         function mostrarSecaoManual() {
@@ -2113,6 +2134,9 @@
             document.getElementById('secao-exclusao').style.display = 'none';
             document.getElementById('secao-manual').style.display = 'block';
             document.getElementById('secao-manual').scrollIntoView({ behavior: 'smooth' });
+            
+            // Sincronizar com o filtro principal
+            sincronizarSeletoresPopups();
             
             // Inicializar seletor de mês/ano da entrada manual
             initMesAnoManual();
@@ -2124,20 +2148,8 @@
             document.getElementById('secao-exclusao').style.display = 'block';
             document.getElementById('secao-exclusao').scrollIntoView({ behavior: 'smooth' });
             
-            // Definir mês anterior como padrão
-            const now = new Date();
-            let mesAnterior = now.getMonth() + 1; // getMonth() retorna 0-11, queremos 1-12
-            let anoAnterior = now.getFullYear();
-            
-            if (mesAnterior === 1) {
-                mesAnterior = 12;
-                anoAnterior--;
-            } else {
-                mesAnterior--;
-            }
-            
-            document.getElementById('mes-exclusao').value = mesAnterior.toString();
-            document.getElementById('ano-exclusao').value = anoAnterior.toString();
+            // Sincronizar com o filtro principal
+            sincronizarSeletoresPopups();
         }
 
         function mostrarSecaoSiisp() {
@@ -2146,6 +2158,9 @@
             document.getElementById('secao-exclusao').style.display = 'none';
             document.getElementById('secao-siisp').style.display = 'block';
             document.getElementById('secao-siisp').scrollIntoView({ behavior: 'smooth' });
+            
+            // Sincronizar com o filtro principal
+            sincronizarSeletoresPopups();
             
             // Inicializar seletor de mês/ano do SIISP
             initMesAnoSiisp();
@@ -2310,18 +2325,21 @@
             const mesAnoDisplay = document.getElementById('mes-ano-display-import');
             const mesAnoText = document.getElementById('mes-ano-text-import');
             
-            // Definir mês anterior como padrão
-            const now = new Date();
-            let mesAnterior = now.getMonth(); // getMonth() retorna 0-11
-            let anoAnterior = now.getFullYear();
-            
-            if (mesAnterior === 0) {
-                mesAnterior = 12;
-                anoAnterior--;
+            // Verificar se já tem valor definido (vindo do filtro principal)
+            // Se não tiver, definir mês anterior como padrão
+            if (!mesSelect.value || !anoInput.value) {
+                const now = new Date();
+                let mesAnterior = now.getMonth(); // getMonth() retorna 0-11
+                let anoAnterior = now.getFullYear();
+                
+                if (mesAnterior === 0) {
+                    mesAnterior = 12;
+                    anoAnterior--;
+                }
+                
+                mesSelect.value = mesAnterior.toString();
+                anoInput.value = anoAnterior.toString();
             }
-            
-            mesSelect.value = mesAnterior.toString();
-            anoInput.value = anoAnterior.toString();
             atualizarDisplayMesAno();
             
             // Eventos para atualizar display quando valores mudarem
@@ -2354,18 +2372,21 @@
             const mesAnoDisplay = document.getElementById('mes-ano-display-manual');
             const mesAnoText = document.getElementById('mes-ano-text-manual');
             
-            // Definir mês anterior como padrão
-            const now = new Date();
-            let mesAnterior = now.getMonth(); // getMonth() retorna 0-11
-            let anoAnterior = now.getFullYear();
-            
-            if (mesAnterior === 0) {
-                mesAnterior = 12;
-                anoAnterior--;
+            // Verificar se já tem valor definido (vindo do filtro principal)
+            // Se não tiver, definir mês anterior como padrão
+            if (!mesSelect.value || !anoInput.value) {
+                const now = new Date();
+                let mesAnterior = now.getMonth(); // getMonth() retorna 0-11
+                let anoAnterior = now.getFullYear();
+                
+                if (mesAnterior === 0) {
+                    mesAnterior = 12;
+                    anoAnterior--;
+                }
+                
+                mesSelect.value = mesAnterior.toString();
+                anoInput.value = anoAnterior.toString();
             }
-            
-            mesSelect.value = mesAnterior.toString();
-            anoInput.value = anoAnterior.toString();
             atualizarDisplayMesAnoManual();
             gerarTabelaManual(); // Gerar tabela inicial
             
@@ -2405,18 +2426,21 @@
             const mesAnoDisplay = document.getElementById('mes-ano-display-siisp');
             const mesAnoText = document.getElementById('mes-ano-text-siisp');
             
-            // Definir mês anterior como padrão
-            const now = new Date();
-            let mesAnterior = now.getMonth(); // getMonth() retorna 0-11
-            let anoAnterior = now.getFullYear();
-            
-            if (mesAnterior === 0) {
-                mesAnterior = 12;
-                anoAnterior--;
+            // Verificar se já tem valor definido (vindo do filtro principal)
+            // Se não tiver, definir mês anterior como padrão
+            if (!mesSelect.value || !anoInput.value) {
+                const now = new Date();
+                let mesAnterior = now.getMonth(); // getMonth() retorna 0-11
+                let anoAnterior = now.getFullYear();
+                
+                if (mesAnterior === 0) {
+                    mesAnterior = 12;
+                    anoAnterior--;
+                }
+                
+                mesSelect.value = mesAnterior.toString();
+                anoInput.value = anoAnterior.toString();
             }
-            
-            mesSelect.value = mesAnterior.toString();
-            anoInput.value = anoAnterior.toString();
             atualizarDisplayMesAnoSiisp();
             
             // Eventos para atualizar display quando valores mudarem
@@ -3110,18 +3134,20 @@
             const mesPeriodo = document.getElementById('mes-periodo');
             const anoPeriodo = document.getElementById('ano-periodo');
             
-            // Definir mês anterior como padrão
-            const hoje = new Date();
-            let mesAnterior = hoje.getMonth(); // 0-11 (outubro = 9)
-            let anoAnterior = hoje.getFullYear();
-            
-            if (mesAnterior === 0) {
-                mesAnterior = 12;
-                anoAnterior--;
+            // Definir mês anterior como padrão APENAS se não houver parâmetros na URL
+            if (!skipAutoInit) {
+                const hoje = new Date();
+                let mesAnterior = hoje.getMonth(); // 0-11 (outubro = 9)
+                let anoAnterior = hoje.getFullYear();
+                
+                if (mesAnterior === 0) {
+                    mesAnterior = 12;
+                    anoAnterior--;
+                }
+                
+                mesPeriodo.value = mesAnterior.toString();
+                anoPeriodo.value = anoAnterior.toString();
             }
-            
-            mesPeriodo.value = mesAnterior.toString();
-            anoPeriodo.value = anoAnterior.toString();
             
             // Função para atualizar as datas quando mês/ano mudarem
             function atualizarDatasPorMesAno() {
@@ -3141,12 +3167,86 @@
             }
             
             // Event listeners para atualização automática
-            mesPeriodo.addEventListener('change', atualizarDatasPorMesAno);
-            anoPeriodo.addEventListener('change', atualizarDatasPorMesAno);
+            mesPeriodo.addEventListener('change', function() {
+                atualizarDatasPorMesAno();
+                sincronizarSeletoresPopups();
+            });
+            anoPeriodo.addEventListener('change', function() {
+                atualizarDatasPorMesAno();
+                sincronizarSeletoresPopups();
+            });
             
             // Aplicar o mês anterior inicial APENAS se não houver parâmetros na URL
             if (!skipAutoInit) {
                 atualizarDatasPorMesAno();
+            }
+        }
+        
+        // Função helper para atualizar o display visual de mês/ano
+        function atualizarDisplayMesAno(tipo, mes, ano) {
+            const meses = [
+                'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+            ];
+            
+            const mesIndex = parseInt(mes) - 1;
+            const mesNome = meses[mesIndex] || 'Mês';
+            
+            const textElement = document.getElementById(`mes-ano-text-${tipo}`);
+            if (textElement) {
+                textElement.textContent = `${mesNome}/${ano}`;
+            }
+        }
+        
+        // Função para sincronizar os seletores de mês/ano dos pop-ups com o filtro principal
+        function sincronizarSeletoresPopups() {
+            const mesPeriodo = document.getElementById('mes-periodo');
+            const anoPeriodo = document.getElementById('ano-periodo');
+            
+            if (!mesPeriodo || !anoPeriodo) return;
+            
+            const mes = mesPeriodo.value;
+            const ano = anoPeriodo.value;
+            
+            console.log('🔄 Sincronizando pop-ups com:', 'mes=', mes, 'ano=', ano);
+            
+            // Sincronizar Adicionar Dados (import)
+            const mesImport = document.getElementById('mes-import');
+            const anoImport = document.getElementById('ano-import');
+            if (mesImport && anoImport) {
+                mesImport.value = mes;
+                anoImport.value = ano;
+                atualizarDisplayMesAno('import', mes, ano);
+                console.log('✅ Import sincronizado');
+            }
+            
+            // Sincronizar Entrada Manual
+            const mesManual = document.getElementById('mes-manual');
+            const anoManual = document.getElementById('ano-manual');
+            if (mesManual && anoManual) {
+                mesManual.value = mes;
+                anoManual.value = ano;
+                atualizarDisplayMesAno('manual', mes, ano);
+                console.log('✅ Manual sincronizado');
+            }
+            
+            // Sincronizar Excluir Dados
+            const mesExclusao = document.getElementById('mes-exclusao');
+            const anoExclusao = document.getElementById('ano-exclusao');
+            if (mesExclusao && anoExclusao) {
+                mesExclusao.value = mes;
+                anoExclusao.value = ano;
+                console.log('✅ Exclusão sincronizado');
+            }
+            
+            // Sincronizar Adicionar SIISP
+            const mesSiisp = document.getElementById('mes-siisp');
+            const anoSiisp = document.getElementById('ano-siisp');
+            if (mesSiisp && anoSiisp) {
+                mesSiisp.value = mes;
+                anoSiisp.value = ano;
+                atualizarDisplayMesAno('siisp', mes, ano);
+                console.log('✅ SIISP sincronizado');
             }
         }
         

@@ -180,6 +180,13 @@ def editar_lote(lote_id, payload: dict):
 	if not lote:
 		return {'success': False, 'error': f'Lote {lote_id} não encontrado'}
 
+	# Verificar se o nome está sendo alterado e se já existe outro lote com esse nome
+	novo_nome = payload.get('nome')
+	if novo_nome and novo_nome != lote.nome:
+		lote_existente = Lote.query.filter_by(nome=novo_nome).first()
+		if lote_existente:
+			return {'success': False, 'error': f'Já existe um lote com o nome "{novo_nome}". Escolha um nome diferente.'}
+
 	try:
 		for campo in [
 			'nome', 'empresa', 'numero_contrato', 'numero', 'data_inicio', 'data_fim',

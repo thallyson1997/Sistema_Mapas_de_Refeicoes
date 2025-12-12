@@ -325,6 +325,10 @@
                             </select>
                         </div>
                         <div>
+                            <label for="editar-lote-nome" class="form-label" style="font-weight: 500;">Nome do Lote</label>
+                            <input type="text" id="editar-lote-nome" name="nome_lote" class="form-input" placeholder="Digite o nome do lote" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                        </div>
+                        <div>
                             <label for="editar-lote-empresa" class="form-label" style="font-weight: 500;">Nome da Empresa</label>
                             <input type="text" id="editar-lote-empresa" name="nome_empresa" class="form-input" placeholder="Digite o nome da empresa" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
                         </div>
@@ -532,6 +536,7 @@
             }
 
             // Preencher campos básicos
+            document.getElementById('editar-lote-nome').value = lote.nome || '';
             document.getElementById('editar-lote-empresa').value = lote.empresa || '';
             document.getElementById('editar-lote-contrato').value = lote.numero_contrato || lote.contrato || '';
             document.getElementById('editar-lote-inicio').value = lote.data_inicio || lote.inicio_contrato || '';
@@ -737,6 +742,7 @@
                     }
 
                     // Coletar dados do formulário
+                    const nome_lote = document.getElementById('editar-lote-nome').value.trim();
                     const nome_empresa = document.getElementById('editar-lote-empresa').value.trim();
                     const numero_contrato = document.getElementById('editar-lote-contrato').value.trim();
                     const data_inicio = document.getElementById('editar-lote-inicio').value;
@@ -777,7 +783,7 @@
                     };
                     
                     // Validação básica
-                    if (!nome_empresa || !numero_contrato || !data_inicio || !data_fim) {
+                    if (!nome_lote || !nome_empresa || !numero_contrato || !data_inicio || !data_fim) {
                         alert('Preencha todos os campos obrigatórios.');
                         return;
                     }
@@ -789,6 +795,7 @@
                             headers: { 'Content-Type': 'application/json' },
                             credentials: 'same-origin',
                             body: JSON.stringify({ 
+                                nome: nome_lote,
                                 nome_empresa, 
                                 numero_contrato, 
                                 data_inicio,

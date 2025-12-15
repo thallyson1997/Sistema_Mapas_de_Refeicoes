@@ -439,7 +439,18 @@
                         
                         <!-- Filtro Modo de Visualização -->
                         <div style="display: flex; align-items: center; gap: 0.5rem; margin-left: auto;">
-                            <label style="font-weight: 500; color: var(--gray-600); font-size: 0.875rem;">Visualização:</label>
+                            <label style="font-weight: 500; color: var(--gray-600); font-size: 0.875rem;">Tipo:</label>
+                            <div style="display: flex; gap: 0.25rem; background: var(--gray-100); padding: 0.25rem; border-radius: 8px;">
+                                <button id="tipo-normal" class="btn-tipo active" data-tipo="normal" style="padding: 0.5rem 1rem; font-size: 0.875rem; border: none; border-radius: 6px; cursor: pointer; background: var(--primary-color); color: white; font-weight: 500; transition: all 0.3s;">
+                                    📊 Normal
+                                </button>
+                                <button id="tipo-acumulada" class="btn-tipo" data-tipo="acumulada" style="padding: 0.5rem 1rem; font-size: 0.875rem; border: none; border-radius: 6px; cursor: pointer; background: transparent; color: var(--gray-700); font-weight: 500; transition: all 0.3s;">
+                                    📈 Acumulada
+                                </button>
+                            </div>
+                        </div>
+                        <div class="filter-item">
+                            <label style="font-weight: 500; color: var(--gray-600); font-size: 0.875rem;">Agrupamento:</label>
                             <div style="display: flex; gap: 0.25rem; background: var(--gray-100); padding: 0.25rem; border-radius: 8px;">
                                 <button id="modo-acumulado" class="btn-modo active" data-modo="acumulado" style="padding: 0.5rem 1rem; font-size: 0.875rem; border: none; border-radius: 6px; cursor: pointer; background: var(--primary-color); color: white; font-weight: 500; transition: all 0.3s;">
                                     📊 Total Geral
@@ -966,6 +977,7 @@
         // Variável global para o gráfico
         let chartInstance = null;
         let modoVisualizacao = 'acumulado'; // 'acumulado', 'unidade', 'lote'
+        let tipoVisualizacao = 'normal'; // 'normal', 'acumulada'
         
         // Variáveis para gráfico de gastos
         let chartInstanceGastos = null;
@@ -1008,7 +1020,33 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            // Controlar botões de modo de visualização
+            // Controlar botões de TIPO de visualização (Normal vs Acumulada)
+            document.querySelectorAll('.btn-tipo').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.btn-tipo').forEach(b => {
+                        b.classList.remove('active');
+                        b.style.background = 'transparent';
+                        b.style.color = 'var(--gray-700)';
+                    });
+                    
+                    this.classList.add('active');
+                    this.style.background = 'var(--primary-color)';
+                    this.style.color = 'white';
+                    
+                    tipoVisualizacao = this.dataset.tipo;
+                    console.log('📊 Tipo de visualização alterado para:', tipoVisualizacao);
+                    
+                    // Recarregar gráfico da aba ativa
+                    const abaAtiva = document.querySelector('.tab-btn.active')?.dataset.tab;
+                    if (abaAtiva === 'gastos') {
+                        carregarGraficoGastos();
+                    } else {
+                        carregarGrafico();
+                    }
+                });
+            });
+            
+            // Controlar botões de MODO de visualização (Total/Unidade/Lote)
             document.querySelectorAll('.btn-modo').forEach(btn => {
                 btn.addEventListener('click', function() {
                     // Remover active de todos
@@ -1025,7 +1063,7 @@
                     
                     // Atualizar modo
                     modoVisualizacao = this.dataset.modo;
-                    console.log('🔄 Modo de visualização alterado para:', modoVisualizacao);
+                    console.log('🔄 Modo de agrupamento alterado para:', modoVisualizacao);
                     
                     // Atualizar estado do botão de projeção
                     atualizarBotaoProjecao();
@@ -1229,12 +1267,25 @@
                 }
             }
             
+            // Função para acumular valores
+            function acumularDados(valores) {
+                if (!valores || valores.length === 0) return [];
+                
+                const acumulados = [];
+                let soma = 0;
+                for (let i = 0; i < valores.length; i++) {
+                    soma += valores[i];
+                    acumulados.push(soma);
+                }
+                return acumulados;
+            }
+            
             // Função para renderizar o gráfico com Chart.js
             function renderizarGrafico(dados) {
                 const ctx = document.getElementById('grafico-principal').getContext('2d');
                 
                 console.log('🎨 Renderizar gráfico - Dados recebidos:', dados);
-                console.log('📊 Modo:', dados.modo);
+                console.log('📊 Modo:', dados.modo, '| Tipo:', tipoVisualizacao);
                 console.log('🔮 Projeção?', dados.projecao ? 'SIM' : 'NÃO');
                 if (dados.projecao) {
                     console.log('📈 Dados de projeção:', dados.projecao);
@@ -1272,9 +1323,22 @@
                     let dataHistorico = dados.datasets.total_refeicoes;
                     let dataProjecao = [];
                     
+                    // Aplicar acumulação se tipo for 'acumulada'
+                    if (tipoVisualizacao === 'acumulada') {
+                        dataHistorico = acumularDados(dataHistorico);
+                    }
+                    
                     // Se tem projeção, adicionar valores
                     if (dados.projecao && dados.projecao.valores) {
                         dataProjecao = dados.projecao.valores;
+                        // Se acumulada, continuar acumulando na projeção
+                        if (tipoVisualizacao === 'acumulada' && dataHistorico.length > 0) {
+                            let ultimoValorHistorico = dataHistorico[dataHistorico.length - 1];
+                            dataProjecao = dataProjecao.map(v => {
+                                ultimoValorHistorico += v;
+                                return ultimoValorHistorico;
+                            });
+                        }
                     }
                     
                     // Dataset de dados históricos
@@ -1364,6 +1428,11 @@
                         const corIndex = index % cores.length;
                         let valoresGrupo = grupo.valores;
                         
+                        // Aplicar acumulação se tipo for 'acumulada'
+                        if (tipoVisualizacao === 'acumulada') {
+                            valoresGrupo = acumularDados(valoresGrupo);
+                        }
+                        
                         // Se tem projeção, adicionar nulls para espaço da projeção
                         if (numPeriodosProjecao > 0) {
                             valoresGrupo = [...grupo.valores, ...Array(numPeriodosProjecao).fill(null)];
@@ -1389,10 +1458,29 @@
                             
                             // Pegar último valor real do grupo correspondente
                             const grupoHistorico = grupos[index];
-                            const ultimoValorRealGrupo = grupoHistorico ? grupoHistorico.valores[grupoHistorico.valores.length - 1] : 0;
+                            let valoresGrupoHistorico = grupoHistorico ? grupoHistorico.valores : [];
+                            
+                            // Aplicar acumulação aos valores históricos se necessário
+                            if (tipoVisualizacao === 'acumulada' && valoresGrupoHistorico.length > 0) {
+                                valoresGrupoHistorico = acumularDados(valoresGrupoHistorico);
+                            }
+                            
+                            const ultimoValorRealGrupo = valoresGrupoHistorico.length > 0 ? valoresGrupoHistorico[valoresGrupoHistorico.length - 1] : 0;
+                            
+                            // Criar array de projeção
+                            let valoresProjecaoGrupo = grupoProj.valores;
+                            
+                            // Se acumulada, acumular também a projeção
+                            if (tipoVisualizacao === 'acumulada' && ultimoValorRealGrupo > 0) {
+                                let acumulado = ultimoValorRealGrupo;
+                                valoresProjecaoGrupo = valoresProjecaoGrupo.map(v => {
+                                    acumulado += v;
+                                    return acumulado;
+                                });
+                            }
                             
                             // Criar array com ponto de conexão
-                            const dataProjecaoGrupo = [ultimoValorRealGrupo, ...grupoProj.valores];
+                            const dataProjecaoGrupo = [ultimoValorRealGrupo, ...valoresProjecaoGrupo];
                             
                             datasets.push({
                                 label: `${grupoProj.nome} (Projeção)`,
@@ -1859,7 +1947,12 @@
                 }
                 
                 if (dados.modo === 'acumulado') {
-                    const dataHistorico = dados.datasets.total_gastos || [];
+                    let dataHistorico = dados.datasets.total_gastos || [];
+                    
+                    // Aplicar acumulação se tipo for 'acumulada'
+                    if (tipoVisualizacao === 'acumulada') {
+                        dataHistorico = acumularDados(dataHistorico);
+                    }
                     
                     datasets.push({
                         label: 'Total de Gastos (R$)',
@@ -1874,7 +1967,17 @@
                     });
                     
                     if (dados.projecao && dados.projecao.valores && dados.projecao.valores.length > 0) {
-                        const dataProjecao = dados.projecao.valores;
+                        let dataProjecao = dados.projecao.valores;
+                        
+                        // Se acumulada, continuar acumulando na projeção
+                        if (tipoVisualizacao === 'acumulada' && dataHistorico.length > 0) {
+                            let ultimoValorHistorico = dataHistorico[dataHistorico.length - 1];
+                            dataProjecao = dataProjecao.map(v => {
+                                ultimoValorHistorico += v;
+                                return ultimoValorHistorico;
+                            });
+                        }
+                        
                         const ultimoValorReal = dataHistorico[dataHistorico.length - 1];
                         const dataProjecaoComConexao = [ultimoValorReal, ...dataProjecao];
                         
@@ -1894,9 +1997,16 @@
                     }
                 } else if (dados.modo === 'unidade' || dados.modo === 'lote') {
                     dados.grupos.forEach((grupo, index) => {
+                        let valoresGrupo = grupo.valores;
+                        
+                        // Aplicar acumulação se tipo for 'acumulada'
+                        if (tipoVisualizacao === 'acumulada') {
+                            valoresGrupo = acumularDados(valoresGrupo);
+                        }
+                        
                         datasets.push({
                             label: grupo.nome,
-                            data: grupo.valores,
+                            data: valoresGrupo,
                             borderColor: cores[index % cores.length],
                             backgroundColor: cores[index % cores.length].replace('rgb', 'rgba').replace(')', ', 0.1)'),
                             borderWidth: 3,
@@ -1910,8 +2020,28 @@
                             const grupoProj = dados.projecao.grupos_projetados.find(g => g.nome === grupo.nome);
                             if (grupoProj && grupoProj.valores.length > 0) {
                                 const grupoHistorico = grupo;
-                                const ultimoValorRealGrupo = grupoHistorico.valores[grupoHistorico.valores.length - 1];
-                                const dataProjecaoGrupo = [ultimoValorRealGrupo, ...grupoProj.valores];
+                                let valoresHistoricosGrupo = grupoHistorico.valores;
+                                
+                                // Aplicar acumulação aos valores históricos se necessário
+                                if (tipoVisualizacao === 'acumulada') {
+                                    valoresHistoricosGrupo = acumularDados(valoresHistoricosGrupo);
+                                }
+                                
+                                const ultimoValorRealGrupo = valoresHistoricosGrupo[valoresHistoricosGrupo.length - 1];
+                                
+                                // Preparar valores de projeção
+                                let valoresProjecaoGrupo = grupoProj.valores;
+                                
+                                // Se acumulada, acumular também a projeção
+                                if (tipoVisualizacao === 'acumulada' && ultimoValorRealGrupo > 0) {
+                                    let acumulado = ultimoValorRealGrupo;
+                                    valoresProjecaoGrupo = valoresProjecaoGrupo.map(v => {
+                                        acumulado += v;
+                                        return acumulado;
+                                    });
+                                }
+                                
+                                const dataProjecaoGrupo = [ultimoValorRealGrupo, ...valoresProjecaoGrupo];
                                 
                                 const corBase = cores[index % cores.length];
                                 const corEscura = corBase.replace('rgb(', '').replace(')', '').split(',')

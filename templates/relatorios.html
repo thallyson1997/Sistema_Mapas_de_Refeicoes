@@ -160,6 +160,125 @@
             font-weight: 600;
             margin-left: 0.5rem;
         }
+        
+        /* Notificações customizadas */
+        .custom-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            animation: slideInRight 0.4s ease-out;
+            max-width: 400px;
+        }
+
+        .notification-content {
+            background: white;
+            color: #1f2937;
+            padding: 1rem 1.25rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            border-left: 4px solid #3b82f6;
+        }
+
+        .notification-content.warning {
+            border-left-color: #f59e0b;
+            background: #fffbeb;
+        }
+
+        .notification-content.error {
+            border-left-color: #ef4444;
+            background: #fef2f2;
+        }
+
+        .notification-content.success {
+            border-left-color: #10b981;
+            background: #f0fdf4;
+        }
+
+        .notification-content.info {
+            border-left-color: #3b82f6;
+            background: #eff6ff;
+        }
+
+        .notification-icon {
+            font-size: 1.5rem;
+            flex-shrink: 0;
+            margin-top: 0.125rem;
+        }
+
+        .notification-body {
+            flex: 1;
+        }
+
+        .notification-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: 0.25rem;
+            color: #111827;
+        }
+
+        .notification-message {
+            font-size: 0.875rem;
+            line-height: 1.5;
+            color: #6b7280;
+            white-space: pre-line;
+        }
+
+        .notification-close {
+            background: none;
+            border: none;
+            color: #9ca3af;
+            font-size: 1.25rem;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+            flex-shrink: 0;
+        }
+
+        .notification-close:hover {
+            opacity: 1;
+            color: #6b7280;
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes slideOutRight {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+        }
+
+        .custom-notification.closing {
+            animation: slideOutRight 0.3s ease-in forwards;
+        }
+
+        @media (max-width: 480px) {
+            .custom-notification {
+                top: 10px;
+                right: 10px;
+                left: 10px;
+                max-width: none;
+            }
+        }
     </style>
 </head>
 <body>
@@ -704,6 +823,30 @@
         </div>
     </main>
 
+    <!-- Modal de Confirmação de Logout -->
+    <div id="modal-confirmacao-logout" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 11000;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 16px; padding: 2rem; max-width: 500px; width: 90%;">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; color: white; font-size: 2rem;">👋</div>
+                <h3 style="margin-bottom: 1rem; color: #f59e0b;">Sair do Sistema</h3>
+                <p style="margin: 0; color: var(--gray-700); line-height: 1.5; font-size: 1rem;">
+                    Tem certeza que deseja sair do sistema?
+                </p>
+            </div>
+            
+            <div style="padding: 1rem; background-color: #fffbeb; border-radius: 8px; border-left: 4px solid #f59e0b; margin-bottom: 2rem;">
+                <p style="font-size: 0.875rem; margin: 0; color: #92400e;">
+                    <strong>ℹ️ Informação:</strong> Você precisará fazer login novamente para acessar o sistema.
+                </p>
+            </div>
+            
+            <div style="display: flex; gap: 1rem; justify-content: center;">
+                <button class="btn btn-secondary" id="btn-cancelar-logout" style="min-width: 120px;">Cancelar</button>
+                <button class="btn" id="btn-confirmar-logout" style="min-width: 120px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; border: none;">Sair</button>
+            </div>
+        </div>
+    </div>
+
     <footer>
         <div class="container text-center">
             <p style="margin: 0; color: var(--gray-400); font-size: 0.875rem;">
@@ -721,6 +864,42 @@
         let chartInstance = null;
         let modoVisualizacao = 'acumulado'; // 'acumulado', 'unidade', 'lote'
         
+        // Função para mostrar notificação customizada
+        function mostrarNotificacao(titulo, mensagem, tipo = 'info', duracao = 5000) {
+            // Criar elemento de notificação
+            const notification = document.createElement('div');
+            notification.className = 'custom-notification';
+            
+            // Ícones por tipo
+            const icones = {
+                'warning': '⚠️',
+                'error': '❌',
+                'success': '✅',
+                'info': 'ℹ️'
+            };
+            
+            notification.innerHTML = `
+                <div class="notification-content ${tipo}">
+                    <div class="notification-icon">${icones[tipo] || icones['info']}</div>
+                    <div class="notification-body">
+                        <div class="notification-title">${titulo}</div>
+                        <div class="notification-message">${mensagem}</div>
+                    </div>
+                    <button class="notification-close" onclick="this.closest('.custom-notification').remove()">✕</button>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Auto-remover após duração
+            setTimeout(() => {
+                notification.classList.add('closing');
+                setTimeout(() => {
+                    notification.remove();
+                }, 300);
+            }, duracao);
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             // Controlar botões de modo de visualização
             document.querySelectorAll('.btn-modo').forEach(btn => {
@@ -741,10 +920,41 @@
                     modoVisualizacao = this.dataset.modo;
                     console.log('🔄 Modo de visualização alterado para:', modoVisualizacao);
                     
+                    // Atualizar estado do botão de projeção
+                    atualizarBotaoProjecao();
+                    
+                    // Se projeção estava ativa e mudou para acumulado, desativar
+                    if (projecaoAtiva && modoVisualizacao === 'acumulado') {
+                        projecaoAtiva = false;
+                        const btnProjecao = document.getElementById('btn-toggle-projecao');
+                        btnProjecao.textContent = '🔮 Ativar Projeção';
+                        btnProjecao.style.background = '';
+                        btnProjecao.style.color = '';
+                        document.getElementById('projecao-info').style.display = 'none';
+                        document.getElementById('projecao-overlay').style.display = 'none';
+                        document.getElementById('metricas-projecao').style.display = 'none';
+                        document.getElementById('legenda-projecao').style.display = 'none';
+                        document.getElementById('legenda-linha-divisoria').style.display = 'none';
+                    }
+                    
                     // Recarregar gráfico
                     carregarGrafico();
                 });
             });
+            
+            // Função para atualizar estado do botão de projeção
+            function atualizarBotaoProjecao() {
+                const btnProjecao = document.getElementById('btn-toggle-projecao');
+                if (modoVisualizacao === 'acumulado') {
+                    btnProjecao.style.opacity = '0.5';
+                    btnProjecao.style.cursor = 'not-allowed';
+                    btnProjecao.title = 'Projeção disponível apenas nos modos: Por Unidade ou Por Lote';
+                } else {
+                    btnProjecao.style.opacity = '1';
+                    btnProjecao.style.cursor = 'pointer';
+                    btnProjecao.title = 'Ativar projeção de 6 meses baseada em dados históricos';
+                }
+            }
             
             // Controle das abas de gráficos
             const tabButtons = document.querySelectorAll('.tab-btn[data-tab]');
@@ -1281,6 +1491,17 @@
             // Toggle de Projeção (integrado no gráfico)
             let projecaoAtiva = false;
             document.getElementById('btn-toggle-projecao').addEventListener('click', function() {
+                // Verificar se o modo atual permite projeção
+                if (!projecaoAtiva && modoVisualizacao === 'acumulado') {
+                    mostrarNotificacao(
+                        'Projeção Não Disponível',
+                        'A projeção está disponível apenas nos modos:\n\n🏢 Por Unidade\n📦 Por Lote\n\nPor favor, selecione um desses modos para ativar a projeção.',
+                        'warning',
+                        6000
+                    );
+                    return;
+                }
+                
                 projecaoAtiva = !projecaoAtiva;
                 
                 const btnProjecao = this;
@@ -1335,13 +1556,32 @@
 
             // Exportar relatório
             document.getElementById('btn-exportar-relatorio').addEventListener('click', function() {
-                alert('Funcionalidade de exportação será implementada na próxima fase.\n\nFormatos disponíveis: PDF, Excel, CSV');
+                mostrarNotificacao(
+                    'Em Desenvolvimento',
+                    'A funcionalidade de exportação será implementada na próxima fase.\n\nFormatos disponíveis: PDF, Excel, CSV',
+                    'info',
+                    4000
+                );
             });
 
-            // Logout
+            // Logout - Modal customizado
+            var modalLogout = document.getElementById('modal-confirmacao-logout');
+            var btnCancelarLogout = document.getElementById('btn-cancelar-logout');
+            var btnConfirmarLogout = document.getElementById('btn-confirmar-logout');
+            
             document.getElementById('logoutLink').addEventListener('click', function(e) {
                 e.preventDefault();
-                if (confirm('Deseja realmente sair?')) {
+                modalLogout.style.display = 'block';
+            });
+            
+            if (btnCancelarLogout) {
+                btnCancelarLogout.addEventListener('click', function() {
+                    modalLogout.style.display = 'none';
+                });
+            }
+            
+            if (btnConfirmarLogout) {
+                btnConfirmarLogout.addEventListener('click', function() {
                     fetch('/logout', {
                         method: 'GET',
                         headers: { 'Accept': 'application/json' }
@@ -1355,8 +1595,17 @@
                     .catch(() => {
                         window.location.href = '/logout';
                     });
-                }
-            });
+                });
+            }
+            
+            // Fechar modal ao clicar fora
+            if (modalLogout) {
+                modalLogout.addEventListener('click', function(e) {
+                    if (e.target === modalLogout) {
+                        modalLogout.style.display = 'none';
+                    }
+                });
+            }
 
             // Animações
             const observer = new IntersectionObserver((entries) => {
@@ -1384,6 +1633,7 @@
                 const lotesSelecionados = Array.from(document.querySelectorAll('.lote-checkbox:checked')).map(cb => cb.value);
                 const unidadesSelecionadas = Array.from(document.querySelectorAll('.unidade-checkbox:checked')).map(cb => cb.value);
                 console.log('📊 Filtros iniciais - Lotes:', lotesSelecionados.length, 'Unidades:', unidadesSelecionadas.length);
+                atualizarBotaoProjecao();
                 carregarGrafico();
             }, 200);
         });

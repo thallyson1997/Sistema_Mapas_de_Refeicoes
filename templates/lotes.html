@@ -416,7 +416,7 @@
         </div>
     </div>
 
-    <!-- Modal Excluir Lote -->
+    <!-- Modal Selecionar Lote para Excluir -->
     <div id="modal-excluir-lote" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); z-index: 2000;">
         <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 16px; padding: 2rem; max-width: 500px; width: 98%; box-shadow: 0 8px 32px rgba(0,0,0,0.18);">
             <h2 style="margin-bottom: 1.5rem; color: var(--danger-color);">Excluir Lote</h2>
@@ -426,16 +426,61 @@
                     <select id="excluir-lote-selecao" class="form-select" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
                         <option value="">Selecione...</option>
                         {% for lote in lotes %}
-                            <option value="{{ lote.id }}">Lote {{ lote.id }} - {{ lote.nome }}</option>
+                            <option value="{{ lote.id }}" data-nome="{{ lote.nome }}">Lote {{ lote.id }} - {{ lote.nome }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div style="margin-bottom: 1.5rem; color: var(--danger-color); font-weight: 500;">Esta ação é irreversível. Tem certeza que deseja excluir este lote?</div>
                 <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
                     <button type="button" id="btn-cancelar-excluir-lote" class="btn btn-secondary">Cancelar</button>
-                    <button type="submit" id="btn-confirmar-excluir-lote" class="btn btn-danger">Excluir</button>
+                    <button type="button" id="btn-prosseguir-excluir-lote" class="btn btn-danger">Prosseguir</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmação de Exclusão de Lote -->
+    <div id="modal-confirmacao-exclusao-lote" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 2001;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 16px; padding: 2rem; max-width: 600px; width: 90%;">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <div style="width: 80px; height: 80px; background: #dc2626; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; color: white; font-size: 2rem;">🗑️</div>
+                <h3 style="margin-bottom: 1rem; color: #dc2626;">Confirmar Exclusão do Lote</h3>
+                <p id="mensagem-confirmacao-lote" style="margin: 0; color: var(--gray-700); line-height: 1.5; font-size: 1rem;"></p>
+            </div>
+            
+            <div style="padding: 1rem; background-color: #fef2f2; border-radius: 8px; border-left: 4px solid #dc2626; margin-bottom: 2rem;">
+                <p style="font-size: 0.875rem; margin: 0; color: #991b1b;">
+                    <strong>⚠️ Atenção:</strong> Esta ação excluirá permanentemente o lote e todos os dados de refeições associados. Esta operação não pode ser desfeita.
+                </p>
+            </div>
+            
+            <div style="display: flex; gap: 1rem; justify-content: center;">
+                <button class="btn btn-secondary" id="btn-cancelar-confirmacao-lote" style="min-width: 120px;">Cancelar</button>
+                <button class="btn btn-danger" id="btn-confirmar-confirmacao-lote" style="min-width: 120px;">Excluir Lote</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmação de Logout -->
+    <div id="modal-confirmacao-logout" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 2002;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 16px; padding: 2rem; max-width: 500px; width: 90%;">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; color: white; font-size: 2rem;">👋</div>
+                <h3 style="margin-bottom: 1rem; color: #f59e0b;">Sair do Sistema</h3>
+                <p style="margin: 0; color: var(--gray-700); line-height: 1.5; font-size: 1rem;">
+                    Tem certeza que deseja sair do sistema?
+                </p>
+            </div>
+            
+            <div style="padding: 1rem; background-color: #fffbeb; border-radius: 8px; border-left: 4px solid #f59e0b; margin-bottom: 2rem;">
+                <p style="font-size: 0.875rem; margin: 0; color: #92400e;">
+                    <strong>ℹ️ Informação:</strong> Você precisará fazer login novamente para acessar o sistema.
+                </p>
+            </div>
+            
+            <div style="display: flex; gap: 1rem; justify-content: center;">
+                <button class="btn btn-secondary" id="btn-cancelar-logout" style="min-width: 120px;">Cancelar</button>
+                <button class="btn" id="btn-confirmar-logout" style="min-width: 120px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; border: none;">Sair</button>
+            </div>
         </div>
     </div>
 
@@ -634,15 +679,38 @@
             // evitar redirecionamentos indesejados quando a sessão Flask
             // já está ativa. A autenticação deve ser verificada no servidor.
 
-            // Logout
+            // Logout - Modal customizado
             var logoutBtn = document.getElementById('logoutLink');
-            if (logoutBtn) {
+            var modalLogout = document.getElementById('modal-confirmacao-logout');
+            var btnCancelarLogout = document.getElementById('btn-cancelar-logout');
+            var btnConfirmarLogout = document.getElementById('btn-confirmar-logout');
+            
+            if (logoutBtn && modalLogout) {
                 logoutBtn.addEventListener('click', function(e) {
                     e.preventDefault();
-                    if (confirm('Tem certeza que deseja sair do sistema?')) {
-                        localStorage.removeItem('sgmrp_usuario');
-                        localStorage.removeItem('sgmrp_remember');
-                        window.location.href = "{{ url_for('logout') }}";
+                    modalLogout.style.display = 'block';
+                });
+            }
+            
+            if (btnCancelarLogout && modalLogout) {
+                btnCancelarLogout.addEventListener('click', function() {
+                    modalLogout.style.display = 'none';
+                });
+            }
+            
+            if (btnConfirmarLogout) {
+                btnConfirmarLogout.addEventListener('click', function() {
+                    localStorage.removeItem('sgmrp_usuario');
+                    localStorage.removeItem('sgmrp_remember');
+                    window.location.href = "{{ url_for('logout') }}";
+                });
+            }
+            
+            // Fechar modal ao clicar fora
+            if (modalLogout) {
+                modalLogout.addEventListener('click', function(e) {
+                    if (e.target === modalLogout) {
+                        modalLogout.style.display = 'none';
                     }
                 });
             }
@@ -920,18 +988,25 @@
             var excluirLoteBtn = document.getElementById('excluirLote');
             var modalExcluirLote = document.getElementById('modal-excluir-lote');
             var btnCancelarExcluirLote = document.getElementById('btn-cancelar-excluir-lote');
-            var formExcluirLote = document.getElementById('form-excluir-lote');
+            var btnProsseguirExcluirLote = document.getElementById('btn-prosseguir-excluir-lote');
+            var modalConfirmacaoLote = document.getElementById('modal-confirmacao-exclusao-lote');
+            var btnCancelarConfirmacaoLote = document.getElementById('btn-cancelar-confirmacao-lote');
+            var btnConfirmarConfirmacaoLote = document.getElementById('btn-confirmar-confirmacao-lote');
+            var loteIdParaExcluir = null;
+            
             if (excluirLoteBtn && modalExcluirLote) {
                 excluirLoteBtn.addEventListener('click', function() {
                     document.getElementById('excluir-lote-selecao').value = '';
                     modalExcluirLote.style.display = 'block';
                 });
             }
+            
             if (btnCancelarExcluirLote && modalExcluirLote) {
                 btnCancelarExcluirLote.addEventListener('click', function() {
                     modalExcluirLote.style.display = 'none';
                 });
             }
+            
             if (modalExcluirLote) {
                 modalExcluirLote.addEventListener('click', function(e) {
                     if (e.target === modalExcluirLote) {
@@ -939,31 +1014,83 @@
                     }
                 });
             }
-            if (formExcluirLote) {
-                formExcluirLote.addEventListener('submit', async function(e) {
-                    e.preventDefault();
-                    const loteId = document.getElementById('excluir-lote-selecao').value;
+            
+            // Botão prosseguir - abre modal de confirmação
+            if (btnProsseguirExcluirLote) {
+                btnProsseguirExcluirLote.addEventListener('click', function() {
+                    const loteSelect = document.getElementById('excluir-lote-selecao');
+                    const loteId = loteSelect.value;
+                    
                     if (!loteId) {
-                        alert('Selecione um lote para excluir');
+                        showNotification('warning', 'Atenção', 'Selecione um lote para excluir.');
                         return;
                     }
-                    if (!confirm('Tem certeza que deseja excluir este lote?')) return;
+                    
+                    // Pegar nome do lote
+                    const selectedOption = loteSelect.options[loteSelect.selectedIndex];
+                    const loteNome = selectedOption.getAttribute('data-nome') || selectedOption.text;
+                    
+                    // Guardar ID do lote
+                    loteIdParaExcluir = loteId;
+                    
+                    // Atualizar mensagem de confirmação
+                    document.getElementById('mensagem-confirmacao-lote').textContent = 
+                        `Você está prestes a excluir o lote "${loteNome}". Todos os dados de refeições associados serão permanentemente removidos.`;
+                    
+                    // Fechar modal de seleção e abrir modal de confirmação
+                    modalExcluirLote.style.display = 'none';
+                    modalConfirmacaoLote.style.display = 'block';
+                });
+            }
+            
+            // Cancelar confirmação
+            if (btnCancelarConfirmacaoLote) {
+                btnCancelarConfirmacaoLote.addEventListener('click', function() {
+                    modalConfirmacaoLote.style.display = 'none';
+                    loteIdParaExcluir = null;
+                });
+            }
+            
+            // Confirmar exclusão
+            if (btnConfirmarConfirmacaoLote) {
+                btnConfirmarConfirmacaoLote.addEventListener('click', async function() {
+                    if (!loteIdParaExcluir) return;
+                    
+                    // Desabilitar botão durante a requisição
+                    btnConfirmarConfirmacaoLote.disabled = true;
+                    btnConfirmarConfirmacaoLote.textContent = 'Excluindo...';
+                    
                     try {
-                        const resp = await fetch(`/api/editar-lote/${loteId}`, {
+                        const resp = await fetch(`/api/editar-lote/${loteIdParaExcluir}`, {
                             method: 'DELETE',
                             headers: { 'Content-Type': 'application/json' },
                             credentials: 'same-origin'
                         });
                         const data = await resp.json();
+                        
                         if (resp.ok && data.success) {
                             showNotification('success', 'Lote excluído!', 'O lote foi excluído com sucesso.');
-                            modalExcluirLote.style.display = 'none';
+                            modalConfirmacaoLote.style.display = 'none';
                             setTimeout(() => window.location.reload(), 1200);
                         } else {
                             showNotification('error', 'Erro ao excluir lote', data.error || 'Erro ao excluir lote.');
+                            btnConfirmarConfirmacaoLote.disabled = false;
+                            btnConfirmarConfirmacaoLote.textContent = 'Excluir Lote';
                         }
                     } catch (err) {
-                        alert('Erro de conexão com o servidor.');
+                        showNotification('error', 'Erro de conexão', 'Não foi possível conectar ao servidor.');
+                        btnConfirmarConfirmacaoLote.disabled = false;
+                        btnConfirmarConfirmacaoLote.textContent = 'Excluir Lote';
+                    }
+                });
+            }
+            
+            // Fechar modal ao clicar fora
+            if (modalConfirmacaoLote) {
+                modalConfirmacaoLote.addEventListener('click', function(e) {
+                    if (e.target === modalConfirmacaoLote) {
+                        modalConfirmacaoLote.style.display = 'none';
+                        loteIdParaExcluir = null;
                     }
                 });
             }

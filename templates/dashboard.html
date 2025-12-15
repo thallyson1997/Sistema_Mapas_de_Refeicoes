@@ -295,6 +295,30 @@
     </div>
     {% endif %}
 
+    <!-- Modal de Confirmação de Logout -->
+    <div id="modal-confirmacao-logout" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 2002;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 16px; padding: 2rem; max-width: 500px; width: 90%;">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; color: white; font-size: 2rem;">👋</div>
+                <h3 style="margin-bottom: 1rem; color: #f59e0b;">Sair do Sistema</h3>
+                <p style="margin: 0; color: var(--gray-700); line-height: 1.5; font-size: 1rem;">
+                    Tem certeza que deseja sair do sistema?
+                </p>
+            </div>
+            
+            <div style="padding: 1rem; background-color: #fffbeb; border-radius: 8px; border-left: 4px solid #f59e0b; margin-bottom: 2rem;">
+                <p style="font-size: 0.875rem; margin: 0; color: #92400e;">
+                    <strong>ℹ️ Informação:</strong> Você precisará fazer login novamente para acessar o sistema.
+                </p>
+            </div>
+            
+            <div style="display: flex; gap: 1rem; justify-content: center;">
+                <button class="btn btn-secondary" id="btn-cancelar-logout" style="min-width: 120px;">Cancelar</button>
+                <button class="btn" id="btn-confirmar-logout" style="min-width: 120px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; border: none;">Sair</button>
+            </div>
+        </div>
+    </div>
+
     <main>
         <div class="container">
             <!-- Boas-vindas e informações do usuário -->
@@ -1307,15 +1331,38 @@
             
         }
 
-        // Logout
+        // Logout - Modal customizado
+        var modalLogout = document.getElementById('modal-confirmacao-logout');
+        var btnCancelarLogout = document.getElementById('btn-cancelar-logout');
+        var btnConfirmarLogout = document.getElementById('btn-confirmar-logout');
+        
         document.getElementById('logoutLink').addEventListener('click', function(e) {
             e.preventDefault();
-            if (confirm('Tem certeza que deseja sair do sistema?')) {
+            modalLogout.style.display = 'block';
+        });
+        
+        if (btnCancelarLogout) {
+            btnCancelarLogout.addEventListener('click', function() {
+                modalLogout.style.display = 'none';
+            });
+        }
+        
+        if (btnConfirmarLogout) {
+            btnConfirmarLogout.addEventListener('click', function() {
                 localStorage.removeItem('sgmrp_usuario');
                 localStorage.removeItem('sgmrp_remember');
                 window.location.href = 'login.html';
-            }
-        });
+            });
+        }
+        
+        // Fechar modal ao clicar fora
+        if (modalLogout) {
+            modalLogout.addEventListener('click', function(e) {
+                if (e.target === modalLogout) {
+                    modalLogout.style.display = 'none';
+                }
+            });
+        }
 
 
 

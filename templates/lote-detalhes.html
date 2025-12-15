@@ -241,6 +241,30 @@
         </div>
     </header>
 
+    <!-- Modal de Confirmação de Logout -->
+    <div id="modal-logout" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 2002; align-items: center; justify-content: center;">
+        <div style="background: white; border-radius: 16px; padding: 32px; max-width: 440px; width: 90%; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
+            <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%); margin: 0 auto 24px; display: flex; align-items: center; justify-content: center; font-size: 40px;">
+                👋
+            </div>
+            <h3 style="color: #ea580c; margin-bottom: 16px; font-size: 1.5rem; font-weight: 600;">Confirmar Saída</h3>
+            <p style="color: #64748b; margin-bottom: 8px; font-size: 1rem; line-height: 1.6;">Tem certeza que deseja sair do sistema?</p>
+            <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 8px; margin: 20px 0; text-align: left;">
+                <p style="margin: 0; color: #92400e; font-size: 0.875rem;">
+                    ⚠️ <strong>Atenção:</strong> Você precisará fazer login novamente para acessar o sistema.
+                </p>
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 24px;">
+                <button id="btn-cancelar-logout" style="flex: 1; padding: 12px; border: 2px solid #e2e8f0; background: white; color: #64748b; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+                    Cancelar
+                </button>
+                <button id="btn-confirmar-logout" style="flex: 1; padding: 12px; border: none; background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%); color: white; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);">
+                    Sair
+                </button>
+            </div>
+        </div>
+    </div>
+
     <main>
             <!-- Botão flutuante para troca de abas/tabelas -->
             <div style="position: fixed; bottom: 32px; right: 32px; z-index: 1200;">
@@ -3068,18 +3092,38 @@
         
 
 
-        // Logout
+        // Logout com modal customizado
+        var modalLogout = document.getElementById('modal-logout');
+        var btnCancelarLogout = document.getElementById('btn-cancelar-logout');
+        var btnConfirmarLogout = document.getElementById('btn-confirmar-logout');
+        
         document.getElementById('logoutLink').addEventListener('click', function(e) {
             e.preventDefault();
-            if (confirm('Tem certeza que deseja sair do sistema?')) {
-                showNotification('success', 'Logout realizado', 'Até logo!', false);
+            modalLogout.style.display = 'flex';
+        });
+        
+        if (btnCancelarLogout) {
+            btnCancelarLogout.addEventListener('click', function() {
+                modalLogout.style.display = 'none';
+            });
+        }
+        
+        if (btnConfirmarLogout) {
+            btnConfirmarLogout.addEventListener('click', function() {
                 localStorage.removeItem('sgmrp_usuario');
                 localStorage.removeItem('sgmrp_remember');
-                setTimeout(() => {
-                    window.location.href = 'login.html';
-                }, 1500);
-            }
-        });
+                window.location.href = "{{ url_for('logout') }}";
+            });
+        }
+        
+        // Fechar modal ao clicar fora
+        if (modalLogout) {
+            modalLogout.addEventListener('click', function(e) {
+                if (e.target === modalLogout) {
+                    modalLogout.style.display = 'none';
+                }
+            });
+        }
 
         // Controle do filtro de período
         function initPeriodoFilter(skipAutoInit = false) {

@@ -3,8 +3,9 @@ Funções para geração de relatórios e dados para gráficos
 """
 from datetime import datetime, timedelta
 from collections import defaultdict
-from functions.models import db, Mapa
+from functions.models import db, Mapa, Lote
 from sqlalchemy import and_, or_
+import json
 
 
 def buscar_dados_graficos(lotes_ids, unidades, periodo='mes', data_inicio=None, data_fim=None, modo='acumulado'):
@@ -361,7 +362,7 @@ def calcular_projecao(dados, periodo='mes', meses_futuros=6):
         meses_futuros: número de meses a projetar (padrão: 6)
     
     Returns:
-        dict com labels e valores projetados
+        dict com labels e valores projetados (ou grupos_projetados para modo separado)
     """
     try:
         from datetime import datetime, timedelta
@@ -374,25 +375,88 @@ def calcular_projecao(dados, periodo='mes', meses_futuros=6):
             return {
                 'labels_projetados': [],
                 'valores_projetados': [],
+                'grupos_projetados': [],
                 'media_historica': 0,
                 'tendencia': 'estável'
             }
         
-        # Calcular valores totais históricos para análise de tendência
-        valores_historicos = []
-        
+        # Verificar se é modo separado (por unidade ou lote)
         if 'grupos' in dados and dados['grupos']:
-            # Modo separado (por unidade ou lote) - somar todos os grupos
+            # Modo separado - calcular projeção para cada grupo
+            grupos_projetados = []
+            
+            for grupo in dados['grupos']:
+                valores_grupo = grupo.get('valores', [])
+                
+                if not valores_grupo or len(valores_grupo) == 0:
+                    continue
+                
+                # Usar Média Móvel Ponderada com limite de variação (mais conservador)
+                n = len(valores_grupo)
+                
+                # Calcular média ponderada dos últimos períodos
+                if n >= 3:
+                    ultimos_valores = valores_grupo[-3:]
+                    pesos = [0.2, 0.3, 0.5]
+                    media_ponderada_grupo = sum(v * p for v, p in zip(ultimos_valores, pesos))
+                else:
+                    media_ponderada_grupo = statistics.mean(valores_grupo) if valores_grupo else 0
+                
+                # Calcular tendência baseada na variação recente
+                if n >= 2:
+                    variacao_recente = valores_grupo[-1] - valores_grupo[-2]
+                    percentual_variacao = (variacao_recente / valores_grupo[-2] * 100) if valores_grupo[-2] != 0 else 0
+                    
+                    # Limitar variação máxima por período a ±5%
+                    if percentual_variacao > 5:
+                        percentual_variacao = 5
+                    elif percentual_variacao < -5:
+                        percentual_variacao = -5
+                    
+                    fator_crescimento_grupo = 1 + (percentual_variacao / 100)
+                else:
+                    fator_crescimento_grupo = 1.0
+                    percentual_variacao = 0
+                
+                # Detectar tendência
+                if percentual_variacao > 1:
+                    tendencia_grupo = 'crescimento'
+                elif percentual_variacao < -1:
+                    tendencia_grupo = 'decrescimento'
+                else:
+                    tendencia_grupo = 'estável'
+                
+                # Calcular valores projetados usando média móvel + tendência limitada
+                valores_projetados_grupo = []
+                valor_base = media_ponderada_grupo
+                for i in range(1, meses_futuros + 1):
+                    valor_projetado = valor_base * (fator_crescimento_grupo ** i)
+                    valor_projetado = max(0, valor_projetado)
+                    valores_projetados_grupo.append(round(valor_projetado))
+                
+                # Calcular média dos últimos 3 períodos como referência
+                ultimos_3 = valores_grupo[-3:] if len(valores_grupo) >= 3 else valores_grupo
+                media_recente = statistics.mean(ultimos_3) if ultimos_3 else 0
+                
+                grupos_projetados.append({
+                    'nome': grupo.get('nome'),
+                    'valores': valores_projetados_grupo,
+                    'media': round(media_recente),
+                    'tendencia': tendencia_grupo,
+                    'inclinacao': round(percentual_variacao, 2)
+                })
+            
+            # Calcular total para estatísticas gerais
+            valores_historicos = []
             for grupo in dados['grupos']:
                 for i, valor in enumerate(grupo.get('valores', [])):
                     if i >= len(valores_historicos):
                         valores_historicos.append(0)
                     valores_historicos[i] += valor
-        elif 'datasets' in dados and dados['datasets'].get('total_refeicoes'):
-            # Modo acumulado
-            valores_historicos = dados['datasets']['total_refeicoes']
         else:
-            valores_historicos = []
+            # Modo acumulado
+            grupos_projetados = []
+            valores_historicos = dados['datasets'].get('total_refeicoes', [])
         
         if not valores_historicos or len(valores_historicos) == 0:
             return {
@@ -402,32 +466,47 @@ def calcular_projecao(dados, periodo='mes', meses_futuros=6):
                 'tendencia': 'estável'
             }
         
-        # Calcular média dos últimos períodos (até 6 períodos)
-        ultimos_valores = valores_historicos[-6:] if len(valores_historicos) >= 6 else valores_historicos
-        media_historica = statistics.mean(ultimos_valores) if ultimos_valores else 0
+        # Usar Média Móvel Ponderada com limite de variação (mais conservador)
+        n = len(valores_historicos)
         
-        # Detectar tendência (crescimento, decrescimento, estável)
-        tendencia = 'estável'
-        if len(valores_historicos) >= 3:
-            primeira_metade = valores_historicos[:len(valores_historicos)//2]
-            segunda_metade = valores_historicos[len(valores_historicos)//2:]
-            
-            media_primeira = statistics.mean(primeira_metade) if primeira_metade else 0
-            media_segunda = statistics.mean(segunda_metade) if segunda_metade else 0
-            
-            diferenca_percentual = ((media_segunda - media_primeira) / media_primeira * 100) if media_primeira > 0 else 0
-            
-            if diferenca_percentual > 5:
-                tendencia = 'crescimento'
-            elif diferenca_percentual < -5:
-                tendencia = 'decrescimento'
+        # Calcular média dos últimos períodos (mais peso nos recentes)
+        if n >= 3:
+            # Pesos: último período = 50%, penúltimo = 30%, antepenúltimo = 20%
+            ultimos_valores = valores_historicos[-3:]
+            pesos = [0.2, 0.3, 0.5]
+            media_ponderada = sum(v * p for v, p in zip(ultimos_valores, pesos))
+        else:
+            media_ponderada = statistics.mean(valores_historicos) if valores_historicos else 0
         
-        # Calcular fator de tendência
-        fator_tendencia = 1.0
-        if tendencia == 'crescimento':
-            fator_tendencia = 1.02  # 2% de crescimento por período
-        elif tendencia == 'decrescimento':
-            fator_tendencia = 0.98  # 2% de decrescimento por período
+        # Calcular tendência baseada na diferença entre últimos períodos
+        if n >= 2:
+            variacao_recente = valores_historicos[-1] - valores_historicos[-2]
+            percentual_variacao = (variacao_recente / valores_historicos[-2] * 100) if valores_historicos[-2] != 0 else 0
+            
+            # Limitar variação máxima por período a ±5%
+            if percentual_variacao > 5:
+                percentual_variacao = 5
+            elif percentual_variacao < -5:
+                percentual_variacao = -5
+            
+            fator_crescimento = 1 + (percentual_variacao / 100)
+        else:
+            fator_crescimento = 1.0
+            percentual_variacao = 0
+        
+        # Detectar tendência
+        if percentual_variacao > 1:
+            tendencia = 'crescimento'
+        elif percentual_variacao < -1:
+            tendencia = 'decrescimento'
+        else:
+            tendencia = 'estável'
+        
+        # Calcular média dos últimos 3 períodos para métricas
+        ultimos_3 = valores_historicos[-3:] if len(valores_historicos) >= 3 else valores_historicos
+        media_historica = statistics.mean(ultimos_3) if ultimos_3 else 0
+        
+        fator_tendencia = fator_crescimento
         
         # Gerar labels e valores projetados
         labels_projetados = []
@@ -443,14 +522,16 @@ def calcular_projecao(dados, periodo='mes', meses_futuros=6):
             except:
                 ultima_data = datetime.now()
             
-            # Gerar próximos 6 meses
+            # Gerar próximos 6 meses usando média móvel ponderada + tendência limitada
+            valor_base = media_ponderada
             for i in range(1, meses_futuros + 1):
                 proxima_data = ultima_data + relativedelta(months=i)
                 label_projetado = proxima_data.strftime('%Y-%m')
                 labels_projetados.append(label_projetado)
                 
-                # Valor projetado com tendência aplicada
-                valor_projetado = media_historica * (fator_tendencia ** i)
+                # Aplicar tendência de forma gradual e limitada
+                valor_projetado = valor_base * (fator_crescimento ** i)
+                valor_projetado = max(0, valor_projetado)  # Não permitir valores negativos
                 valores_projetados.append(round(valor_projetado))
         
         elif periodo == 'ano':
@@ -463,15 +544,19 @@ def calcular_projecao(dados, periodo='mes', meses_futuros=6):
             proximo_ano = ultimo_ano + 1
             labels_projetados.append(str(proximo_ano))
             
-            # Multiplicar média mensal por 12 para estimativa anual
-            valor_projetado = media_historica * fator_tendencia
+            # Usar média ponderada com tendência limitada
+            valor_projetado = media_ponderada * fator_crescimento
+            valor_projetado = max(0, valor_projetado)
             valores_projetados.append(round(valor_projetado))
         
         print(f"📊 Projeção calculada: {len(labels_projetados)} períodos, média histórica: {media_historica:.0f}, tendência: {tendencia}")
+        if grupos_projetados:
+            print(f"📊 Grupos projetados: {len(grupos_projetados)} grupos")
         
         return {
             'labels_projetados': labels_projetados,
             'valores_projetados': valores_projetados,
+            'grupos_projetados': grupos_projetados,
             'media_historica': round(media_historica),
             'tendencia': tendencia,
             'fator_tendencia': fator_tendencia
@@ -479,9 +564,294 @@ def calcular_projecao(dados, periodo='mes', meses_futuros=6):
     
     except Exception as e:
         print(f"❌ Erro ao calcular projeção: {e}")
+        import traceback
+        traceback.print_exc()
         return {
             'labels_projetados': [],
             'valores_projetados': [],
+            'grupos_projetados': [],
             'media_historica': 0,
             'tendencia': 'estável'
         }
+
+
+def buscar_dados_gastos(lotes_ids, unidades, periodo='mes', data_inicio=None, data_fim=None, modo='acumulado'):
+    """
+    Busca dados de gastos com refeições para gerar gráficos
+    
+    Args:
+        lotes_ids: Lista de IDs dos lotes
+        unidades: Lista de nomes das unidades
+        periodo: 'dia', 'semana', 'mes' ou 'ano'
+        data_inicio: Data de início (opcional)
+        data_fim: Data de fim (opcional)
+        modo: 'acumulado', 'unidade' ou 'lote'
+    
+    Returns:
+        dict com dados de gastos agregados para o gráfico
+    """
+    try:
+        if not lotes_ids or len(lotes_ids) == 0:
+            print("⚠️ Nenhum lote selecionado - retornando gastos vazios")
+            return {
+                'success': True,
+                'dados': {'labels': [], 'labels_formatados': [], 'datasets': {}, 'grupos': []},
+                'total_registros': 0
+            }
+        
+        if not unidades or len(unidades) == 0:
+            print("⚠️ Nenhuma unidade selecionada - retornando gastos vazios")
+            return {
+                'success': True,
+                'dados': {'labels': [], 'labels_formatados': [], 'datasets': {}, 'grupos': []},
+                'total_registros': 0
+            }
+        
+        # Buscar preços dos lotes
+        precos_por_lote = {}
+        for lote_id in lotes_ids:
+            lote = db.session.get(Lote, lote_id)
+            print(f"💰 Verificando lote {lote_id}: encontrado={lote is not None}")
+            if lote:
+                print(f"💰 Lote {lote_id} - precos={lote.precos}, tipo={type(lote.precos)}")
+            
+            if lote and lote.precos:
+                try:
+                    precos = json.loads(lote.precos) if isinstance(lote.precos, str) else lote.precos
+                    precos_por_lote[lote_id] = precos
+                    print(f"💰 Preços carregados do lote {lote_id}: {precos}")
+                except Exception as e:
+                    print(f"❌ Erro ao parsear preços do lote {lote_id}: {e}")
+                    precos_por_lote[lote_id] = {}
+            else:
+                print(f"⚠️ Lote {lote_id} sem preços definidos")
+                precos_por_lote[lote_id] = {}
+        
+        # Buscar mapas
+        query = db.session.query(Mapa)
+        query = query.filter(Mapa.lote_id.in_(lotes_ids))
+        query = query.filter(Mapa.unidade.in_(unidades))
+        
+        if data_inicio:
+            query = query.filter(Mapa.ano >= data_inicio.year)
+        if data_fim:
+            query = query.filter(Mapa.ano <= data_fim.year)
+        
+        mapas = query.all()
+        print(f"💰 Buscar gastos: {len(mapas)} mapas encontrados")
+        
+        # Agregar gastos por período e modo
+        if modo == 'acumulado':
+            dados_agregados = agregar_gastos_por_periodo(mapas, periodo, precos_por_lote)
+        elif modo == 'unidade':
+            dados_agregados = agregar_gastos_por_grupo(mapas, periodo, 'unidade', precos_por_lote)
+        elif modo == 'lote':
+            dados_agregados = agregar_gastos_por_grupo(mapas, periodo, 'lote', precos_por_lote, lotes_ids)
+        else:
+            dados_agregados = agregar_gastos_por_periodo(mapas, periodo, precos_por_lote)
+        
+        return {
+            'success': True,
+            'dados': dados_agregados,
+            'total_registros': len(mapas)
+        }
+    
+    except Exception as e:
+        print(f"❌ Erro ao buscar gastos: {e}")
+        import traceback
+        traceback.print_exc()
+        return {
+            'success': False,
+            'error': str(e)
+        }
+
+
+def agregar_gastos_por_periodo(mapas, periodo='mes', precos_por_lote=None):
+    """
+    Agrega gastos de mapas por período
+    
+    Returns:
+        dict com labels e valores de gastos para o gráfico
+    """
+    if precos_por_lote is None:
+        precos_por_lote = {}
+    
+    dados_por_periodo = defaultdict(lambda: {
+        'cafe_interno': 0, 'cafe_funcionario': 0,
+        'almoco_interno': 0, 'almoco_funcionario': 0,
+        'lanche_interno': 0, 'lanche_funcionario': 0,
+        'jantar_interno': 0, 'jantar_funcionario': 0,
+        'total_gastos': 0
+    })
+    
+    campos_refeicoes = [
+        'cafe_interno', 'cafe_funcionario', 
+        'almoco_interno', 'almoco_funcionario',
+        'lanche_interno', 'lanche_funcionario', 
+        'jantar_interno', 'jantar_funcionario'
+    ]
+    
+    for mapa in mapas:
+        # Obter preços do lote
+        precos = precos_por_lote.get(mapa.lote_id, {})
+        
+        # Criar chave baseada no período
+        if periodo == 'mes':
+            chave = f"{mapa.ano}-{mapa.mes:02d}"
+        elif periodo == 'ano':
+            chave = str(mapa.ano)
+        else:
+            chave = f"{mapa.ano}-{mapa.mes:02d}"
+        
+        print(f"💰 Processando gastos: {chave}, Unidade: {mapa.unidade}, Lote ID: {mapa.lote_id}")
+        
+        for campo in campos_refeicoes:
+            valores = getattr(mapa, campo, []) or []
+            
+            if isinstance(valores, str):
+                try:
+                    valores = json.loads(valores)
+                except:
+                    valores = []
+            
+            total_refeicoes = sum(valores) if isinstance(valores, list) else 0
+            
+            # Mapear campo para estrutura de preços
+            # cafe_interno -> cafe.interno, cafe_funcionario -> cafe.funcionario
+            partes = campo.split('_')  # ['cafe', 'interno'] ou ['almoco', 'funcionario']
+            if len(partes) == 2:
+                tipo_refeicao = partes[0]  # 'cafe', 'almoco', 'lanche', 'jantar'
+                tipo_pessoa = partes[1]     # 'interno', 'funcionario'
+                
+                # Buscar preço na estrutura: precos['cafe']['interno']
+                preco = 0
+                if tipo_refeicao in precos and tipo_pessoa in precos[tipo_refeicao]:
+                    preco_str = precos[tipo_refeicao][tipo_pessoa]
+                    try:
+                        preco = float(preco_str)
+                    except:
+                        preco = 0
+            else:
+                preco = 0
+            
+            gasto_campo = total_refeicoes * preco
+            
+            dados_por_periodo[chave][campo] += gasto_campo
+            dados_por_periodo[chave]['total_gastos'] += gasto_campo
+            
+            if gasto_campo > 0:
+                print(f"  ✅ {campo}: {total_refeicoes} refeições × R$ {preco:.2f} = R$ {gasto_campo:.2f}")
+        
+        print(f"  Total gastos período {chave}: R$ {dados_por_periodo[chave]['total_gastos']:.2f}")
+    
+    # Ordenar por período
+    labels_ordenados = sorted(dados_por_periodo.keys())
+    
+    # Preparar dados para o gráfico
+    resultado = {
+        'labels': labels_ordenados,
+        'datasets': {}
+    }
+    
+    # Adicionar cada tipo de refeição e total
+    for campo in campos_refeicoes + ['total_gastos']:
+        resultado['datasets'][campo] = [dados_por_periodo[label][campo] for label in labels_ordenados]
+    
+    return resultado
+
+
+def agregar_gastos_por_grupo(mapas, periodo='mes', tipo_grupo='unidade', precos_por_lote=None, lotes_ids=None):
+    """
+    Agrega gastos de mapas por grupo (unidade ou lote) e período
+    
+    Returns:
+        dict com labels, grupos e valores de gastos para múltiplas linhas no gráfico
+    """
+    if precos_por_lote is None:
+        precos_por_lote = {}
+    
+    # Estrutura: {grupo_nome: {periodo: total}}
+    dados_por_grupo = defaultdict(lambda: defaultdict(float))
+    
+    campos_refeicoes = [
+        'cafe_interno', 'cafe_funcionario', 
+        'almoco_interno', 'almoco_funcionario',
+        'lanche_interno', 'lanche_funcionario', 
+        'jantar_interno', 'jantar_funcionario'
+    ]
+    
+    for mapa in mapas:
+        # Determinar o nome do grupo
+        if tipo_grupo == 'unidade':
+            grupo_nome = mapa.unidade
+        else:  # tipo_grupo == 'lote'
+            lote = db.session.get(Lote, mapa.lote_id)
+            grupo_nome = lote.nome if lote else f"Lote {mapa.lote_id}"
+        
+        # Determinar a chave do período
+        if periodo == 'mes':
+            chave_periodo = f"{mapa.ano}-{mapa.mes:02d}"
+        elif periodo == 'ano':
+            chave_periodo = str(mapa.ano)
+        else:
+            chave_periodo = f"{mapa.ano}-{mapa.mes:02d}"
+        
+        # Obter preços do lote
+        precos = precos_por_lote.get(mapa.lote_id, {})
+        
+        # Calcular gastos
+        total_gastos = 0
+        for campo in campos_refeicoes:
+            valores = getattr(mapa, campo, []) or []
+            if isinstance(valores, str):
+                try:
+                    valores = json.loads(valores)
+                except:
+                    valores = []
+            
+            total_refeicoes = sum(valores) if isinstance(valores, list) else 0
+            
+            # Mapear campo para estrutura de preços
+            partes = campo.split('_')
+            if len(partes) == 2:
+                tipo_refeicao = partes[0]
+                tipo_pessoa = partes[1]
+                
+                preco = 0
+                if tipo_refeicao in precos and tipo_pessoa in precos[tipo_refeicao]:
+                    preco_str = precos[tipo_refeicao][tipo_pessoa]
+                    try:
+                        preco = float(preco_str)
+                    except:
+                        preco = 0
+            else:
+                preco = 0
+            
+            gasto_campo = total_refeicoes * preco
+            total_gastos += gasto_campo
+        
+        dados_por_grupo[grupo_nome][chave_periodo] += total_gastos
+    
+    # Obter todos os períodos únicos e ordenar
+    todos_periodos = set()
+    for grupo_dados in dados_por_grupo.values():
+        todos_periodos.update(grupo_dados.keys())
+    
+    periodos_ordenados = sorted(list(todos_periodos))
+    
+    # Preparar dados no formato esperado pelo frontend
+    grupos = []
+    for grupo_nome in sorted(dados_por_grupo.keys()):
+        valores = [dados_por_grupo[grupo_nome].get(periodo, 0) for periodo in periodos_ordenados]
+        grupos.append({
+            'nome': grupo_nome,
+            'valores': valores
+        })
+    
+    print(f"✅ Agregação gastos por {tipo_grupo}: {len(grupos)} grupos, {len(periodos_ordenados)} períodos")
+    
+    return {
+        'labels': periodos_ordenados,
+        'grupos': grupos,
+        'datasets': {}
+    }

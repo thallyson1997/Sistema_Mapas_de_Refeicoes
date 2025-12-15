@@ -813,17 +813,26 @@ def api_dados_grafico():
         
         resultado = buscar_dados_graficos(lotes_ids, unidades, periodo, modo=modo)
         
+        print(f"📊 Resultado da busca: success={resultado.get('success')}, registros={resultado.get('total_registros')}")
+        
         if resultado.get('success'):
             # Formatar labels
             dados = resultado['dados']
+            print(f"📊 Labels encontrados: {len(dados.get('labels', []))}")
+            print(f"📊 Grupos encontrados: {len(dados.get('grupos', []))}")
+            
             labels_formatados = [formatar_label_periodo(label, periodo) for label in dados['labels']]
             dados['labels_formatados'] = labels_formatados
             dados['modo'] = modo
             
             # Calcular projeção se solicitada
             if incluir_projecao:
+                print(f"🔮 Calculando projeção para modo: {modo}")
                 from functions.relatorios import calcular_projecao
                 projecao = calcular_projecao(dados, periodo)
+                
+                print(f"🔮 Projeção calculada: {len(projecao.get('labels_projetados', []))} períodos")
+                print(f"🔮 Valores projetados: {projecao.get('valores_projetados', [])}")
                 
                 # Formatar labels de projeção
                 labels_projecao_formatados = [formatar_label_periodo(label, periodo) for label in projecao['labels_projetados']]
@@ -832,18 +841,95 @@ def api_dados_grafico():
                     'labels': projecao['labels_projetados'],
                     'labels_formatados': labels_projecao_formatados,
                     'valores': projecao['valores_projetados'],
+                    'grupos_projetados': projecao.get('grupos_projetados', []),
                     'media_historica': projecao['media_historica'],
                     'tendencia': projecao['tendencia']
                 }
                 
                 print(f"🔮 Projeção adicionada: {len(projecao['labels_projetados'])} períodos, tendência: {projecao['tendencia']}")
             
+            print(f"✅ Retornando dados: modo={dados['modo']}, tem_projecao={bool(dados.get('projecao'))}")
             return jsonify(resultado), 200
         else:
             return jsonify(resultado), 400
     
     except Exception as e:
         print(f"❌ Erro na API dados gráfico: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/relatorios/dados-gastos', methods=['POST'])
+def api_dados_gastos():
+    """Endpoint para buscar dados de gastos para gráficos"""
+    try:
+        from functions.relatorios import buscar_dados_gastos, formatar_label_periodo
+        
+        data = request.get_json(force=True, silent=True) or {}
+        
+        lotes_ids = data.get('lotes', [])
+        unidades = data.get('unidades', [])
+        periodo = data.get('periodo', 'mes')
+        modo = data.get('modo', 'acumulado')
+        incluir_projecao = data.get('projecao', False)
+        
+        print(f"💰 API Dados Gastos - Lotes: {lotes_ids}, Unidades: {unidades}, Período: {periodo}, Modo: {modo}")
+        
+        # Converter lotes_ids para inteiros
+        lotes_ids = [int(lid) for lid in lotes_ids if lid]
+        
+        resultado = buscar_dados_gastos(lotes_ids, unidades, periodo, modo=modo)
+        
+        print(f"💰 Resultado: success={resultado.get('success')}, registros={resultado.get('total_registros')}")
+        
+        if resultado.get('success'):
+            dados = resultado['dados']
+            print(f"💰 Labels encontrados: {len(dados.get('labels', []))}")
+            print(f"💰 Grupos encontrados: {len(dados.get('grupos', []))}")
+            
+            labels_formatados = [formatar_label_periodo(label, periodo) for label in dados['labels']]
+            dados['labels_formatados'] = labels_formatados
+            dados['modo'] = modo
+            
+            # Calcular projeção de gastos se solicitada
+            if incluir_projecao:
+                print(f"🔮 Calculando projeção de gastos para modo: {modo}")
+                from functions.relatorios import calcular_projecao
+                
+                # Criar estrutura de dados compatível com calcular_projecao
+                if modo == 'acumulado':
+                    # Para modo acumulado, usar total_gastos como base
+                    dados_para_projecao = {
+                        'labels': dados['labels'],
+                        'datasets': {'total_refeicoes': dados['datasets'].get('total_gastos', [])}
+                    }
+                else:
+                    # Para modos separados, usar grupos diretamente
+                    dados_para_projecao = dados
+                
+                projecao = calcular_projecao(dados_para_projecao, periodo)
+                
+                print(f"🔮 Projeção de gastos calculada: {len(projecao.get('labels_projetados', []))} períodos")
+                
+                labels_projecao_formatados = [formatar_label_periodo(label, periodo) for label in projecao['labels_projetados']]
+                
+                dados['projecao'] = {
+                    'labels': projecao['labels_projetados'],
+                    'labels_formatados': labels_projecao_formatados,
+                    'valores': projecao['valores_projetados'],
+                    'grupos_projetados': projecao.get('grupos_projetados', []),
+                    'media_historica': projecao['media_historica'],
+                    'tendencia': projecao['tendencia']
+                }
+            
+            print(f"✅ Retornando gastos: modo={dados['modo']}, tem_projecao={bool(dados.get('projecao'))}")
+            return jsonify(resultado), 200
+        else:
+            return jsonify(resultado), 400
+    
+    except Exception as e:
+        print(f"❌ Erro na API dados gastos: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500

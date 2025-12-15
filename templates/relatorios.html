@@ -442,7 +442,7 @@
                             <label style="font-weight: 500; color: var(--gray-600); font-size: 0.875rem;">Visualização:</label>
                             <div style="display: flex; gap: 0.25rem; background: var(--gray-100); padding: 0.25rem; border-radius: 8px;">
                                 <button id="modo-acumulado" class="btn-modo active" data-modo="acumulado" style="padding: 0.5rem 1rem; font-size: 0.875rem; border: none; border-radius: 6px; cursor: pointer; background: var(--primary-color); color: white; font-weight: 500; transition: all 0.3s;">
-                                    📊 Acumulado
+                                    📊 Total Geral
                                 </button>
                                 <button id="modo-unidade" class="btn-modo" data-modo="unidade" style="padding: 0.5rem 1rem; font-size: 0.875rem; border: none; border-radius: 6px; cursor: pointer; background: transparent; color: var(--gray-700); font-weight: 500; transition: all 0.3s;">
                                     🏢 Por Unidade
@@ -459,11 +459,13 @@
             <!-- Abas de Visualização -->
             <div class="tab-buttons">
                 <button class="tab-btn active" data-tab="refeicoes">📈 Evolução de Refeições</button>
-                <button class="tab-btn" data-tab="gastos">💰 Análise de Gastos</button>
+                <button class="tab-btn" data-tab="gastos">💰 Evolução de Gastos</button>
                 <button class="tab-btn" data-tab="desvios">⚠️ Desvios e Conformidade</button>
                 <button class="tab-btn" data-tab="comparativo">📊 Comparativo</button>
             </div>
 
+            <!-- Conteúdo Aba: Evolução de Refeições -->
+            <div class="tab-content active" id="tab-refeicoes">
             <!-- Gráfico Principal -->
             <section class="card fade-in" style="margin-bottom: 2rem;">
                 <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
@@ -473,7 +475,7 @@
                             <span class="projection-badge">PROJEÇÃO ATIVA</span>
                             Dados históricos + Projeção até <strong id="data-fim-contrato">Dez/2026</strong>
                         </span>
-                        <button class="btn btn-secondary btn-sm" id="btn-toggle-projecao" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
+                        <button class="btn-projection" id="btn-toggle-projecao" title="Ativar projeção de 6 meses baseada em dados históricos">
                             🔮 Ativar Projeção
                         </button>
                     </div>
@@ -496,13 +498,6 @@
                             </div>
                         </div>
                         
-                        <!-- Indicador de Projeção (aparece quando ativada) -->
-                        <div id="projecao-overlay" style="display: none; position: absolute; bottom: 1rem; right: 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 0.75rem 1rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); z-index: 10;">
-                            <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; font-weight: 600;">
-                                <span>🔮</span>
-                                <span>Projeção até <span id="projecao-data-fim">Dez/2026</span></span>
-                            </div>
-                        </div>
                     </div>
                     
                     <!-- Legenda do Gráfico -->
@@ -514,7 +509,7 @@
                         <div id="legenda-projecao" style="display: none;">
                             <div style="display: flex; align-items: center; gap: 0.5rem;">
                                 <div style="width: 30px; height: 3px; background: #667eea; border-top: 2px dashed #764ba2;"></div>
-                                <span style="font-size: 0.875rem; color: var(--gray-700);">Projeção (IA)</span>
+                                <span style="font-size: 0.875rem; color: var(--gray-700);">🔮 Projeção até <strong id="projecao-data-fim-legenda">Dez/2026</strong></span>
                             </div>
                         </div>
                         <div id="legenda-linha-divisoria" style="display: none;">
@@ -819,6 +814,114 @@
                     </div>
                 </div>
             </section>
+            </div> <!-- Fim tab-refeicoes -->
+
+            <!-- Conteúdo Aba: Análise de Gastos -->
+            <div class="tab-content" id="tab-gastos" style="display: none;">
+            <!-- Gráfico de Gastos -->
+            <section class="card fade-in" style="margin-bottom: 2rem;">
+                <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <h2 style="margin: 0; color: var(--primary-color); font-size: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
+                        <span style="font-size: 1.75rem;">💰</span>
+                        Evolução de Gastos com Refeições
+                        <span id="projecao-badge-gastos" style="display: none;" class="projection-badge">🔮 Com Projeção</span>
+                    </h2>
+                    <button id="btn-toggle-projecao-gastos" class="btn-projection" title="Ativar projeção de 6 meses" style="opacity: 1; cursor: pointer;">
+                        🔮 Ativar Projeção
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="container-grafico-gastos" style="position: relative; height: 500px; display: block;">
+                        <canvas id="grafico-gastos"></canvas>
+                    </div>
+                    <div id="placeholder-grafico-gastos" class="chart-placeholder" style="display: none; height: 500px;">
+                        <div class="chart-content">
+                            <div style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;">📊</div>
+                            <h3 style="color: var(--gray-700); margin-bottom: 0.5rem;">Nenhum dado encontrado</h3>
+                            <p style="color: var(--gray-500); max-width: 500px; margin: 0 auto;">
+                                Selecione pelo menos um lote e uma unidade para visualizar os gastos.
+                            </p>
+                        </div>
+                    </div>
+                    <div style="margin-top: 1.5rem; padding: 1rem; background: var(--gray-50); border-radius: 8px; border: 1px dashed var(--gray-300); display: flex; align-items: center; gap: 1rem;">
+                        <div style="font-size: 1.25rem;">ℹ️</div>
+                        <div style="flex: 1;">
+                            <strong style="color: var(--gray-700); display: block; margin-bottom: 0.25rem;">Legenda:</strong>
+                            <span style="color: var(--gray-600); font-size: 0.875rem;">O gráfico exibe os gastos monetários (R$) baseados no número de refeições fornecidas multiplicado pelos preços do contrato do lote.</span>
+                            <span id="projecao-data-fim-legenda-gastos" style="display: none; margin-left: 0.5rem; padding: 0.25rem 0.5rem; background: white; border-radius: 4px; font-weight: 600; color: #667eea;"></span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Métricas de Projeção Gastos -->
+            <section id="metricas-projecao-gastos" class="card fade-in" style="display: none; margin-bottom: 2rem; border: 2px solid #667eea;">
+                <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                    <h2 style="margin: 0; font-size: 1.25rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span>🔮</span> Métricas de Projeção de Gastos
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="legend-grid">
+                        <div class="metric-card">
+                            <div class="metric-label">💰 Média Histórica</div>
+                            <div class="metric-value">R$ <span id="media-periodo-gastos">0</span></div>
+                            <div class="metric-subtitle">Gasto médio por período</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">📈 Tendência</div>
+                            <div class="metric-value" id="tendencia-gastos">-</div>
+                            <div class="metric-subtitle">Direção identificada</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">⏰ Período Projetado</div>
+                            <div class="metric-value" id="periodos-projetados-gastos">6</div>
+                            <div class="metric-subtitle">meses à frente</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            </div> <!-- Fim tab-gastos -->
+
+            <!-- Conteúdo Aba: Desvios e Conformidade -->
+            <div class="tab-content" id="tab-desvios" style="display: none;">
+                <section class="card fade-in">
+                    <div class="card-header">
+                        <h3 style="margin: 0;">⚠️ Desvios e Conformidade</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-placeholder">
+                            <div class="chart-content">
+                                <div style="font-size: 4rem; margin-bottom: 1rem;">⚠️</div>
+                                <h3 style="color: var(--gray-700); margin-bottom: 0.5rem;">Desvios e Conformidade</h3>
+                                <p style="color: var(--gray-600); max-width: 500px; margin: 0 auto;">
+                                    Análise de desvios entre valores planejados e executados em desenvolvimento.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Conteúdo Aba: Comparativo -->
+            <div class="tab-content" id="tab-comparativo" style="display: none;">
+                <section class="card fade-in">
+                    <div class="card-header">
+                        <h3 style="margin: 0;">📊 Comparativo</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-placeholder">
+                            <div class="chart-content">
+                                <div style="font-size: 4rem; margin-bottom: 1rem;">📊</div>
+                                <h3 style="color: var(--gray-700); margin-bottom: 0.5rem;">Análise Comparativa</h3>
+                                <p style="color: var(--gray-600); max-width: 500px; margin: 0 auto;">
+                                    Comparação entre diferentes unidades, lotes e períodos em desenvolvimento.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
 
         </div>
     </main>
@@ -863,6 +966,10 @@
         // Variável global para o gráfico
         let chartInstance = null;
         let modoVisualizacao = 'acumulado'; // 'acumulado', 'unidade', 'lote'
+        
+        // Variáveis para gráfico de gastos
+        let chartInstanceGastos = null;
+        let projecaoAtivaGastos = false;
         
         // Função para mostrar notificação customizada
         function mostrarNotificacao(titulo, mensagem, tipo = 'info', duracao = 5000) {
@@ -931,14 +1038,28 @@
                         btnProjecao.style.background = '';
                         btnProjecao.style.color = '';
                         document.getElementById('projecao-info').style.display = 'none';
-                        document.getElementById('projecao-overlay').style.display = 'none';
                         document.getElementById('metricas-projecao').style.display = 'none';
                         document.getElementById('legenda-projecao').style.display = 'none';
                         document.getElementById('legenda-linha-divisoria').style.display = 'none';
                     }
                     
-                    // Recarregar gráfico
-                    carregarGrafico();
+                    // Se projeção de gastos estava ativa e mudou para acumulado, desativar
+                    if (projecaoAtivaGastos && modoVisualizacao === 'acumulado') {
+                        projecaoAtivaGastos = false;
+                        const btnProjecaoGastos = document.getElementById('btn-toggle-projecao-gastos');
+                        if (btnProjecaoGastos) {
+                            btnProjecaoGastos.textContent = '🔮 Ativar Projeção';
+                            btnProjecaoGastos.style.background = '';
+                        }
+                    }
+                    
+                    // Recarregar gráfico da aba ativa
+                    const abaAtiva = document.querySelector('.tab-btn.active')?.dataset.tab;
+                    if (abaAtiva === 'gastos') {
+                        carregarGraficoGastos();
+                    } else {
+                        carregarGrafico();
+                    }
                 });
             });
             
@@ -954,18 +1075,52 @@
                     btnProjecao.style.cursor = 'pointer';
                     btnProjecao.title = 'Ativar projeção de 6 meses baseada em dados históricos';
                 }
+                
+                // Atualizar também o botão de projeção de gastos
+                const btnProjecaoGastos = document.getElementById('btn-toggle-projecao-gastos');
+                if (btnProjecaoGastos) {
+                    if (modoVisualizacao === 'acumulado') {
+                        btnProjecaoGastos.style.opacity = '0.5';
+                        btnProjecaoGastos.style.cursor = 'not-allowed';
+                        btnProjecaoGastos.title = 'Projeção disponível apenas nos modos: Por Unidade ou Por Lote';
+                    } else {
+                        btnProjecaoGastos.style.opacity = '1';
+                        btnProjecaoGastos.style.cursor = 'pointer';
+                        btnProjecaoGastos.title = 'Ativar projeção de 6 meses baseada em dados históricos';
+                    }
+                }
             }
+            
+
             
             // Controle das abas de gráficos
             const tabButtons = document.querySelectorAll('.tab-btn[data-tab]');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
             tabButtons.forEach(btn => {
                 btn.addEventListener('click', function() {
+                    // Remover active de todos os botões
                     tabButtons.forEach(b => b.classList.remove('active'));
                     this.classList.add('active');
                     
                     const tabName = this.dataset.tab;
-                    console.log('Aba selecionada:', tabName);
-                    // Aqui será implementada a troca de gráficos
+                    console.log('📑 Aba selecionada:', tabName);
+                    
+                    // Ocultar todos os conteúdos
+                    tabContents.forEach(content => {
+                        content.style.display = 'none';
+                    });
+                    
+                    // Mostrar conteúdo da aba selecionada
+                    const selectedTab = document.getElementById(`tab-${tabName}`);
+                    if (selectedTab) {
+                        selectedTab.style.display = 'block';
+                    }
+                    
+                    // Carregar dados da aba selecionada
+                    if (tabName === 'gastos') {
+                        carregarGraficoGastos();
+                    }
                 });
             });
 
@@ -1015,21 +1170,26 @@
                     document.getElementById('chart-placeholder').style.display = 'none';
                     
                     // Fazer requisição
+                    const payload = {
+                        lotes: lotesSelecionados,
+                        unidades: unidadesSelecionadas,
+                        periodo: periodo,
+                        modo: modoVisualizacao,
+                        projecao: projecaoAtiva
+                    };
+                    
+                    console.log('📤 Enviando requisição:', payload);
+                    
                     const response = await fetch('/api/relatorios/dados-grafico', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
                         },
-                        body: JSON.stringify({
-                            lotes: lotesSelecionados,
-                            unidades: unidadesSelecionadas,
-                            periodo: periodo,
-                            modo: modoVisualizacao,
-                            projecao: projecaoAtiva
-                        })
+                        body: JSON.stringify(payload)
                     });
                     
                     const resultado = await response.json();
+                    console.log('📥 Resposta recebida:', resultado);
                     
                     document.getElementById('chart-loading').style.display = 'none';
                     
@@ -1037,7 +1197,13 @@
                         console.log('✅ Dados recebidos:', resultado);
                         
                         // Verificar se há dados para exibir
-                        if (resultado.total_registros === 0 || !resultado.dados.labels || resultado.dados.labels.length === 0) {
+                        const temDados = resultado.total_registros > 0 && 
+                                        resultado.dados.labels && 
+                                        resultado.dados.labels.length > 0;
+                        
+                        const temGrupos = resultado.dados.grupos && resultado.dados.grupos.length > 0;
+                        
+                        if (!temDados && !temGrupos) {
                             console.log('⚠️ Nenhum dado para exibir');
                             if (chartInstance) {
                                 chartInstance.destroy();
@@ -1046,6 +1212,7 @@
                             document.getElementById('chart-placeholder').style.display = 'flex';
                             document.getElementById('grafico-principal').style.display = 'none';
                         } else {
+                            console.log('✅ Exibindo gráfico - Dados válidos encontrados');
                             document.getElementById('chart-placeholder').style.display = 'none';
                             document.getElementById('grafico-principal').style.display = 'block';
                             renderizarGrafico(resultado.dados);
@@ -1065,6 +1232,13 @@
             // Função para renderizar o gráfico com Chart.js
             function renderizarGrafico(dados) {
                 const ctx = document.getElementById('grafico-principal').getContext('2d');
+                
+                console.log('🎨 Renderizar gráfico - Dados recebidos:', dados);
+                console.log('📊 Modo:', dados.modo);
+                console.log('🔮 Projeção?', dados.projecao ? 'SIM' : 'NÃO');
+                if (dados.projecao) {
+                    console.log('📈 Dados de projeção:', dados.projecao);
+                }
                 
                 // Destruir gráfico anterior se existir
                 if (chartInstance) {
@@ -1119,9 +1293,15 @@
                     
                     // Dataset de projeção (se disponível)
                     if (dataProjecao.length > 0) {
+                        // Pegar último valor real para conectar com a projeção
+                        const ultimoValorReal = dataHistorico[dataHistorico.length - 1];
+                        
+                        // Criar array com ponto de conexão: último real + valores projetados
+                        const dataProjecaoComConexao = [ultimoValorReal, ...dataProjecao];
+                        
                         datasets.push({
                             label: 'Projeção (IA)',
-                            data: [...Array(dataHistorico.length).fill(null), ...dataProjecao],
+                            data: [...Array(dataHistorico.length - 1).fill(null), ...dataProjecaoComConexao],
                             borderColor: 'rgb(139, 92, 246)',
                             backgroundColor: 'rgba(139, 92, 246, 0.1)',
                             borderWidth: 3,
@@ -1134,28 +1314,64 @@
                         
                         // Atualizar métricas de projeção
                         if (dados.projecao.media_historica) {
-                            document.getElementById('media-periodo').textContent = dados.projecao.media_historica.toLocaleString('pt-BR');
+                            const mediaPeriodo = document.getElementById('media-periodo');
+                            if (mediaPeriodo) {
+                                mediaPeriodo.textContent = dados.projecao.media_historica.toLocaleString('pt-BR');
+                            }
                         }
                         if (dados.projecao.tendencia) {
                             const tendenciaTexto = dados.projecao.tendencia === 'crescimento' ? '📈 Crescimento' : 
                                                    dados.projecao.tendencia === 'decrescimento' ? '📉 Decrescimento' : '➡️ Estável';
-                            document.getElementById('tendencia-dados').textContent = tendenciaTexto;
+                            const tendenciaDados = document.getElementById('tendencia-dados');
+                            if (tendenciaDados) {
+                                tendenciaDados.textContent = tendenciaTexto;
+                            }
                         }
                         // Atualizar data fim da projeção
                         if (dados.projecao.labels_formatados && dados.projecao.labels_formatados.length > 0) {
                             const ultimoMes = dados.projecao.labels_formatados[dados.projecao.labels_formatados.length - 1];
-                            document.getElementById('projecao-data-fim').textContent = ultimoMes;
-                            document.getElementById('data-fim-contrato').textContent = ultimoMes;
+                            const dataFimContrato = document.getElementById('data-fim-contrato');
+                            const projecaoDataFimLegenda = document.getElementById('projecao-data-fim-legenda');
+                            if (dataFimContrato) {
+                                dataFimContrato.textContent = ultimoMes;
+                            }
+                            if (projecaoDataFimLegenda) {
+                                projecaoDataFimLegenda.textContent = ultimoMes;
+                            }
                         }
                     }
                 } else if (dados.modo === 'unidade' || dados.modo === 'lote') {
                     // Modo por unidade ou lote - múltiplas linhas
                     const grupos = dados.grupos || [];
+                    
+                    // Função para escurecer cor
+                    function escurecerCor(rgbString) {
+                        const match = rgbString.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+                        if (match) {
+                            const r = Math.max(0, parseInt(match[1]) - 40);
+                            const g = Math.max(0, parseInt(match[2]) - 40);
+                            const b = Math.max(0, parseInt(match[3]) - 40);
+                            return `rgb(${r}, ${g}, ${b})`;
+                        }
+                        return rgbString;
+                    }
+                    
+                    // Determinar quantos períodos de projeção
+                    const numPeriodosProjecao = dados.projecao && dados.projecao.labels ? dados.projecao.labels.length : 0;
+                    
+                    // Adicionar linhas dos grupos históricos
                     grupos.forEach((grupo, index) => {
                         const corIndex = index % cores.length;
+                        let valoresGrupo = grupo.valores;
+                        
+                        // Se tem projeção, adicionar nulls para espaço da projeção
+                        if (numPeriodosProjecao > 0) {
+                            valoresGrupo = [...grupo.valores, ...Array(numPeriodosProjecao).fill(null)];
+                        }
+                        
                         datasets.push({
                             label: grupo.nome,
-                            data: grupo.valores,
+                            data: valoresGrupo,
                             borderColor: cores[corIndex].border,
                             backgroundColor: cores[corIndex].bg,
                             borderWidth: 2,
@@ -1163,6 +1379,65 @@
                             tension: 0.4
                         });
                     });
+                    
+                    // Se tem projeção por grupo, adicionar linha de projeção para cada grupo
+                    if (dados.projecao && dados.projecao.grupos_projetados && dados.projecao.grupos_projetados.length > 0) {
+                        dados.projecao.grupos_projetados.forEach((grupoProj, index) => {
+                            const corIndex = index % cores.length;
+                            const corEscura = escurecerCor(cores[corIndex].border);
+                            const numPeriodosHistoricos = grupos[0] ? grupos[0].valores.length : 0;
+                            
+                            // Pegar último valor real do grupo correspondente
+                            const grupoHistorico = grupos[index];
+                            const ultimoValorRealGrupo = grupoHistorico ? grupoHistorico.valores[grupoHistorico.valores.length - 1] : 0;
+                            
+                            // Criar array com ponto de conexão
+                            const dataProjecaoGrupo = [ultimoValorRealGrupo, ...grupoProj.valores];
+                            
+                            datasets.push({
+                                label: `${grupoProj.nome} (Projeção)`,
+                                data: [...Array(numPeriodosHistoricos - 1).fill(null), ...dataProjecaoGrupo],
+                                borderColor: corEscura,
+                                backgroundColor: cores[corIndex].bg,
+                                borderWidth: 2,
+                                borderDash: [10, 5],
+                                fill: false,
+                                tension: 0.4,
+                                pointStyle: 'triangle',
+                                pointRadius: 4
+                            });
+                        });
+                    }
+                    
+                    // Atualizar métricas de projeção (se houver projeção)
+                    if (dados.projecao) {
+                        if (dados.projecao.media_historica) {
+                            const mediaPeriodo = document.getElementById('media-periodo');
+                            if (mediaPeriodo) {
+                                mediaPeriodo.textContent = dados.projecao.media_historica.toLocaleString('pt-BR');
+                            }
+                        }
+                        if (dados.projecao.tendencia) {
+                            const tendenciaTexto = dados.projecao.tendencia === 'crescimento' ? '📈 Crescimento' : 
+                                                   dados.projecao.tendencia === 'decrescimento' ? '📉 Decrescimento' : '➡️ Estável';
+                            const tendenciaDados = document.getElementById('tendencia-dados');
+                            if (tendenciaDados) {
+                                tendenciaDados.textContent = tendenciaTexto;
+                            }
+                        }
+                        // Atualizar data fim da projeção
+                        if (dados.projecao.labels_formatados && dados.projecao.labels_formatados.length > 0) {
+                            const ultimoMes = dados.projecao.labels_formatados[dados.projecao.labels_formatados.length - 1];
+                            const dataFimContrato = document.getElementById('data-fim-contrato');
+                            const projecaoDataFimLegenda = document.getElementById('projecao-data-fim-legenda');
+                            if (dataFimContrato) {
+                                dataFimContrato.textContent = ultimoMes;
+                            }
+                            if (projecaoDataFimLegenda) {
+                                projecaoDataFimLegenda.textContent = ultimoMes;
+                            }
+                        }
+                    }
                 }
                 
                 // Criar novo gráfico
@@ -1488,6 +1763,259 @@
                 }
             }
 
+            // Função para carregar gráfico de GASTOS
+            async function carregarGraficoGastos() {
+                try {
+                    const lotesSelecionados = Array.from(document.querySelectorAll('.lote-checkbox:checked')).map(cb => cb.value);
+                    const unidadesSelecionadas = Array.from(document.querySelectorAll('.unidade-checkbox:checked')).map(cb => cb.value);
+                    const periodo = document.getElementById('filtro-periodo').value;
+                    
+                    console.log('💰 Carregando gráfico gastos:', { lotesSelecionados, unidadesSelecionadas, periodo, modo: modoVisualizacao, projecao: projecaoAtivaGastos });
+                    
+                    const response = await fetch('/api/relatorios/dados-gastos', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            lotes: lotesSelecionados,
+                            unidades: unidadesSelecionadas,
+                            periodo: periodo,
+                            modo: modoVisualizacao,
+                            projecao: projecaoAtivaGastos
+                        })
+                    });
+                    
+                    const resultado = await response.json();
+                    
+                    if (resultado.success) {
+                        const dados = resultado.dados;
+                        const temDados = resultado.total_registros > 0 && dados.labels && dados.labels.length > 0;
+                        const temGrupos = dados.grupos && dados.grupos.length > 0;
+                        
+                        if (!temDados && !temGrupos) {
+                            document.getElementById('container-grafico-gastos').style.display = 'none';
+                            document.getElementById('placeholder-grafico-gastos').style.display = 'flex';
+                        } else {
+                            document.getElementById('container-grafico-gastos').style.display = 'block';
+                            document.getElementById('placeholder-grafico-gastos').style.display = 'none';
+                            renderizarGraficoGastos(dados);
+                            
+                            // Atualizar métricas de projeção se ativa
+                            if (projecaoAtivaGastos && dados.projecao) {
+                                document.getElementById('metricas-projecao-gastos').style.display = 'block';
+                                document.getElementById('projecao-badge-gastos').style.display = 'inline-block';
+                                
+                                const mediaPeriodo = document.getElementById('media-periodo-gastos');
+                                if (mediaPeriodo) mediaPeriodo.textContent = dados.projecao.media_historica.toLocaleString('pt-BR');
+                                
+                                const tendencia = document.getElementById('tendencia-gastos');
+                                if (tendencia) {
+                                    const tendenciaTexto = dados.projecao.tendencia === 'crescimento' ? '📈 Crescimento' :
+                                                          dados.projecao.tendencia === 'decrescimento' ? '📉 Decrescimento' : '➡️ Estável';
+                                    tendencia.textContent = tendenciaTexto;
+                                    tendencia.style.color = dados.projecao.tendencia === 'crescimento' ? '#10b981' :
+                                                           dados.projecao.tendencia === 'decrescimento' ? '#ef4444' : '#6b7280';
+                                }
+                                
+                                const ultimoMes = dados.projecao.labels_formatados[dados.projecao.labels_formatados.length - 1];
+                                const legendaDataFim = document.getElementById('projecao-data-fim-legenda-gastos');
+                                if (legendaDataFim && ultimoMes) {
+                                    legendaDataFim.textContent = `🔮 Projeção até ${ultimoMes}`;
+                                    legendaDataFim.style.display = 'inline';
+                                }
+                            } else {
+                                document.getElementById('metricas-projecao-gastos').style.display = 'none';
+                                document.getElementById('projecao-badge-gastos').style.display = 'none';
+                                const legendaDataFim = document.getElementById('projecao-data-fim-legenda-gastos');
+                                if (legendaDataFim) legendaDataFim.style.display = 'none';
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('❌ Erro ao carregar gráfico gastos:', error);
+                    mostrarNotificacao('Erro', 'Falha ao carregar gráfico de gastos', 'error');
+                }
+            }
+            
+            // Função para renderizar gráfico de GASTOS
+            function renderizarGraficoGastos(dados) {
+                const ctx = document.getElementById('grafico-gastos').getContext('2d');
+                
+                if (chartInstanceGastos) {
+                    chartInstanceGastos.destroy();
+                }
+                
+                let datasets = [];
+                const cores = [
+                    'rgb(59, 130, 246)', 'rgb(16, 185, 129)', 'rgb(245, 158, 11)', 
+                    'rgb(239, 68, 68)', 'rgb(139, 92, 246)', 'rgb(236, 72, 153)',
+                    'rgb(20, 184, 166)', 'rgb(251, 146, 60)', 'rgb(168, 85, 247)',
+                    'rgb(34, 197, 94)'
+                ];
+                
+                let allLabels = dados.labels_formatados || dados.labels;
+                
+                if (dados.projecao && dados.projecao.labels_formatados) {
+                    allLabels = [...allLabels, ...dados.projecao.labels_formatados];
+                }
+                
+                if (dados.modo === 'acumulado') {
+                    const dataHistorico = dados.datasets.total_gastos || [];
+                    
+                    datasets.push({
+                        label: 'Total de Gastos (R$)',
+                        data: dataHistorico,
+                        borderColor: 'rgb(59, 130, 246)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    });
+                    
+                    if (dados.projecao && dados.projecao.valores && dados.projecao.valores.length > 0) {
+                        const dataProjecao = dados.projecao.valores;
+                        const ultimoValorReal = dataHistorico[dataHistorico.length - 1];
+                        const dataProjecaoComConexao = [ultimoValorReal, ...dataProjecao];
+                        
+                        datasets.push({
+                            label: 'Projeção de Gastos (R$)',
+                            data: [...Array(dataHistorico.length - 1).fill(null), ...dataProjecaoComConexao],
+                            borderColor: 'rgb(139, 92, 246)',
+                            backgroundColor: 'rgba(139, 92, 246, 0.05)',
+                            borderWidth: 3,
+                            borderDash: [10, 5],
+                            fill: false,
+                            tension: 0.4,
+                            pointRadius: 5,
+                            pointHoverRadius: 7,
+                            pointStyle: 'triangle'
+                        });
+                    }
+                } else if (dados.modo === 'unidade' || dados.modo === 'lote') {
+                    dados.grupos.forEach((grupo, index) => {
+                        datasets.push({
+                            label: grupo.nome,
+                            data: grupo.valores,
+                            borderColor: cores[index % cores.length],
+                            backgroundColor: cores[index % cores.length].replace('rgb', 'rgba').replace(')', ', 0.1)'),
+                            borderWidth: 3,
+                            fill: false,
+                            tension: 0.4,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        });
+                        
+                        if (dados.projecao && dados.projecao.grupos_projetados) {
+                            const grupoProj = dados.projecao.grupos_projetados.find(g => g.nome === grupo.nome);
+                            if (grupoProj && grupoProj.valores.length > 0) {
+                                const grupoHistorico = grupo;
+                                const ultimoValorRealGrupo = grupoHistorico.valores[grupoHistorico.valores.length - 1];
+                                const dataProjecaoGrupo = [ultimoValorRealGrupo, ...grupoProj.valores];
+                                
+                                const corBase = cores[index % cores.length];
+                                const corEscura = corBase.replace('rgb(', '').replace(')', '').split(',')
+                                    .map(c => Math.max(0, parseInt(c.trim()) - 40))
+                                    .join(',');
+                                
+                                datasets.push({
+                                    label: `${grupoProj.nome} (Projeção)`,
+                                    data: [...Array(grupoHistorico.valores.length - 1).fill(null), ...dataProjecaoGrupo],
+                                    borderColor: `rgb(${corEscura})`,
+                                    backgroundColor: 'transparent',
+                                    borderWidth: 2.5,
+                                    borderDash: [10, 5],
+                                    fill: false,
+                                    tension: 0.4,
+                                    pointRadius: 4,
+                                    pointHoverRadius: 6,
+                                    pointStyle: 'triangle'
+                                });
+                            }
+                        }
+                    });
+                }
+                
+                chartInstanceGastos = new Chart(ctx, {
+                    type: 'line',
+                    data: { labels: allLabels, datasets: datasets },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                labels: { padding: 15, font: { size: 12 }, usePointStyle: true }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                padding: 12,
+                                titleFont: { size: 14, weight: 'bold' },
+                                bodyFont: { size: 13 },
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) label += ': ';
+                                        label += 'R$ ' + (context.parsed.y || 0).toLocaleString('pt-BR', {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2
+                                        });
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return 'R$ ' + value.toLocaleString('pt-BR', {
+                                            minimumFractionDigits: 0,
+                                            maximumFractionDigits: 0
+                                        });
+                                    }
+                                },
+                                grid: { color: 'rgba(0, 0, 0, 0.05)' }
+                            },
+                            x: { grid: { display: false } }
+                        }
+                    }
+                });
+                
+                console.log('✅ Gráfico gastos renderizado! Modo:', dados.modo);
+            }
+            
+            // Toggle de Projeção GASTOS
+            document.getElementById('btn-toggle-projecao-gastos').addEventListener('click', function() {
+                // Verificar se o modo atual permite projeção
+                if (!projecaoAtivaGastos && modoVisualizacao === 'acumulado') {
+                    mostrarNotificacao(
+                        'Projeção Não Disponível',
+                        'A projeção está disponível apenas nos modos:\n\n🏢 Por Unidade\n📦 Por Lote\n\nPor favor, selecione um desses modos para ativar a projeção.',
+                        'warning',
+                        6000
+                    );
+                    return;
+                }
+                
+                projecaoAtivaGastos = !projecaoAtivaGastos;
+                
+                const btnProjecao = this;
+                
+                if (projecaoAtivaGastos) {
+                    btnProjecao.textContent = '✖️ Desativar Projeção';
+                    btnProjecao.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+                } else {
+                    btnProjecao.textContent = '🔮 Ativar Projeção';
+                    btnProjecao.style.background = '';
+                }
+                
+                carregarGraficoGastos();
+            });
+
             // Toggle de Projeção (integrado no gráfico)
             let projecaoAtiva = false;
             document.getElementById('btn-toggle-projecao').addEventListener('click', function() {
@@ -1506,7 +2034,6 @@
                 
                 const btnProjecao = this;
                 const projecaoInfo = document.getElementById('projecao-info');
-                const projecaoOverlay = document.getElementById('projecao-overlay');
                 const metricasProjecao = document.getElementById('metricas-projecao');
                 const legendaProjecao = document.getElementById('legenda-projecao');
                 const legendaLinhaDivisoria = document.getElementById('legenda-linha-divisoria');
@@ -1517,7 +2044,6 @@
                     btnProjecao.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
                     btnProjecao.style.color = 'white';
                     projecaoInfo.style.display = 'flex';
-                    projecaoOverlay.style.display = 'block';
                     metricasProjecao.style.display = 'block';
                     legendaProjecao.style.display = 'block';
                     legendaLinhaDivisoria.style.display = 'block';
@@ -1544,7 +2070,6 @@
                     btnProjecao.style.background = '';
                     btnProjecao.style.color = '';
                     projecaoInfo.style.display = 'none';
-                    projecaoOverlay.style.display = 'none';
                     metricasProjecao.style.display = 'none';
                     legendaProjecao.style.display = 'none';
                     legendaLinhaDivisoria.style.display = 'none';

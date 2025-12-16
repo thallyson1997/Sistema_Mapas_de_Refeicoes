@@ -7,6 +7,8 @@
     <meta name="description" content="Análise gráfica e relatórios de consumo de refeições">
     <link rel="stylesheet" href="/static/css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         .chart-placeholder {
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
@@ -279,6 +281,26 @@
                 max-width: none;
             }
         }
+
+        /* Estilos do Modal de Exportação */
+        .export-option:hover {
+            background: #f1f5f9 !important;
+            border-color: var(--primary-color) !important;
+        }
+
+        .export-option input:checked + span {
+            color: var(--primary-color) !important;
+            font-weight: 600;
+        }
+
+        input[type="radio"]:checked {
+            accent-color: var(--primary-color);
+        }
+
+        label:has(input[type="radio"]:checked) {
+            border-color: var(--primary-color) !important;
+            background: #f5f3ff !important;
+        }
     </style>
 </head>
 <body>
@@ -496,7 +518,7 @@
             <div class="section-divider"></div>
 
             <!-- Métricas de Projeção (aparecem quando projeção está ativa) -->
-            <section id="metricas-projecao" class="card fade-in" style="display: none; margin-bottom: 2rem; border: 2px solid #667eea;">
+            <section id="metricas-projecao" class="card fade-in" style="display: none !important; margin-bottom: 2rem; border: 2px solid #667eea;">
                 <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
                     <h3 style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
                         🎯 Indicadores da Projeção
@@ -597,7 +619,7 @@
             </section>
 
             <!-- Métricas de Projeção Gastos -->
-            <section id="metricas-projecao-gastos" class="card fade-in" style="display: none; margin-bottom: 2rem; border: 2px solid #667eea;">
+            <section id="metricas-projecao-gastos" class="card fade-in" style="display: none !important; margin-bottom: 2rem; border: 2px solid #667eea;">
                 <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
                     <h2 style="margin: 0; font-size: 1.25rem; display: flex; align-items: center; gap: 0.5rem;">
                         <span>🔮</span> Métricas de Projeção de Gastos
@@ -668,6 +690,84 @@
     </main>
 
     <!-- Modal de Confirmação de Logout -->
+    <!-- Modal de Exportação -->
+    <div id="modal-exportacao" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 11000;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 16px; padding: 2rem; max-width: 600px; width: 90%; max-height: 85vh; overflow-y: auto;">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; color: white; font-size: 2rem;">📊</div>
+                <h3 style="margin-bottom: 0.5rem; color: var(--primary-color);">Exportar Relatórios</h3>
+                <p style="margin: 0; color: var(--gray-600); font-size: 0.95rem;">Selecione os gráficos e o formato de exportação</p>
+            </div>
+            
+            <!-- Seleção de Gráficos -->
+            <div style="margin-bottom: 1.5rem;">
+                <h4 style="margin-bottom: 1rem; color: var(--gray-700); font-size: 1rem; font-weight: 600;">📈 Gráficos para Exportar</h4>
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <label style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer; transition: all 0.2s;" class="export-option">
+                        <input type="checkbox" id="export-refeicoes-total" value="refeicoes-total" style="width: 18px; height: 18px; cursor: pointer;">
+                        <span style="flex: 1; color: var(--gray-700); font-weight: 500;">Evolução de Refeições - Total Geral</span>
+                    </label>
+                    
+                    <label style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer; transition: all 0.2s;" class="export-option">
+                        <input type="checkbox" id="export-refeicoes-unidade" value="refeicoes-unidade" style="width: 18px; height: 18px; cursor: pointer;">
+                        <span style="flex: 1; color: var(--gray-700); font-weight: 500;">Evolução de Refeições - Por Unidade</span>
+                    </label>
+                    
+                    <label style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer; transition: all 0.2s;" class="export-option">
+                        <input type="checkbox" id="export-gastos-total" value="gastos-total" style="width: 18px; height: 18px; cursor: pointer;">
+                        <span style="flex: 1; color: var(--gray-700); font-weight: 500;">Evolução de Gastos - Total Geral</span>
+                    </label>
+                    
+                    <label style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer; transition: all 0.2s;" class="export-option">
+                        <input type="checkbox" id="export-gastos-unidade" value="gastos-unidade" style="width: 18px; height: 18px; cursor: pointer;">
+                        <span style="flex: 1; color: var(--gray-700); font-weight: 500;">Evolução de Gastos - Por Unidade</span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Tipo de Visualização (Normal/Acumulada) -->
+            <div style="margin-bottom: 1.5rem;">
+                <h4 style="margin-bottom: 1rem; color: var(--gray-700); font-size: 1rem; font-weight: 600;">📊 Tipo de Visualização</h4>
+                <div style="display: flex; gap: 0.75rem;">
+                    <label style="flex: 1; display: flex; align-items: center; gap: 0.75rem; padding: 1rem; background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer;">
+                        <input type="radio" name="export-tipo" value="normal" checked style="width: 18px; height: 18px; cursor: pointer;">
+                        <span style="color: var(--gray-700); font-weight: 500;">Normal</span>
+                    </label>
+                    
+                    <label style="flex: 1; display: flex; align-items: center; gap: 0.75rem; padding: 1rem; background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer;">
+                        <input type="radio" name="export-tipo" value="acumulada" style="width: 18px; height: 18px; cursor: pointer;">
+                        <span style="color: var(--gray-700); font-weight: 500;">Acumulada</span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Formato de Exportação -->
+            <div style="margin-bottom: 2rem;">
+                <h4 style="margin-bottom: 1rem; color: var(--gray-700); font-size: 1rem; font-weight: 600;">💾 Formato de Exportação</h4>
+                <div style="display: flex; gap: 0.75rem;">
+                    <label style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; padding: 1.25rem; background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+                        <input type="radio" name="export-formato" value="imagens" checked style="width: 20px; height: 20px; cursor: pointer;">
+                        <div style="font-size: 2rem;">🖼️</div>
+                        <span style="color: var(--gray-700); font-weight: 600; text-align: center;">Imagens PNG<br><small style="font-weight: 400; color: var(--gray-500);">(arquivo ZIP)</small></span>
+                    </label>
+                    
+                    <label style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; padding: 1.25rem; background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+                        <input type="radio" name="export-formato" value="pdf" style="width: 20px; height: 20px; cursor: pointer;">
+                        <div style="font-size: 2rem;">📄</div>
+                        <span style="color: var(--gray-700); font-weight: 600; text-align: center;">PDF<br><small style="font-weight: 400; color: var(--gray-500);">(paisagem)</small></span>
+                    </label>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 1rem; justify-content: center;">
+                <button class="btn btn-secondary" id="btn-cancelar-exportacao" style="min-width: 120px;">Cancelar</button>
+                <button class="btn" id="btn-confirmar-exportacao" style="min-width: 160px; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; border: none;">
+                    📥 Exportar
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div id="modal-confirmacao-logout" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 11000;">
         <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 16px; padding: 2rem; max-width: 500px; width: 90%;">
             <div style="text-align: center; margin-bottom: 2rem;">
@@ -1558,7 +1658,7 @@
                                 document.getElementById('projecao-info-gastos').style.display = 'block';
                                 document.getElementById('legenda-projecao-gastos').style.display = 'block';
                                 document.getElementById('legenda-linha-divisoria-gastos').style.display = 'block';
-                                document.getElementById('metricas-projecao-gastos').style.display = 'block';
+                                // document.getElementById('metricas-projecao-gastos').style.display = 'block'; // Seção oculta permanentemente
                                 
                                 const ultimoMes = dados.projecao.labels_formatados[dados.projecao.labels_formatados.length - 1];
                                 const dataFimContrato = document.getElementById('data-fim-contrato-gastos');
@@ -1582,7 +1682,7 @@
                                 document.getElementById('projecao-info-gastos').style.display = 'none';
                                 document.getElementById('legenda-projecao-gastos').style.display = 'none';
                                 document.getElementById('legenda-linha-divisoria-gastos').style.display = 'none';
-                                document.getElementById('metricas-projecao-gastos').style.display = 'none';
+                                // document.getElementById('metricas-projecao-gastos').style.display = 'none'; // Já está permanentemente oculta
                             }
                         }
                     }
@@ -1859,23 +1959,23 @@
                     btnProjecao.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
                     btnProjecao.style.color = 'white';
                     projecaoInfo.style.display = 'flex';
-                    metricasProjecao.style.display = 'block';
+                    // metricasProjecao.style.display = 'block'; // Seção oculta permanentemente
                     legendaProjecao.style.display = 'block';
                     legendaLinhaDivisoria.style.display = 'block';
                     
-                    // Animação suave
-                    metricasProjecao.style.opacity = '0';
-                    metricasProjecao.style.transform = 'translateY(20px)';
-                    setTimeout(() => {
-                        metricasProjecao.style.transition = 'all 0.5s ease';
-                        metricasProjecao.style.opacity = '1';
-                        metricasProjecao.style.transform = 'translateY(0)';
-                    }, 10);
+                    // Animação suave - comentada pois métricas estão ocultas
+                    // metricasProjecao.style.opacity = '0';
+                    // metricasProjecao.style.transform = 'translateY(20px)';
+                    // setTimeout(() => {
+                    //     metricasProjecao.style.transition = 'all 0.5s ease';
+                    //     metricasProjecao.style.opacity = '1';
+                    //     metricasProjecao.style.transform = 'translateY(0)';
+                    // }, 10);
                     
-                    // Scroll suave até as métricas
-                    setTimeout(() => {
-                        metricasProjecao.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                    }, 300);
+                    // Scroll suave até as métricas - comentado pois métricas estão ocultas
+                    // setTimeout(() => {
+                    //     metricasProjecao.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    // }, 300);
                     
                     console.log('🔮 Projeção ativada - Recarregando gráfico com dados projetados');
                     carregarGrafico();
@@ -1885,7 +1985,7 @@
                     btnProjecao.style.background = '';
                     btnProjecao.style.color = '';
                     projecaoInfo.style.display = 'none';
-                    metricasProjecao.style.display = 'none';
+                    // metricasProjecao.style.display = 'none'; // Já está permanentemente oculta
                     legendaProjecao.style.display = 'none';
                     legendaLinhaDivisoria.style.display = 'none';
                     
@@ -1894,14 +1994,423 @@
                 }
             });
 
-            // Exportar relatório
+            // Exportar relatório - Modal
+            var modalExportacao = document.getElementById('modal-exportacao');
+            var btnCancelarExportacao = document.getElementById('btn-cancelar-exportacao');
+            var btnConfirmarExportacao = document.getElementById('btn-confirmar-exportacao');
+            
             document.getElementById('btn-exportar-relatorio').addEventListener('click', function() {
+                const loteId = document.getElementById('filtro-lote').value;
+                
+                if (!loteId) {
+                    mostrarNotificacao(
+                        'Atenção',
+                        'Selecione um lote antes de exportar relatórios.',
+                        'warning',
+                        3000
+                    );
+                    return;
+                }
+                
+                modalExportacao.style.display = 'block';
+            });
+            
+            btnCancelarExportacao.addEventListener('click', function() {
+                modalExportacao.style.display = 'none';
+            });
+            
+            btnConfirmarExportacao.addEventListener('click', async function() {
+                // Coletar checkboxes selecionados
+                const graficos = [];
+                if (document.getElementById('export-refeicoes-total').checked) graficos.push('refeicoes-total');
+                if (document.getElementById('export-refeicoes-unidade').checked) graficos.push('refeicoes-unidade');
+                if (document.getElementById('export-gastos-total').checked) graficos.push('gastos-total');
+                if (document.getElementById('export-gastos-unidade').checked) graficos.push('gastos-unidade');
+                
+                if (graficos.length === 0) {
+                    mostrarNotificacao(
+                        'Atenção',
+                        'Selecione pelo menos um gráfico para exportar.',
+                        'warning',
+                        3000
+                    );
+                    return;
+                }
+                
+                // Coletar tipo de visualização
+                const tipo = document.querySelector('input[name="export-tipo"]:checked').value;
+                
+                // Coletar formato
+                const formato = document.querySelector('input[name="export-formato"]:checked').value;
+                
+                // Fechar modal
+                modalExportacao.style.display = 'none';
+                
+                // Mostrar notificação de processamento
                 mostrarNotificacao(
-                    'Em Desenvolvimento',
-                    'A funcionalidade de exportação será implementada na próxima fase.\n\nFormatos disponíveis: PDF, Excel, CSV',
+                    'Gerando Relatório',
+                    `Exportando ${graficos.length} gráfico(s) em formato ${formato.toUpperCase()}...`,
                     'info',
-                    4000
+                    2000
                 );
+                
+                // Aguardar um pouco antes de gerar
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                try {
+                    console.log('Iniciando exportação:', { formato, tipo, graficos });
+                    
+                    if (formato === 'imagens') {
+                        await exportarComoImagens(graficos, tipo);
+                    } else {
+                        await exportarComoPDF(graficos, tipo);
+                    }
+                } catch (error) {
+                    console.error('Erro detalhado ao exportar:', error);
+                    console.error('Stack trace:', error.stack);
+                    mostrarNotificacao(
+                        'Erro',
+                        `Erro ao gerar relatório: ${error.message}`,
+                        'error',
+                        4000
+                    );
+                }
+            });
+            
+            // Função para exportar como imagens (ZIP)
+            async function exportarComoImagens(graficos, tipo) {
+                console.log('🖼️ Iniciando exportação de imagens');
+                
+                const JSZip = window.JSZip;
+                if (!JSZip) {
+                    console.error('JSZip não disponível');
+                    mostrarNotificacao('Erro', 'Biblioteca de ZIP não carregada.', 'error', 3000);
+                    return;
+                }
+                
+                const zip = new JSZip();
+                
+                // Salvar estado atual dos botões
+                const btnTipo = document.getElementById('tipo-normal');
+                const btnAcumulada = document.getElementById('tipo-acumulada');
+                const btnTotal = document.getElementById('modo-acumulado');
+                const btnSeparado = document.getElementById('modo-unidade');
+                
+                const estadoAtual = {
+                    tipoNormal: btnTipo.classList.contains('active'),
+                    agrupamentoTotal: btnTotal.classList.contains('active')
+                };
+                
+                console.log('Estado atual salvo:', estadoAtual);
+                
+                for (const grafico of graficos) {
+                    console.log(`Gerando gráfico: ${grafico}`);
+                    
+                    // Configurar estado para o gráfico
+                    const [categoria, agrup] = grafico.split('-');
+                    
+                    // Simular cliques nos botões corretos
+                    if (tipo === 'normal') {
+                        btnTipo.classList.add('active');
+                        btnAcumulada.classList.remove('active');
+                    } else {
+                        btnTipo.classList.remove('active');
+                        btnAcumulada.classList.add('active');
+                    }
+                    
+                    if (agrup === 'total') {
+                        btnTotal.classList.add('active');
+                        btnSeparado.classList.remove('active');
+                    } else {
+                        btnTotal.classList.remove('active');
+                        btnSeparado.classList.add('active');
+                    }
+                    
+                    // Atualizar variáveis globais
+                    tipoGrafico = tipo;
+                    agrupamento = agrup === 'total' ? 'total' : 'separado';
+                    
+                    console.log(`Configurado: tipo=${tipoGrafico}, agrupamento=${agrupamento}`);
+                    
+                    // Recarregar o gráfico apropriado
+                    if (categoria === 'refeicoes') {
+                        await carregarGrafico();
+                        
+                        // Garantir que o placeholder está oculto e o canvas está visível
+                        const placeholder = document.getElementById('chart-placeholder');
+                        if (placeholder) placeholder.style.display = 'none';
+                        
+                        // Aguardar renderização
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        
+                        // Capturar imagem do gráfico
+                        const canvas = document.getElementById('grafico-principal');
+                        console.log('Canvas encontrado:', canvas);
+                        console.log('Canvas width:', canvas?.width, 'height:', canvas?.height);
+                        
+                        if (canvas && canvas.width > 0 && canvas.height > 0) {
+                            console.log('Canvas de refeições encontrado, capturando...');
+                            const imgData = canvas.toDataURL('image/png');
+                            const base64Data = imgData.split(',')[1];
+                            const nomeArquivo = `refeicoes_${tipo}_${agrup}.png`;
+                            zip.file(nomeArquivo, base64Data, {base64: true});
+                            console.log(`✅ Imagem salva: ${nomeArquivo}`);
+                        } else {
+                            console.error('Canvas de refeições não encontrado ou vazio!', {canvas, width: canvas?.width, height: canvas?.height});
+                        }
+                    } else {
+                        await carregarGraficoGastos();
+                        
+                        // Garantir que o placeholder está oculto e o canvas está visível
+                        const placeholderGastos = document.getElementById('chart-placeholder-gastos');
+                        if (placeholderGastos) placeholderGastos.style.display = 'none';
+                        
+                        // Aguardar renderização
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        
+                        // Capturar imagem do gráfico
+                        const canvas = document.getElementById('grafico-gastos');
+                        console.log('Canvas gastos encontrado:', canvas);
+                        console.log('Canvas width:', canvas?.width, 'height:', canvas?.height);
+                        
+                        if (canvas && canvas.width > 0 && canvas.height > 0) {
+                            console.log('Canvas de gastos encontrado, capturando...');
+                            const imgData = canvas.toDataURL('image/png');
+                            const base64Data = imgData.split(',')[1];
+                            const nomeArquivo = `gastos_${tipo}_${agrup}.png`;
+                            zip.file(nomeArquivo, base64Data, {base64: true});
+                            console.log(`✅ Imagem salva: ${nomeArquivo}`);
+                        } else {
+                            console.error('Canvas de gastos não encontrado ou vazio!', {canvas, width: canvas?.width, height: canvas?.height});
+                        }
+                    }
+                }
+                
+                console.log('Restaurando estado original...');
+                
+                // Restaurar estado original dos botões
+                if (estadoAtual.tipoNormal) {
+                    btnTipo.classList.add('active');
+                    btnAcumulada.classList.remove('active');
+                    tipoGrafico = 'normal';
+                } else {
+                    btnTipo.classList.remove('active');
+                    btnAcumulada.classList.add('active');
+                    tipoGrafico = 'acumulada';
+                }
+                
+                if (estadoAtual.agrupamentoTotal) {
+                    btnTotal.classList.add('active');
+                    btnSeparado.classList.remove('active');
+                    agrupamento = 'total';
+                } else {
+                    btnTotal.classList.remove('active');
+                    btnSeparado.classList.add('active');
+                    agrupamento = 'separado';
+                }
+                
+                await carregarGrafico();
+                await carregarGraficoGastos();
+                
+                console.log('Gerando arquivo ZIP...');
+                
+                // Gerar e baixar ZIP
+                const content = await zip.generateAsync({type: 'blob'});
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(content);
+                link.download = `relatorios_${new Date().toISOString().split('T')[0]}.zip`;
+                link.click();
+                
+                mostrarNotificacao(
+                    'Sucesso',
+                    'Relatórios exportados com sucesso!',
+                    'success',
+                    3000
+                );
+            }
+            
+            // Função para exportar como PDF
+            async function exportarComoPDF(graficos, tipo) {
+                console.log('📄 Iniciando exportação de PDF');
+                
+                const { jsPDF } = window.jspdf;
+                if (!jsPDF) {
+                    console.error('jsPDF não disponível');
+                    mostrarNotificacao('Erro', 'Biblioteca de PDF não carregada.', 'error', 3000);
+                    return;
+                }
+                
+                const pdf = new jsPDF({
+                    orientation: 'landscape',
+                    unit: 'mm',
+                    format: 'a4'
+                });
+                
+                // Salvar estado atual dos botões
+                const btnTipo = document.getElementById('tipo-normal');
+                const btnAcumulada = document.getElementById('tipo-acumulada');
+                const btnTotal = document.getElementById('modo-acumulado');
+                const btnSeparado = document.getElementById('modo-unidade');
+                
+                const estadoAtual = {
+                    tipoNormal: btnTipo.classList.contains('active'),
+                    agrupamentoTotal: btnTotal.classList.contains('active')
+                };
+                
+                console.log('Estado atual salvo:', estadoAtual);
+                
+                let primeiraPagina = true;
+                
+                for (const grafico of graficos) {
+                    console.log(`Gerando página PDF: ${grafico}`);
+                    
+                    if (!primeiraPagina) {
+                        pdf.addPage();
+                    }
+                    primeiraPagina = false;
+                    
+                    // Configurar estado para o gráfico
+                    const [categoria, agrup] = grafico.split('-');
+                    
+                    // Simular cliques nos botões corretos
+                    if (tipo === 'normal') {
+                        btnTipo.classList.add('active');
+                        btnAcumulada.classList.remove('active');
+                    } else {
+                        btnTipo.classList.remove('active');
+                        btnAcumulada.classList.add('active');
+                    }
+                    
+                    if (agrup === 'total') {
+                        btnTotal.classList.add('active');
+                        btnSeparado.classList.remove('active');
+                    } else {
+                        btnTotal.classList.remove('active');
+                        btnSeparado.classList.add('active');
+                    }
+                    
+                    // Atualizar variáveis globais
+                    tipoGrafico = tipo;
+                    agrupamento = agrup === 'total' ? 'total' : 'separado';
+                    
+                    console.log(`Configurado: tipo=${tipoGrafico}, agrupamento=${agrupamento}`);
+                    
+                    // Recarregar o gráfico apropriado
+                    if (categoria === 'refeicoes') {
+                        await carregarGrafico();
+                        
+                        // Garantir que o placeholder está oculto
+                        const placeholder = document.getElementById('chart-placeholder');
+                        if (placeholder) placeholder.style.display = 'none';
+                        
+                        // Aguardar renderização
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        
+                        const canvas = document.getElementById('grafico-principal');
+                        console.log('Canvas encontrado:', canvas);
+                        console.log('Canvas width:', canvas?.width, 'height:', canvas?.height);
+                        
+                        if (canvas && canvas.width > 0 && canvas.height > 0) {
+                            console.log('Canvas de refeições encontrado, adicionando ao PDF...');
+                            const imgData = canvas.toDataURL('image/png');
+                            
+                            // Adicionar título
+                            pdf.setFontSize(16);
+                            pdf.text(`Evolução de Refeições - ${agrup === 'total' ? 'Total Geral' : 'Por Unidade'}`, 148, 15, { align: 'center' });
+                            pdf.setFontSize(12);
+                            pdf.text(`Tipo: ${tipo === 'normal' ? 'Normal' : 'Acumulada'}`, 148, 22, { align: 'center' });
+                            
+                            // Adicionar gráfico (paisagem A4: 297x210mm, margem 10mm)
+                            pdf.addImage(imgData, 'PNG', 10, 30, 277, 155);
+                            
+                            // Adicionar rodapé
+                            pdf.setFontSize(8);
+                            pdf.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 148, 200, { align: 'center' });
+                            console.log('✅ Página de refeições adicionada');
+                        } else {
+                            console.error('Canvas de refeições não encontrado!');
+                        }
+                    } else {
+                        await carregarGraficoGastos();
+                        
+                        // Garantir que o placeholder está oculto
+                        const placeholderGastos = document.getElementById('chart-placeholder-gastos');
+                        if (placeholderGastos) placeholderGastos.style.display = 'none';
+                        
+                        // Aguardar renderização
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        
+                        const canvas = document.getElementById('grafico-gastos');
+                        console.log('Canvas gastos encontrado:', canvas);
+                        console.log('Canvas width:', canvas?.width, 'height:', canvas?.height);
+                        
+                        if (canvas && canvas.width > 0 && canvas.height > 0) {
+                            console.log('Canvas de gastos encontrado, adicionando ao PDF...');
+                            const imgData = canvas.toDataURL('image/png');
+                            
+                            // Adicionar título
+                            pdf.setFontSize(16);
+                            pdf.text(`Evolução de Gastos - ${agrup === 'total' ? 'Total Geral' : 'Por Unidade'}`, 148, 15, { align: 'center' });
+                            pdf.setFontSize(12);
+                            pdf.text(`Tipo: ${tipo === 'normal' ? 'Normal' : 'Acumulada'}`, 148, 22, { align: 'center' });
+                            
+                            // Adicionar gráfico
+                            pdf.addImage(imgData, 'PNG', 10, 30, 277, 155);
+                            
+                            // Adicionar rodapé
+                            pdf.setFontSize(8);
+                            pdf.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 148, 200, { align: 'center' });
+                            console.log('✅ Página de gastos adicionada');
+                        } else {
+                            console.error('Canvas de gastos não encontrado!');
+                        }
+                    }
+                }
+                
+                console.log('Restaurando estado original...');
+                
+                // Restaurar estado original dos botões
+                if (estadoAtual.tipoNormal) {
+                    btnTipo.classList.add('active');
+                    btnAcumulada.classList.remove('active');
+                    tipoGrafico = 'normal';
+                } else {
+                    btnTipo.classList.remove('active');
+                    btnAcumulada.classList.add('active');
+                    tipoGrafico = 'acumulada';
+                }
+                
+                if (estadoAtual.agrupamentoTotal) {
+                    btnTotal.classList.add('active');
+                    btnSeparado.classList.remove('active');
+                    agrupamento = 'total';
+                } else {
+                    btnTotal.classList.remove('active');
+                    btnSeparado.classList.add('active');
+                    agrupamento = 'separado';
+                }
+                
+                await carregarGrafico();
+                await carregarGraficoGastos();
+                
+                console.log('Gerando arquivo PDF...');
+                
+                // Baixar PDF
+                pdf.save(`relatorios_${new Date().toISOString().split('T')[0]}.pdf`);
+                
+                mostrarNotificacao(
+                    'Sucesso',
+                    'Relatórios exportados com sucesso!',
+                    'success',
+                    3000
+                );
+            }
+
+            // Fechar modais ao clicar fora
+            modalExportacao.addEventListener('click', function(e) {
+                if (e.target === modalExportacao) {
+                    modalExportacao.style.display = 'none';
+                }
             });
 
             // Logout - Modal customizado

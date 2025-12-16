@@ -1,42 +1,8 @@
-# CRUD de Lotes e Mapas
+# SGMRP - Sistema de Gerenciamento de Mapas de Refeições Penitenciário
 
-O sistema implementa operações CRUD (Criar, Ler, Atualizar, Deletar) principalmente para os módulos de **Lotes** e **Mapas de Refeições**:
+## Sobre o Projeto
 
-### Lotes
-- **Criar**: Adição de novos lotes via API (`POST /api/novo-lote`).
-- **Ler**: Listagem de todos os lotes na página principal e detalhamento individual.
-- **Atualizar**: Edição de dados do lote (empresa, contrato, datas, valor, unidades, preços) via API (`PUT /api/editar-lote/<id>`).
-- **Deletar**: Exclusão de lotes específicos, com confirmação, via API (`DELETE /api/editar-lote/<id>`).
-
-### Mapas de Refeições
-- **Criar**: Importação de dados tabulados, entrada manual ou integração SIISP (`POST /api/adicionar-dados`, `POST /api/entrada-manual`, `POST /api/adicionar-siisp`).
-- **Ler**: Visualização dos mapas por lote, unidade, período e detalhamento diário.
-- **Atualizar**: Edição de registros de mapas por reimportação (`POST /api/adicionar-dados`, `POST /api/entrada-manual`, `POST /api/adicionar-siisp`).
-- **Deletar**: Exclusão de registros de mapas por unidade, mês e ano (`DELETE /api/excluir-dados`).
-
-> **Nota:** O CRUD de usuários é uma atualização futura, inicialmente está implementado apenas o Create, tendo que ser atualizado manualmente, principalmente para permitir o login do usuário, trocando o campo ativo de `false` para `true`. O foco do sistema é a gestão dos dados de lotes e mapas, pois são o núcleo do controle contratual e alimentar.
-
-## Guia de Instalação Rápido
-
-1. **Clone o repositório:**
-  ```bash
-  git clone https://github.com/thallyson1997/Sistema_Gerenciamento_Mapas_de_Refei-es_Penitenci-rio.git
-  cd Sistema_Gerenciamento_Mapas_de_Refei-es_Penitenci-rio
-  ```
-2. **Instale as dependências:**
-  ```bash
-  pip install -r requirements.txt
-  ```
-3. **Prepare os dados:**
-  - Certifique-se de que o arquivo `modelo.xlsx` está em `dados/`.
-  - Crie arquivos JSON de exemplo em `dados/` se necessário (ex: `lotes.json`, `mapas.json`).
-4. **Execute a aplicação:**
-  ```bash
-  python main.py
-  ```
-5. **Acesse:**
-  - [http://localhost:5000](http://localhost:5000)
-
+O SGMRP é um sistema web desenvolvido em Python/Flask para gerenciar e monitorar o fornecimento de refeições em unidades prisionais do Estado. O objetivo é substituir o uso de planilhas Excel fragmentadas por uma solução centralizada, automatizada e segura, facilitando a gestão administrativa e o controle de conformidade dos lotes contratuais.
 
 ---
 
@@ -74,11 +40,8 @@ O sistema implementa operações CRUD (Criar, Ler, Atualizar, Deletar) principal
 ### Tabela de Dados Comparativo ao SIISP
 
 ![Tabela de Dados Comparativo ao SIISP](img/tabela-dados-comparacao-siisp.png)
-# SGMRP - Sistema de Gerenciamento de Mapas de Refeições Penitenciário
 
-## Sobre o Projeto
-
-O SGMRP é um sistema web desenvolvido em Python/Flask para gerenciar e monitorar o fornecimento de refeições em unidades prisionais do Estado. O objetivo é substituir o uso de planilhas Excel fragmentadas por uma solução centralizada, automatizada e segura, facilitando a gestão administrativa e o controle de conformidade dos lotes contratuais.
+---
 
 ## Funcionalidades Disponíveis
 
@@ -165,7 +128,23 @@ O SGMRP é um sistema web desenvolvido em Python/Flask para gerenciar e monitora
   - Fórmulas pré-configuradas
 - Download direto pelo navegador
 
-### 🔍 Filtros e Ordenação
+### � Relatórios e Análises
+- **Gráficos Interativos**:
+  - Evolução de refeições por período
+  - Evolução de gastos
+  - Visualização normal e acumulada
+  - Agrupamento por Total, Unidade ou Lote
+  - Linha divisória entre dados reais e projeção
+- **Sistema de Projeção**:
+  - Projeção de 12 meses baseada em dados históricos
+  - Análise preditiva de tendências
+- **Exportação de Relatórios**:
+  - Formato PNG (imagens em ZIP)
+  - Formato PDF (paisagem)
+  - Modal de seleção de formato
+  - Geração via Chart.js, jsPDF e JSZip
+
+### �🔍 Filtros e Ordenação
 - **Filtros Avançados na Listagem de Lotes**:
   - Busca por nome/empresa
   - Status (ativo/inativo)

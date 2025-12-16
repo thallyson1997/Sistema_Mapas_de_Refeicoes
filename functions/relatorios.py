@@ -337,7 +337,8 @@ def agregar_por_grupo(mapas, periodo='mes', tipo_grupo='unidade', lotes_ids=None
     # Preparar dados no formato esperado pelo frontend
     grupos = []
     for grupo_nome in sorted(dados_por_grupo.keys()):
-        valores = [dados_por_grupo[grupo_nome].get(periodo, 0) for periodo in periodos_ordenados]
+        # Usar None quando não há dados ao invés de 0
+        valores = [dados_por_grupo[grupo_nome].get(periodo, None) if periodo in dados_por_grupo[grupo_nome] else None for periodo in periodos_ordenados]
         grupos.append({
             'nome': grupo_nome,
             'valores': valores
@@ -352,14 +353,14 @@ def agregar_por_grupo(mapas, periodo='mes', tipo_grupo='unidade', lotes_ids=None
     }
 
 
-def calcular_projecao(dados, periodo='mes', meses_futuros=6):
+def calcular_projecao(dados, periodo='mes', meses_futuros=None):
     """
     Calcula projeção de dados futuros baseada em dados históricos
     
     Args:
         dados: dict com labels e datasets/grupos dos dados históricos
         periodo: 'mes' ou 'ano'
-        meses_futuros: número de meses a projetar (padrão: 6)
+        meses_futuros: número de meses a projetar (None = calcular para completar 13 meses totais)
     
     Returns:
         dict com labels e valores projetados (ou grupos_projetados para modo separado)
@@ -379,6 +380,11 @@ def calcular_projecao(dados, periodo='mes', meses_futuros=6):
                 'media_historica': 0,
                 'tendencia': 'estável'
             }
+        
+        # Calcular meses_futuros dinamicamente para sempre ter 13 meses totais no gráfico
+        if meses_futuros is None:
+            meses_reais = len(labels_historicos)
+            meses_futuros = max(1, 13 - meses_reais)  # Mínimo de 1 mês de projeção
         
         # Verificar se é modo separado (por unidade ou lote)
         if 'grupos' in dados and dados['grupos']:
@@ -522,7 +528,7 @@ def calcular_projecao(dados, periodo='mes', meses_futuros=6):
             except:
                 ultima_data = datetime.now()
             
-            # Gerar próximos 6 meses usando média móvel ponderada + tendência limitada
+            # Gerar projeção para completar 13 meses totais usando média móvel ponderada + tendência limitada
             valor_base = media_ponderada
             for i in range(1, meses_futuros + 1):
                 proxima_data = ultima_data + relativedelta(months=i)
@@ -607,13 +613,21 @@ def buscar_dados_gastos(lotes_ids, unidades, periodo='mes', data_inicio=None, da
                 'total_registros': 0
             }
         
-        # Buscar preços dos lotes
+        # Buscar preços dos lotes e coletar valores contratuais
         precos_por_lote = {}
+        valores_contratuais = []
         for lote_id in lotes_ids:
             lote = db.session.get(Lote, lote_id)
             print(f"💰 Verificando lote {lote_id}: encontrado={lote is not None}")
             if lote:
                 print(f"💰 Lote {lote_id} - precos={lote.precos}, tipo={type(lote.precos)}")
+                # Coletar valor contratual de cada lote
+                if lote.valor_contratual:
+                    valores_contratuais.append({
+                        'lote_id': lote_id,
+                        'lote_nome': lote.nome,
+                        'valor_contratual': float(lote.valor_contratual)
+                    })
             
             if lote and lote.precos:
                 try:
@@ -649,6 +663,9 @@ def buscar_dados_gastos(lotes_ids, unidades, periodo='mes', data_inicio=None, da
             dados_agregados = agregar_gastos_por_grupo(mapas, periodo, 'lote', precos_por_lote, lotes_ids)
         else:
             dados_agregados = agregar_gastos_por_periodo(mapas, periodo, precos_por_lote)
+        
+        # Adicionar valores contratuais individuais aos dados
+        dados_agregados['valores_contratuais'] = valores_contratuais
         
         return {
             'success': True,
@@ -842,7 +859,8 @@ def agregar_gastos_por_grupo(mapas, periodo='mes', tipo_grupo='unidade', precos_
     # Preparar dados no formato esperado pelo frontend
     grupos = []
     for grupo_nome in sorted(dados_por_grupo.keys()):
-        valores = [dados_por_grupo[grupo_nome].get(periodo, 0) for periodo in periodos_ordenados]
+        # Usar None quando não há dados ao invés de 0
+        valores = [dados_por_grupo[grupo_nome].get(periodo, None) if periodo in dados_por_grupo[grupo_nome] else None for periodo in periodos_ordenados]
         grupos.append({
             'nome': grupo_nome,
             'valores': valores

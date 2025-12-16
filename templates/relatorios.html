@@ -337,49 +337,14 @@
                         </div>
                         
                         <!-- Filtro Lotes (Multi-Select) -->
-                        <div class="lotes-filter-container" style="display: flex; align-items: center; gap: 0.5rem; position: relative;">
-                            <label style="font-weight: 500; color: var(--gray-600); font-size: 0.875rem;">Lotes:</label>
-                            <div class="lotes-display" id="lotes-display" style="padding: 0.5rem 0.75rem; font-size: 0.875rem; cursor: pointer; border: 1px solid var(--gray-300); border-radius: 6px; background: white; min-width: 180px; display: flex; justify-content: space-between; align-items: center;">
-                                <span class="lotes-text" id="lotes-text">Todos os lotes</span>
-                                <span class="lotes-icon">📦</span>
-                            </div>
-                            
-                            <!-- Overlay para fechar popup de lotes -->
-                            <div class="lotes-overlay" id="lotes-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 998;"></div>
-                            
-                            <!-- Popup de seleção de lotes -->
-                            <div class="lotes-popup" id="lotes-popup" style="display: none; position: absolute; top: 100%; left: 0; margin-top: 0.5rem; background: white; border: 1px solid var(--gray-300); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 350px; z-index: 999;">
-                                <div class="lotes-header" style="padding: 1rem; border-bottom: 1px solid var(--gray-200);">
-                                    <h4 style="margin: 0; color: var(--primary-color); font-size: 1rem;">📦 Selecionar Lotes</h4>
-                                    <p style="margin: 0.5rem 0 0 0; font-size: 0.75rem; color: var(--gray-600);">Escolha os lotes para filtrar os dados</p>
-                                </div>
-                                
-                                <div class="lotes-body" style="padding: 1rem;">
-                                    <div class="lotes-controls" style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
-                                        <button class="control-btn" id="btn-selecionar-todos-lotes" style="flex: 1; padding: 0.5rem; background: var(--primary-color); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem;">✅ Todos</button>
-                                        <button class="control-btn" id="btn-limpar-todos-lotes" style="flex: 1; padding: 0.5rem; background: var(--gray-200); color: var(--gray-700); border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem;">❌ Limpar</button>
-                                    </div>
-                                    
-                                    <div class="lotes-list" id="lotes-list" style="max-height: 250px; overflow-y: auto;">
-                                        {% for lote in lotes %}
-                                        <div class="lote-item" data-value="{{ lote.id }}" style="padding: 0.5rem; display: flex; align-items: center; gap: 0.5rem; border-radius: 4px; transition: background 0.2s;">
-                                            <input type="checkbox" class="lote-checkbox" id="checkbox-lote{{ lote.id }}" value="{{ lote.id }}" checked>
-                                            <label class="lote-label" for="checkbox-lote{{ lote.id }}" style="cursor: pointer; flex: 1; font-size: 0.875rem;">{{ lote.nome }}{% if lote.empresa %} - {{ lote.empresa }}{% endif %}</label>
-                                        </div>
-                                        {% endfor %}
-                                    </div>
-                                    
-                                    <div class="lotes-actions" style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid var(--gray-200);">
-                                        <div class="lotes-info">
-                                            <span id="lotes-selecionados-count" style="font-size: 0.875rem; color: var(--gray-600);">{{ lotes|length }} lote{{ 's' if lotes|length != 1 else '' }} selecionado{{ 's' if lotes|length != 1 else '' }}</span>
-                                        </div>
-                                        <div class="action-buttons" style="display: flex; gap: 0.5rem;">
-                                            <button class="btn-calendario" id="btn-cancelar-lotes" style="padding: 0.5rem 1rem; background: var(--gray-200); border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem;">❌ Cancelar</button>
-                                            <button class="btn-calendario primary" id="btn-aplicar-lotes" style="padding: 0.5rem 1rem; background: var(--primary-color); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem;">✅ Aplicar</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="lotes-filter-container" style="display: flex; align-items: center; gap: 0.5rem;">
+                            <label for="filtro-lote" style="font-weight: 500; color: var(--gray-600); font-size: 0.875rem;">📦 Lote:</label>
+                            <select id="filtro-lote" class="form-select" style="padding: 0.5rem 0.75rem; font-size: 0.875rem; border: 1px solid var(--gray-300); border-radius: 6px; background: white; min-width: 250px; cursor: pointer;">
+                                <option value="">Selecione um lote</option>
+                                {% for lote in lotes %}
+                                <option value="{{ lote.id }}">{{ lote.nome }}{% if lote.empresa %} - {{ lote.empresa }}{% endif %}</option>
+                                {% endfor %}
+                            </select>
                         </div>
                         
                         <!-- Filtro Unidades (Multi-Select) -->
@@ -436,9 +401,12 @@
                                 <option value="ano">Anual</option>
                             </select>
                         </div>
-                        
+                    </div>
+                    
+                    <!-- Segunda linha: Tipo e Agrupamento -->
+                    <div style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--gray-200);">
                         <!-- Filtro Modo de Visualização -->
-                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-left: auto;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
                             <label style="font-weight: 500; color: var(--gray-600); font-size: 0.875rem;">Tipo:</label>
                             <div style="display: flex; gap: 0.25rem; background: var(--gray-100); padding: 0.25rem; border-radius: 8px;">
                                 <button id="tipo-normal" class="btn-tipo active" data-tipo="normal" style="padding: 0.5rem 1rem; font-size: 0.875rem; border: none; border-radius: 6px; cursor: pointer; background: var(--primary-color); color: white; font-weight: 500; transition: all 0.3s;">
@@ -449,7 +417,9 @@
                                 </button>
                             </div>
                         </div>
-                        <div class="filter-item">
+                        
+                        <!-- Agrupamento -->
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
                             <label style="font-weight: 500; color: var(--gray-600); font-size: 0.875rem;">Agrupamento:</label>
                             <div style="display: flex; gap: 0.25rem; background: var(--gray-100); padding: 0.25rem; border-radius: 8px;">
                                 <button id="modo-acumulado" class="btn-modo active" data-modo="acumulado" style="padding: 0.5rem 1rem; font-size: 0.875rem; border: none; border-radius: 6px; cursor: pointer; background: var(--primary-color); color: white; font-weight: 500; transition: all 0.3s;">
@@ -458,25 +428,14 @@
                                 <button id="modo-unidade" class="btn-modo" data-modo="unidade" style="padding: 0.5rem 1rem; font-size: 0.875rem; border: none; border-radius: 6px; cursor: pointer; background: transparent; color: var(--gray-700); font-weight: 500; transition: all 0.3s;">
                                     🏢 Por Unidade
                                 </button>
-                                <button id="modo-lote" class="btn-modo" data-modo="lote" style="padding: 0.5rem 1rem; font-size: 0.875rem; border: none; border-radius: 6px; cursor: pointer; background: transparent; color: var(--gray-700); font-weight: 500; transition: all 0.3s;">
-                                    📦 Por Lote
-                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <!-- Abas de Visualização -->
-            <div class="tab-buttons">
-                <button class="tab-btn active" data-tab="refeicoes">📈 Evolução de Refeições</button>
-                <button class="tab-btn" data-tab="gastos">💰 Evolução de Gastos</button>
-                <button class="tab-btn" data-tab="desvios">⚠️ Desvios e Conformidade</button>
-                <button class="tab-btn" data-tab="comparativo">📊 Comparativo</button>
-            </div>
-
-            <!-- Conteúdo Aba: Evolução de Refeições -->
-            <div class="tab-content active" id="tab-refeicoes">
+            <!-- Gráficos de Visualização -->
+            <!-- Evolução de Refeições -->
             <!-- Gráfico Principal -->
             <section class="card fade-in" style="margin-bottom: 2rem;">
                 <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
@@ -580,286 +539,58 @@
                 </div>
             </section>
 
-            <!-- Legenda e Estatísticas -->
-            <section style="margin-bottom: 2rem;">
-                <h2 style="color: var(--primary-color); font-size: 1.5rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                    📋 Estatísticas Consolidadas
-                    <span style="font-size: 0.875rem; color: var(--gray-500); font-weight: 400;">(Período Selecionado)</span>
-                </h2>
-                
-                <!-- Abas de Estatísticas -->
-                <div class="tab-buttons">
-                    <button class="tab-btn active" data-stat-tab="refeicoes-stats">🍽️ Refeições</button>
-                    <button class="tab-btn" data-stat-tab="gastos-stats">💵 Gastos</button>
-                    <button class="tab-btn" data-stat-tab="desvios-stats">📉 Desvios</button>
-                </div>
-
-                <!-- Estatísticas de Refeições -->
-                <div id="refeicoes-stats" class="stat-content">
-                    <div class="legend-grid">
-                        <!-- Café da Manhã -->
-                        <div class="metric-card">
-                            <div class="metric-label">
-                                <span>☕</span>
-                                <span>Café da Manhã</span>
-                            </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
-                                <div>
-                                    <div class="metric-subtitle">MÉDIA DIÁRIA</div>
-                                    <div class="metric-value" style="font-size: 1.5rem;">1.234</div>
-                                </div>
-                                <div>
-                                    <div class="metric-subtitle">TOTAL</div>
-                                    <div class="metric-value" style="font-size: 1.5rem;">37.020</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Almoço -->
-                        <div class="metric-card">
-                            <div class="metric-label">
-                                <span>🍽️</span>
-                                <span>Almoço</span>
-                            </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
-                                <div>
-                                    <div class="metric-subtitle">MÉDIA DIÁRIA</div>
-                                    <div class="metric-value" style="font-size: 1.5rem;">1.456</div>
-                                </div>
-                                <div>
-                                    <div class="metric-subtitle">TOTAL</div>
-                                    <div class="metric-value" style="font-size: 1.5rem;">43.680</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Lanche -->
-                        <div class="metric-card">
-                            <div class="metric-label">
-                                <span>🥪</span>
-                                <span>Lanche</span>
-                            </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
-                                <div>
-                                    <div class="metric-subtitle">MÉDIA DIÁRIA</div>
-                                    <div class="metric-value" style="font-size: 1.5rem;">1.198</div>
-                                </div>
-                                <div>
-                                    <div class="metric-subtitle">TOTAL</div>
-                                    <div class="metric-value" style="font-size: 1.5rem;">35.940</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Jantar -->
-                        <div class="metric-card">
-                            <div class="metric-label">
-                                <span>🌙</span>
-                                <span>Jantar</span>
-                            </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
-                                <div>
-                                    <div class="metric-subtitle">MÉDIA DIÁRIA</div>
-                                    <div class="metric-value" style="font-size: 1.5rem;">1.387</div>
-                                </div>
-                                <div>
-                                    <div class="metric-subtitle">TOTAL</div>
-                                    <div class="metric-value" style="font-size: 1.5rem;">41.610</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Estatísticas de Gastos (oculto inicialmente) -->
-                <div id="gastos-stats" class="stat-content" style="display: none;">
-                    <div class="legend-grid">
-                        <!-- Café da Manhã -->
-                        <div class="metric-card">
-                            <div class="metric-label">
-                                <span>☕</span>
-                                <span>Café da Manhã</span>
-                            </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
-                                <div>
-                                    <div class="metric-subtitle">MÉDIA MENSAL</div>
-                                    <div class="metric-value" style="font-size: 1.5rem;">R$ 12.340</div>
-                                </div>
-                                <div>
-                                    <div class="metric-subtitle">TOTAL</div>
-                                    <div class="metric-value" style="font-size: 1.5rem;">R$ 148.080</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Almoço -->
-                        <div class="metric-card">
-                            <div class="metric-label">
-                                <span>🍽️</span>
-                                <span>Almoço</span>
-                            </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
-                                <div>
-                                    <div class="metric-subtitle">MÉDIA MENSAL</div>
-                                    <div class="metric-value" style="font-size: 1.5rem;">R$ 18.720</div>
-                                </div>
-                                <div>
-                                    <div class="metric-subtitle">TOTAL</div>
-                                    <div class="metric-value" style="font-size: 1.5rem;">R$ 224.640</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Lanche -->
-                        <div class="metric-card">
-                            <div class="metric-label">
-                                <span>🥪</span>
-                                <span>Lanche</span>
-                            </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
-                                <div>
-                                    <div class="metric-subtitle">MÉDIA MENSAL</div>
-                                    <div class="metric-value" style="font-size: 1.5rem;">R$ 10.782</div>
-                                </div>
-                                <div>
-                                    <div class="metric-subtitle">TOTAL</div>
-                                    <div class="metric-value" style="font-size: 1.5rem;">R$ 129.384</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Jantar -->
-                        <div class="metric-card">
-                            <div class="metric-label">
-                                <span>🌙</span>
-                                <span>Jantar</span>
-                            </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
-                                <div>
-                                    <div class="metric-subtitle">MÉDIA MENSAL</div>
-                                    <div class="metric-value" style="font-size: 1.5rem;">R$ 16.644</div>
-                                </div>
-                                <div>
-                                    <div class="metric-subtitle">TOTAL</div>
-                                    <div class="metric-value" style="font-size: 1.5rem;">R$ 199.728</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Estatísticas de Desvios (oculto inicialmente) -->
-                <div id="desvios-stats" class="stat-content" style="display: none;">
-                    <div class="legend-grid">
-                        <!-- Café da Manhã -->
-                        <div class="metric-card">
-                            <div class="metric-label">
-                                <span>☕</span>
-                                <span>Café da Manhã</span>
-                            </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
-                                <div>
-                                    <div class="metric-subtitle">MÉDIA MENSAL</div>
-                                    <div class="metric-value" style="font-size: 1.5rem; color: #f59e0b;">R$ 234</div>
-                                </div>
-                                <div>
-                                    <div class="metric-subtitle">TOTAL</div>
-                                    <div class="metric-value" style="font-size: 1.5rem; color: #f59e0b;">R$ 2.808</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Almoço -->
-                        <div class="metric-card">
-                            <div class="metric-label">
-                                <span>🍽️</span>
-                                <span>Almoço</span>
-                            </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
-                                <div>
-                                    <div class="metric-subtitle">MÉDIA MENSAL</div>
-                                    <div class="metric-value" style="font-size: 1.5rem; color: #f59e0b;">R$ 456</div>
-                                </div>
-                                <div>
-                                    <div class="metric-subtitle">TOTAL</div>
-                                    <div class="metric-value" style="font-size: 1.5rem; color: #f59e0b;">R$ 5.472</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Lanche -->
-                        <div class="metric-card">
-                            <div class="metric-label">
-                                <span>🥪</span>
-                                <span>Lanche</span>
-                            </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
-                                <div>
-                                    <div class="metric-subtitle">MÉDIA MENSAL</div>
-                                    <div class="metric-value" style="font-size: 1.5rem; color: #f59e0b;">R$ 198</div>
-                                </div>
-                                <div>
-                                    <div class="metric-subtitle">TOTAL</div>
-                                    <div class="metric-value" style="font-size: 1.5rem; color: #f59e0b;">R$ 2.376</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Jantar -->
-                        <div class="metric-card">
-                            <div class="metric-label">
-                                <span>🌙</span>
-                                <span>Jantar</span>
-                            </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
-                                <div>
-                                    <div class="metric-subtitle">MÉDIA MENSAL</div>
-                                    <div class="metric-value" style="font-size: 1.5rem; color: #f59e0b;">R$ 387</div>
-                                </div>
-                                <div>
-                                    <div class="metric-subtitle">TOTAL</div>
-                                    <div class="metric-value" style="font-size: 1.5rem; color: #f59e0b;">R$ 4.644</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-            </div> <!-- Fim tab-refeicoes -->
-
-            <!-- Conteúdo Aba: Análise de Gastos -->
-            <div class="tab-content" id="tab-gastos" style="display: none;">
+            <!-- Evolução de Gastos -->
             <!-- Gráfico de Gastos -->
             <section class="card fade-in" style="margin-bottom: 2rem;">
                 <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-                    <h2 style="margin: 0; color: var(--primary-color); font-size: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
-                        <span style="font-size: 1.75rem;">💰</span>
-                        Evolução de Gastos com Refeições
-                        <span id="projecao-badge-gastos" style="display: none;" class="projection-badge">🔮 Com Projeção</span>
-                    </h2>
-                    <button id="btn-toggle-projecao-gastos" class="btn-projection" title="Ativar projeção de 6 meses" style="opacity: 1; cursor: pointer;">
-                        🔮 Ativar Projeção
-                    </button>
+                    <h3 style="margin: 0;" id="chart-title-gastos">💰 Gráfico de Evolução - Gastos por Período</h3>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <span id="projecao-info-gastos" style="display: none; font-size: 0.875rem; color: var(--gray-600); margin-right: 1rem;">
+                            <span class="projection-badge">PROJEÇÃO ATIVA</span>
+                            Dados históricos + Projeção até <strong id="data-fim-contrato-gastos">Dez/2026</strong>
+                        </span>
+                        <button class="btn-projection" id="btn-toggle-projecao-gastos" title="Ativar projeção de 6 meses baseada em dados históricos">
+                            🔮 Ativar Projeção
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body">
-                    <div id="container-grafico-gastos" style="position: relative; height: 500px; display: block;">
-                        <canvas id="grafico-gastos"></canvas>
-                    </div>
-                    <div id="placeholder-grafico-gastos" class="chart-placeholder" style="display: none; height: 500px;">
-                        <div class="chart-content">
-                            <div style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;">📊</div>
-                            <h3 style="color: var(--gray-700); margin-bottom: 0.5rem;">Nenhum dado encontrado</h3>
-                            <p style="color: var(--gray-500); max-width: 500px; margin: 0 auto;">
-                                Selecione pelo menos um lote e uma unidade para visualizar os gastos.
-                            </p>
+                    <!-- Gráfico Real -->
+                    <div id="chart-container-gastos" style="position: relative;">
+                        <canvas id="grafico-gastos" style="max-height: 400px;"></canvas>
+                        <div id="chart-loading-gastos" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
+                            <div style="font-size: 2rem; margin-bottom: 0.5rem;">⏳</div>
+                            <div style="color: var(--gray-600);">Carregando dados...</div>
                         </div>
+                        <div class="chart-placeholder" id="placeholder-grafico-gastos" style="display: none;">
+                            <div class="chart-content">
+                                <div style="font-size: 4rem; margin-bottom: 1rem;">📊</div>
+                                <h3 style="color: var(--gray-700); margin-bottom: 0.5rem;">Gráfico de Série Temporal</h3>
+                                <p style="color: var(--gray-600); max-width: 500px; margin: 0 auto;">
+                                    Selecione os filtros acima para visualizar os dados do gráfico.
+                                </p>
+                            </div>
+                        </div>
+                        
                     </div>
-                    <div style="margin-top: 1.5rem; padding: 1rem; background: var(--gray-50); border-radius: 8px; border: 1px dashed var(--gray-300); display: flex; align-items: center; gap: 1rem;">
-                        <div style="font-size: 1.25rem;">ℹ️</div>
-                        <div style="flex: 1;">
-                            <strong style="color: var(--gray-700); display: block; margin-bottom: 0.25rem;">Legenda:</strong>
-                            <span style="color: var(--gray-600); font-size: 0.875rem;">O gráfico exibe os gastos monetários (R$) baseados no número de refeições fornecidas multiplicado pelos preços do contrato do lote.</span>
-                            <span id="projecao-data-fim-legenda-gastos" style="display: none; margin-left: 0.5rem; padding: 0.25rem 0.5rem; background: white; border-radius: 4px; font-weight: 600; color: #667eea;"></span>
+                    
+                    <!-- Legenda do Gráfico -->
+                    <div style="margin-top: 1.5rem; padding: 1rem; background: var(--gray-50); border-radius: 8px; display: flex; justify-content: center; gap: 2rem; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <div style="width: 30px; height: 3px; background: #10b981;"></div>
+                            <span style="font-size: 0.875rem; color: var(--gray-700);">Dados Reais</span>
+                        </div>
+                        <div id="legenda-projecao-gastos" style="display: none;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <div style="width: 30px; height: 3px; background: #667eea; border-top: 2px dashed #764ba2;"></div>
+                                <span style="font-size: 0.875rem; color: var(--gray-700);">🔮 Projeção até <strong id="projecao-data-fim-legenda-gastos">Dez/2026</strong></span>
+                            </div>
+                        </div>
+                        <div id="legenda-linha-divisoria-gastos" style="display: none;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <div style="width: 30px; height: 2px; background: #f59e0b; opacity: 0.6;"></div>
+                                <span style="font-size: 0.875rem; color: var(--gray-700);">Último Dado Real</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -892,10 +623,9 @@
                     </div>
                 </div>
             </section>
-            </div> <!-- Fim tab-gastos -->
 
-            <!-- Conteúdo Aba: Desvios e Conformidade -->
-            <div class="tab-content" id="tab-desvios" style="display: none;">
+            <!-- Desvios e Conformidade (oculto por enquanto) -->
+            <div style="display: none;" id="tab-desvios">
                 <section class="card fade-in">
                     <div class="card-header">
                         <h3 style="margin: 0;">⚠️ Desvios e Conformidade</h3>
@@ -1023,6 +753,8 @@
             // Controlar botões de TIPO de visualização (Normal vs Acumulada)
             document.querySelectorAll('.btn-tipo').forEach(btn => {
                 btn.addEventListener('click', function() {
+                    if (this.disabled) return;
+                    
                     document.querySelectorAll('.btn-tipo').forEach(b => {
                         b.classList.remove('active');
                         b.style.background = 'transparent';
@@ -1036,19 +768,17 @@
                     tipoVisualizacao = this.dataset.tipo;
                     console.log('📊 Tipo de visualização alterado para:', tipoVisualizacao);
                     
-                    // Recarregar gráfico da aba ativa
-                    const abaAtiva = document.querySelector('.tab-btn.active')?.dataset.tab;
-                    if (abaAtiva === 'gastos') {
-                        carregarGraficoGastos();
-                    } else {
-                        carregarGrafico();
-                    }
+                    // Recarregar ambos os gráficos
+                    carregarGrafico();
+                    carregarGraficoGastos();
                 });
             });
             
             // Controlar botões de MODO de visualização (Total/Unidade/Lote)
             document.querySelectorAll('.btn-modo').forEach(btn => {
                 btn.addEventListener('click', function() {
+                    if (this.disabled) return;
+                    
                     // Remover active de todos
                     document.querySelectorAll('.btn-modo').forEach(b => {
                         b.classList.remove('active');
@@ -1068,99 +798,71 @@
                     // Atualizar estado do botão de projeção
                     atualizarBotaoProjecao();
                     
-                    // Se projeção estava ativa e mudou para acumulado, desativar
-                    if (projecaoAtiva && modoVisualizacao === 'acumulado') {
-                        projecaoAtiva = false;
-                        const btnProjecao = document.getElementById('btn-toggle-projecao');
-                        btnProjecao.textContent = '🔮 Ativar Projeção';
-                        btnProjecao.style.background = '';
-                        btnProjecao.style.color = '';
-                        document.getElementById('projecao-info').style.display = 'none';
-                        document.getElementById('metricas-projecao').style.display = 'none';
-                        document.getElementById('legenda-projecao').style.display = 'none';
-                        document.getElementById('legenda-linha-divisoria').style.display = 'none';
-                    }
-                    
-                    // Se projeção de gastos estava ativa e mudou para acumulado, desativar
-                    if (projecaoAtivaGastos && modoVisualizacao === 'acumulado') {
-                        projecaoAtivaGastos = false;
-                        const btnProjecaoGastos = document.getElementById('btn-toggle-projecao-gastos');
-                        if (btnProjecaoGastos) {
-                            btnProjecaoGastos.textContent = '🔮 Ativar Projeção';
-                            btnProjecaoGastos.style.background = '';
-                        }
-                    }
-                    
-                    // Recarregar gráfico da aba ativa
-                    const abaAtiva = document.querySelector('.tab-btn.active')?.dataset.tab;
-                    if (abaAtiva === 'gastos') {
-                        carregarGraficoGastos();
-                    } else {
-                        carregarGrafico();
-                    }
+                    // Recarregar ambos os gráficos
+                    carregarGrafico();
+                    carregarGraficoGastos();
                 });
             });
             
             // Função para atualizar estado do botão de projeção
             function atualizarBotaoProjecao() {
+                // Projeção habilitada para todos os modos
                 const btnProjecao = document.getElementById('btn-toggle-projecao');
-                if (modoVisualizacao === 'acumulado') {
-                    btnProjecao.style.opacity = '0.5';
-                    btnProjecao.style.cursor = 'not-allowed';
-                    btnProjecao.title = 'Projeção disponível apenas nos modos: Por Unidade ou Por Lote';
-                } else {
-                    btnProjecao.style.opacity = '1';
-                    btnProjecao.style.cursor = 'pointer';
-                    btnProjecao.title = 'Ativar projeção de 6 meses baseada em dados históricos';
-                }
+                btnProjecao.style.opacity = '1';
+                btnProjecao.style.cursor = 'pointer';
+                btnProjecao.title = 'Ativar projeção de 6 meses baseada em dados históricos';
                 
                 // Atualizar também o botão de projeção de gastos
                 const btnProjecaoGastos = document.getElementById('btn-toggle-projecao-gastos');
                 if (btnProjecaoGastos) {
-                    if (modoVisualizacao === 'acumulado') {
-                        btnProjecaoGastos.style.opacity = '0.5';
-                        btnProjecaoGastos.style.cursor = 'not-allowed';
-                        btnProjecaoGastos.title = 'Projeção disponível apenas nos modos: Por Unidade ou Por Lote';
-                    } else {
-                        btnProjecaoGastos.style.opacity = '1';
-                        btnProjecaoGastos.style.cursor = 'pointer';
-                        btnProjecaoGastos.title = 'Ativar projeção de 6 meses baseada em dados históricos';
-                    }
+                    btnProjecaoGastos.style.opacity = '1';
+                    btnProjecaoGastos.style.cursor = 'pointer';
+                    btnProjecaoGastos.title = 'Ativar projeção de 6 meses baseada em dados históricos';
+                }
+            }
+            
+            // Controlar estado dos controles baseado na seleção de lote
+            function atualizarEstadoControles() {
+                const loteSelecionado = document.getElementById('filtro-lote').value;
+                const temLote = loteSelecionado !== '';
+                
+                // Botões de Tipo (Normal/Acumulada)
+                document.querySelectorAll('.btn-tipo').forEach(btn => {
+                    btn.disabled = !temLote;
+                    btn.style.opacity = temLote ? '1' : '0.5';
+                    btn.style.cursor = temLote ? 'pointer' : 'not-allowed';
+                    btn.title = temLote ? '' : 'Selecione um lote primeiro';
+                });
+                
+                // Botões de Agrupamento (Total Geral/Por Unidade)
+                document.querySelectorAll('.btn-modo').forEach(btn => {
+                    btn.disabled = !temLote;
+                    btn.style.opacity = temLote ? '1' : '0.5';
+                    btn.style.cursor = temLote ? 'pointer' : 'not-allowed';
+                    btn.title = temLote ? '' : 'Selecione um lote primeiro';
+                });
+                
+                // Botões de Projeção
+                const btnProjecao = document.getElementById('btn-toggle-projecao');
+                if (btnProjecao) {
+                    btnProjecao.disabled = !temLote;
+                    btnProjecao.style.opacity = temLote ? '1' : '0.5';
+                    btnProjecao.style.cursor = temLote ? 'pointer' : 'not-allowed';
+                    btnProjecao.title = temLote ? 'Ativar projeção de 6 meses baseada em dados históricos' : 'Selecione um lote primeiro';
+                }
+                
+                const btnProjecaoGastos = document.getElementById('btn-toggle-projecao-gastos');
+                if (btnProjecaoGastos) {
+                    btnProjecaoGastos.disabled = !temLote;
+                    btnProjecaoGastos.style.opacity = temLote ? '1' : '0.5';
+                    btnProjecaoGastos.style.cursor = temLote ? 'pointer' : 'not-allowed';
+                    btnProjecaoGastos.title = temLote ? 'Ativar projeção de 6 meses baseada em dados históricos' : 'Selecione um lote primeiro';
                 }
             }
             
 
             
-            // Controle das abas de gráficos
-            const tabButtons = document.querySelectorAll('.tab-btn[data-tab]');
-            const tabContents = document.querySelectorAll('.tab-content');
-            
-            tabButtons.forEach(btn => {
-                btn.addEventListener('click', function() {
-                    // Remover active de todos os botões
-                    tabButtons.forEach(b => b.classList.remove('active'));
-                    this.classList.add('active');
-                    
-                    const tabName = this.dataset.tab;
-                    console.log('📑 Aba selecionada:', tabName);
-                    
-                    // Ocultar todos os conteúdos
-                    tabContents.forEach(content => {
-                        content.style.display = 'none';
-                    });
-                    
-                    // Mostrar conteúdo da aba selecionada
-                    const selectedTab = document.getElementById(`tab-${tabName}`);
-                    if (selectedTab) {
-                        selectedTab.style.display = 'block';
-                    }
-                    
-                    // Carregar dados da aba selecionada
-                    if (tabName === 'gastos') {
-                        carregarGraficoGastos();
-                    }
-                });
-            });
+            // Sistema de abas removido - gráficos agora são exibidos simultaneamente
 
             // Controle das abas de estatísticas
             const statTabButtons = document.querySelectorAll('.tab-btn[data-stat-tab]');
@@ -1185,21 +887,34 @@
             
             // Garantir que filtros iniciais estejam atualizados antes de carregar o gráfico
             setTimeout(() => {
-                atualizarCountLotes();
-                atualizarDisplayLotes();
                 atualizarCountUnidades();
                 atualizarDisplayUnidades();
+                atualizarEstadoControles();
             }, 100);
             
             // Função para carregar dados do gráfico
             async function carregarGrafico() {
                 try {
                     // Coletar filtros
-                    const lotesSelecionados = Array.from(document.querySelectorAll('.lote-checkbox:checked')).map(cb => cb.value);
+                    const loteSelecionado = document.getElementById('filtro-lote').value;
+                    const lotesSelecionados = loteSelecionado ? [loteSelecionado] : [];
+                    
                     const unidadesSelecionadas = Array.from(document.querySelectorAll('.unidade-checkbox')).filter(cb => {
                         return cb.checked && cb.closest('.unidade-item').style.display !== 'none';
                     }).map(cb => cb.value);
                     const periodo = document.getElementById('filtro-periodo').value;
+                    
+                    // Verificar se há lote selecionado
+                    if (lotesSelecionados.length === 0) {
+                        console.log('⚠️ Nenhum lote selecionado - exibindo placeholder');
+                        document.getElementById('chart-placeholder').style.display = 'flex';
+                        document.getElementById('chart-loading').style.display = 'none';
+                        if (chartInstance) {
+                            chartInstance.destroy();
+                            chartInstance = null;
+                        }
+                        return;
+                    }
                     
                     console.log('📊 Carregando gráfico:', { lotesSelecionados, unidadesSelecionadas, periodo });
                     
@@ -1273,9 +988,18 @@
                 
                 const acumulados = [];
                 let soma = 0;
+                let iniciado = false; // Flag para saber se já encontrou primeiro valor não-null
+                
                 for (let i = 0; i < valores.length; i++) {
-                    soma += valores[i];
-                    acumulados.push(soma);
+                    if (valores[i] === null || valores[i] === undefined) {
+                        // Se ainda não iniciou, manter null
+                        // Se já iniciou, manter o último valor acumulado
+                        acumulados.push(iniciado ? soma : null);
+                    } else {
+                        iniciado = true;
+                        soma += valores[i];
+                        acumulados.push(soma);
+                    }
                 }
                 return acumulados;
             }
@@ -1321,11 +1045,13 @@
                 if (dados.modo === 'acumulado') {
                     // Modo acumulado - uma única linha com total
                     let dataHistorico = dados.datasets.total_refeicoes;
+                    console.log('🔍 Dados históricos originais:', dataHistorico);
                     let dataProjecao = [];
                     
                     // Aplicar acumulação se tipo for 'acumulada'
                     if (tipoVisualizacao === 'acumulada') {
                         dataHistorico = acumularDados(dataHistorico);
+                        console.log('📊 Dados históricos ACUMULADOS:', dataHistorico);
                     }
                     
                     // Se tem projeção, adicionar valores
@@ -1433,11 +1159,6 @@
                             valoresGrupo = acumularDados(valoresGrupo);
                         }
                         
-                        // Se tem projeção, adicionar nulls para espaço da projeção
-                        if (numPeriodosProjecao > 0) {
-                            valoresGrupo = [...grupo.valores, ...Array(numPeriodosProjecao).fill(null)];
-                        }
-                        
                         datasets.push({
                             label: grupo.nome,
                             data: valoresGrupo,
@@ -1456,14 +1177,10 @@
                             const corEscura = escurecerCor(cores[corIndex].border);
                             const numPeriodosHistoricos = grupos[0] ? grupos[0].valores.length : 0;
                             
-                            // Pegar último valor real do grupo correspondente
-                            const grupoHistorico = grupos[index];
-                            let valoresGrupoHistorico = grupoHistorico ? grupoHistorico.valores : [];
-                            
-                            // Aplicar acumulação aos valores históricos se necessário
-                            if (tipoVisualizacao === 'acumulada' && valoresGrupoHistorico.length > 0) {
-                                valoresGrupoHistorico = acumularDados(valoresGrupoHistorico);
-                            }
+                            // Pegar valores já processados (acumulados ou não) do dataset correspondente
+                            // O dataset foi criado no loop anterior com os valores corretos
+                            const datasetHistorico = datasets.find(ds => ds.label === grupoProj.nome);
+                            const valoresGrupoHistorico = datasetHistorico ? datasetHistorico.data : [];
                             
                             const ultimoValorRealGrupo = valoresGrupoHistorico.length > 0 ? valoresGrupoHistorico[valoresGrupoHistorico.length - 1] : 0;
                             
@@ -1591,90 +1308,22 @@
             }
             
             // Adicionar listener para período
-            document.getElementById('filtro-periodo').addEventListener('change', carregarGrafico);
-            
-            // Controle do filtro de Lotes multi-select
-            const lotesDisplay = document.getElementById('lotes-display');
-            const lotesPopup = document.getElementById('lotes-popup');
-            const lotesOverlay = document.getElementById('lotes-overlay');
-            const btnSelecionarTodosLotes = document.getElementById('btn-selecionar-todos-lotes');
-            const btnLimparTodosLotes = document.getElementById('btn-limpar-todos-lotes');
-            const btnAplicarLotes = document.getElementById('btn-aplicar-lotes');
-            const btnCancelarLotes = document.getElementById('btn-cancelar-lotes');
-            
-            console.log('Elementos de lotes:', { lotesDisplay, lotesPopup, lotesOverlay });
-            
-            // Abrir popup de lotes
-            if (lotesDisplay) {
-                lotesDisplay.addEventListener('click', function(e) {
-                    console.log('Clique no filtro de lotes detectado!');
-                    e.stopPropagation();
-                    lotesPopup.style.display = 'block';
-                    lotesOverlay.style.display = 'block';
-                });
-            } else {
-                console.error('Elemento lotes-display não encontrado!');
-            }
-            
-            // Fechar popup de lotes
-            function fecharPopupLotes() {
-                lotesPopup.style.display = 'none';
-                lotesOverlay.style.display = 'none';
-            }
-            
-            lotesOverlay.addEventListener('click', fecharPopupLotes);
-            btnCancelarLotes.addEventListener('click', fecharPopupLotes);
-            
-            // Selecionar todos os lotes
-            btnSelecionarTodosLotes.addEventListener('click', function() {
-                document.querySelectorAll('.lote-checkbox').forEach(cb => cb.checked = true);
-                atualizarCountLotes();
-            });
-            
-            // Limpar todos os lotes
-            btnLimparTodosLotes.addEventListener('click', function() {
-                document.querySelectorAll('.lote-checkbox').forEach(cb => cb.checked = false);
-                atualizarCountLotes();
-            });
-            
-            // Atualizar contagem de lotes
-            function atualizarCountLotes() {
-                const count = document.querySelectorAll('.lote-checkbox:checked').length;
-                document.getElementById('lotes-selecionados-count').textContent = `${count} lote${count !== 1 ? 's' : ''} selecionado${count !== 1 ? 's' : ''}`;
-            }
-            
-            // Atualizar display de lotes
-            function atualizarDisplayLotes() {
-                const checkboxes = document.querySelectorAll('.lote-checkbox');
-                const selecionados = Array.from(checkboxes).filter(cb => cb.checked);
-                const total = checkboxes.length;
-                const lotesText = document.getElementById('lotes-text');
-                
-                if (selecionados.length === 0) {
-                    lotesText.textContent = 'Nenhum lote';
-                } else if (selecionados.length === total) {
-                    lotesText.textContent = 'Todos os lotes';
-                } else if (selecionados.length === 1) {
-                    lotesText.textContent = selecionados[0].nextElementSibling.textContent;
-                } else {
-                    lotesText.textContent = `${selecionados.length} lotes`;
-                }
-            }
-            
-            // Aplicar filtro de lotes
-            btnAplicarLotes.addEventListener('click', function() {
-                atualizarDisplayLotes();
-                atualizarUnidadesDisponiveis();
-                fecharPopupLotes();
+            document.getElementById('filtro-periodo').addEventListener('change', function() {
                 carregarGrafico();
+                carregarGraficoGastos();
             });
             
-            // Atualizar contagem ao mudar checkboxes
-            document.querySelectorAll('.lote-checkbox').forEach(cb => {
-                cb.addEventListener('change', function() {
-                    atualizarCountLotes();
-                    atualizarUnidadesDisponiveis();
-                });
+            // Controle do filtro de Lotes (select dropdown)
+            const filtroLote = document.getElementById('filtro-lote');
+            
+            // Atualizar quando lote for selecionado
+            filtroLote.addEventListener('change', function() {
+                atualizarUnidadesDisponiveis();
+                atualizarEstadoControles();
+                
+                // Carregar ambos os gráficos
+                carregarGrafico();
+                carregarGraficoGastos();
             });
             
             // Controle do filtro de Unidades multi-select
@@ -1778,6 +1427,7 @@
                 atualizarDisplayUnidades();
                 fecharPopupUnidades();
                 carregarGrafico();
+                carregarGraficoGastos();
             });
             
             // Atualizar contagem ao mudar checkboxes
@@ -1787,7 +1437,8 @@
             
             // Função para atualizar unidades disponíveis baseado nos lotes selecionados
             function atualizarUnidadesDisponiveis() {
-                const lotesSelecionados = Array.from(document.querySelectorAll('.lote-checkbox:checked')).map(cb => cb.value);
+                const loteSelecionado = document.getElementById('filtro-lote').value;
+                const lotesSelecionados = loteSelecionado ? [loteSelecionado] : [];
                 
                 console.log('Lotes selecionados:', lotesSelecionados);
                 
@@ -1816,8 +1467,9 @@
                     const unidadeNome = checkbox.value;
                     
                     if (unidadesDisponiveis.has(unidadeNome)) {
-                        // Mostrar unidade
+                        // Mostrar unidade e marcá-la automaticamente
                         item.style.display = 'flex';
+                        checkbox.checked = true;
                         unidadesVisiveis++;
                     } else {
                         // Ocultar unidade e desmarcar
@@ -1854,9 +1506,23 @@
             // Função para carregar gráfico de GASTOS
             async function carregarGraficoGastos() {
                 try {
-                    const lotesSelecionados = Array.from(document.querySelectorAll('.lote-checkbox:checked')).map(cb => cb.value);
+                    const loteSelecionado = document.getElementById('filtro-lote').value;
+                    const lotesSelecionados = loteSelecionado ? [loteSelecionado] : [];
+                    
                     const unidadesSelecionadas = Array.from(document.querySelectorAll('.unidade-checkbox:checked')).map(cb => cb.value);
                     const periodo = document.getElementById('filtro-periodo').value;
+                    
+                    // Verificar se há lote selecionado
+                    if (lotesSelecionados.length === 0) {
+                        console.log('⚠️ Nenhum lote selecionado - exibindo placeholder de gastos');
+                        document.getElementById('placeholder-grafico-gastos').style.display = 'flex';
+                        document.getElementById('grafico-gastos').style.display = 'none';
+                        if (chartInstanceGastos) {
+                            chartInstanceGastos.destroy();
+                            chartInstanceGastos = null;
+                        }
+                        return;
+                    }
                     
                     console.log('💰 Carregando gráfico gastos:', { lotesSelecionados, unidadesSelecionadas, periodo, modo: modoVisualizacao, projecao: projecaoAtivaGastos });
                     
@@ -1880,18 +1546,27 @@
                         const temGrupos = dados.grupos && dados.grupos.length > 0;
                         
                         if (!temDados && !temGrupos) {
-                            document.getElementById('container-grafico-gastos').style.display = 'none';
+                            document.getElementById('chart-container-gastos').style.display = 'none';
                             document.getElementById('placeholder-grafico-gastos').style.display = 'flex';
                         } else {
-                            document.getElementById('container-grafico-gastos').style.display = 'block';
+                            document.getElementById('chart-container-gastos').style.display = 'block';
                             document.getElementById('placeholder-grafico-gastos').style.display = 'none';
                             renderizarGraficoGastos(dados);
                             
-                            // Atualizar métricas de projeção se ativa
+                            // Atualizar informações de projeção se ativa
                             if (projecaoAtivaGastos && dados.projecao) {
+                                document.getElementById('projecao-info-gastos').style.display = 'block';
+                                document.getElementById('legenda-projecao-gastos').style.display = 'block';
+                                document.getElementById('legenda-linha-divisoria-gastos').style.display = 'block';
                                 document.getElementById('metricas-projecao-gastos').style.display = 'block';
-                                document.getElementById('projecao-badge-gastos').style.display = 'inline-block';
                                 
+                                const ultimoMes = dados.projecao.labels_formatados[dados.projecao.labels_formatados.length - 1];
+                                const dataFimContrato = document.getElementById('data-fim-contrato-gastos');
+                                const dataFimLegenda = document.getElementById('projecao-data-fim-legenda-gastos');
+                                if (dataFimContrato && ultimoMes) dataFimContrato.textContent = ultimoMes;
+                                if (dataFimLegenda && ultimoMes) dataFimLegenda.textContent = ultimoMes;
+                                
+                                // Métricas
                                 const mediaPeriodo = document.getElementById('media-periodo-gastos');
                                 if (mediaPeriodo) mediaPeriodo.textContent = dados.projecao.media_historica.toLocaleString('pt-BR');
                                 
@@ -1903,18 +1578,11 @@
                                     tendencia.style.color = dados.projecao.tendencia === 'crescimento' ? '#10b981' :
                                                            dados.projecao.tendencia === 'decrescimento' ? '#ef4444' : '#6b7280';
                                 }
-                                
-                                const ultimoMes = dados.projecao.labels_formatados[dados.projecao.labels_formatados.length - 1];
-                                const legendaDataFim = document.getElementById('projecao-data-fim-legenda-gastos');
-                                if (legendaDataFim && ultimoMes) {
-                                    legendaDataFim.textContent = `🔮 Projeção até ${ultimoMes}`;
-                                    legendaDataFim.style.display = 'inline';
-                                }
                             } else {
+                                document.getElementById('projecao-info-gastos').style.display = 'none';
+                                document.getElementById('legenda-projecao-gastos').style.display = 'none';
+                                document.getElementById('legenda-linha-divisoria-gastos').style.display = 'none';
                                 document.getElementById('metricas-projecao-gastos').style.display = 'none';
-                                document.getElementById('projecao-badge-gastos').style.display = 'none';
-                                const legendaDataFim = document.getElementById('projecao-data-fim-legenda-gastos');
-                                if (legendaDataFim) legendaDataFim.style.display = 'none';
                             }
                         }
                     }
@@ -1985,13 +1653,12 @@
                             label: 'Projeção de Gastos (R$)',
                             data: [...Array(dataHistorico.length - 1).fill(null), ...dataProjecaoComConexao],
                             borderColor: 'rgb(139, 92, 246)',
-                            backgroundColor: 'rgba(139, 92, 246, 0.05)',
+                            backgroundColor: 'rgba(139, 92, 246, 0.1)',
                             borderWidth: 3,
                             borderDash: [10, 5],
-                            fill: false,
+                            fill: true,
                             tension: 0.4,
-                            pointRadius: 5,
-                            pointHoverRadius: 7,
+                            pointRadius: 6,
                             pointStyle: 'triangle'
                         });
                     }
@@ -2019,13 +1686,9 @@
                         if (dados.projecao && dados.projecao.grupos_projetados) {
                             const grupoProj = dados.projecao.grupos_projetados.find(g => g.nome === grupo.nome);
                             if (grupoProj && grupoProj.valores.length > 0) {
-                                const grupoHistorico = grupo;
-                                let valoresHistoricosGrupo = grupoHistorico.valores;
-                                
-                                // Aplicar acumulação aos valores históricos se necessário
-                                if (tipoVisualizacao === 'acumulada') {
-                                    valoresHistoricosGrupo = acumularDados(valoresHistoricosGrupo);
-                                }
+                                // Buscar o dataset correspondente já com valores acumulados (se aplicável)
+                                const datasetHistorico = datasets.find(ds => ds.label === grupoProj.nome);
+                                const valoresHistoricosGrupo = datasetHistorico ? datasetHistorico.data : [];
                                 
                                 const ultimoValorRealGrupo = valoresHistoricosGrupo[valoresHistoricosGrupo.length - 1];
                                 
@@ -2050,7 +1713,7 @@
                                 
                                 datasets.push({
                                     label: `${grupoProj.nome} (Projeção)`,
-                                    data: [...Array(grupoHistorico.valores.length - 1).fill(null), ...dataProjecaoGrupo],
+                                    data: [...Array(valoresHistoricosGrupo.length - 1).fill(null), ...dataProjecaoGrupo],
                                     borderColor: `rgb(${corEscura})`,
                                     backgroundColor: 'transparent',
                                     borderWidth: 2.5,
@@ -2066,18 +1729,58 @@
                     });
                 }
                 
+                // Adicionar linhas de valor contratual APENAS em modo acumulada
+                if (tipoVisualizacao === 'acumulada' && dados.valores_contratuais && dados.valores_contratuais.length > 0) {
+                    const coresContratuais = [
+                        'rgb(220, 38, 38)',   // vermelho
+                        'rgb(234, 88, 12)',   // laranja
+                        'rgb(202, 138, 4)',   // amarelo escuro
+                        'rgb(22, 163, 74)',   // verde
+                        'rgb(6, 182, 212)',   // ciano
+                    ];
+                    
+                    dados.valores_contratuais.forEach((contrato, idx) => {
+                        const linhaValorContratual = Array(allLabels.length).fill(contrato.valor_contratual);
+                        const cor = coresContratuais[idx % coresContratuais.length];
+                        
+                        datasets.push({
+                            label: `Valor Contratual - ${contrato.lote_nome}`,
+                            data: linhaValorContratual,
+                            borderColor: cor,
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            borderDash: [8, 4],
+                            fill: false,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            tension: 0
+                        });
+                    });
+                }
+                
                 chartInstanceGastos = new Chart(ctx, {
                     type: 'line',
                     data: { labels: allLabels, datasets: datasets },
                     options: {
                         responsive: true,
-                        maintainAspectRatio: false,
+                        maintainAspectRatio: true,
                         interaction: { mode: 'index', intersect: false },
                         plugins: {
                             legend: {
                                 display: true,
                                 position: 'top',
-                                labels: { padding: 15, font: { size: 12 }, usePointStyle: true }
+                                labels: {
+                                    usePointStyle: true,
+                                    padding: 15
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Evolução de Gastos ao Longo do Tempo',
+                                font: {
+                                    size: 16,
+                                    weight: 'bold'
+                                }
                             },
                             tooltip: {
                                 backgroundColor: 'rgba(0, 0, 0, 0.8)',
@@ -2120,16 +1823,7 @@
             
             // Toggle de Projeção GASTOS
             document.getElementById('btn-toggle-projecao-gastos').addEventListener('click', function() {
-                // Verificar se o modo atual permite projeção
-                if (!projecaoAtivaGastos && modoVisualizacao === 'acumulado') {
-                    mostrarNotificacao(
-                        'Projeção Não Disponível',
-                        'A projeção está disponível apenas nos modos:\n\n🏢 Por Unidade\n📦 Por Lote\n\nPor favor, selecione um desses modos para ativar a projeção.',
-                        'warning',
-                        6000
-                    );
-                    return;
-                }
+                if (this.disabled) return;
                 
                 projecaoAtivaGastos = !projecaoAtivaGastos;
                 
@@ -2149,16 +1843,7 @@
             // Toggle de Projeção (integrado no gráfico)
             let projecaoAtiva = false;
             document.getElementById('btn-toggle-projecao').addEventListener('click', function() {
-                // Verificar se o modo atual permite projeção
-                if (!projecaoAtiva && modoVisualizacao === 'acumulado') {
-                    mostrarNotificacao(
-                        'Projeção Não Disponível',
-                        'A projeção está disponível apenas nos modos:\n\n🏢 Por Unidade\n📦 Por Lote\n\nPor favor, selecione um desses modos para ativar a projeção.',
-                        'warning',
-                        6000
-                    );
-                    return;
-                }
+                if (this.disabled) return;
                 
                 projecaoAtiva = !projecaoAtiva;
                 
@@ -2282,15 +1967,11 @@
                 observer.observe(el);
             });
             
-            // Carregar gráfico inicial após inicialização completa
-            console.log('🚀 Iniciando carregamento do gráfico inicial...');
-            setTimeout(() => {
-                const lotesSelecionados = Array.from(document.querySelectorAll('.lote-checkbox:checked')).map(cb => cb.value);
-                const unidadesSelecionadas = Array.from(document.querySelectorAll('.unidade-checkbox:checked')).map(cb => cb.value);
-                console.log('📊 Filtros iniciais - Lotes:', lotesSelecionados.length, 'Unidades:', unidadesSelecionadas.length);
-                atualizarBotaoProjecao();
-                carregarGrafico();
-            }, 200);
+            // Não carregar gráfico automaticamente - aguardar seleção de lote
+            console.log('🚀 Página carregada - aguardando seleção de lote...');
+            // Exibir placeholder inicial
+            document.getElementById('chart-placeholder').style.display = 'flex';
+            document.getElementById('placeholder-grafico-gastos').style.display = 'flex';
         });
     </script>
     <script type="module">

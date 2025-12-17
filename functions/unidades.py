@@ -235,3 +235,195 @@ def desassociar_unidade_do_lote(unidade_id):
 		return {'success': False, 'error': 'ID de unidade inválido'}
 	
 	return editar_unidade(unidade_id, novo_lote_id=None)
+
+
+# ----- API Functions for Flask Routes -----
+def api_adicionar_unidade(lote_id, nome, quantitativos_unidade, valor_contratual_unidade):
+	"""
+	API para adicionar uma nova unidade
+	"""
+	try:
+		from .models import Lote
+		
+		# Obter o maior ID atual
+		max_id_result = db.session.query(db.func.max(Unidade.id)).scalar()
+		novo_id = (max_id_result + 1) if max_id_result is not None else 0
+		
+		# Criar data/hora atual no formato correto
+		criado_em = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+		
+		# Criar nova unidade
+		nova_unidade = Unidade(
+			id=novo_id,
+			nome=nome,
+			lote_id=lote_id,
+			quantitativos_unidade=quantitativos_unidade,
+			valor_contratual_unidade=valor_contratual_unidade,
+			criado_em=criado_em,
+			ativo=True
+		)
+		
+		db.session.add(nova_unidade)
+		
+		# Atualizar lista de unidades no lote
+		lote = Lote.query.get(lote_id)
+		if lote:
+			# Parse unidades atuais
+			unidades_atuais = []
+			if lote.unidades:
+				try:
+					unidades_atuais = json.loads(lote.unidades) if isinstance(lote.unidades, str) else lote.unidades
+					if not isinstance(unidades_atuais, list):
+						unidades_atuais = []
+				except:
+					unidades_atuais = []
+			
+			# Adicionar novo ID se não estiver na lista
+			if novo_id not in unidades_atuais:
+				unidades_atuais.append(novo_id)
+			
+			# Atualizar campo unidades do lote
+			lote.unidades = json.dumps(unidades_atuais)
+		
+		db.session.commit()
+		
+		return {
+			'success': True,
+			'message': f'Unidade "{nome}" adicionada com sucesso!',
+			'unidade_id': novo_id
+		}
+		
+	except Exception as e:
+		db.session.rollback()
+		print(f'Erro ao adicionar unidade: {str(e)}')
+		return {
+			'success': False,
+			'message': f'Erro ao adicionar unidade: {str(e)}'
+		}
+
+
+def api_editar_unidade(unidade_id, nome=None, quantitativos_unidade=None, valor_contratual_unidade=None, ativo=None):
+	"""
+	API para editar uma unidade existente
+	"""
+	try:
+		# Buscar unidade
+		unidade = Unidade.query.get(unidade_id)
+		if not unidade:
+			return {'success': False, 'message': 'Unidade não encontrada'}
+		
+		# Atualizar campos
+		if nome is not None:
+			unidade.nome = nome
+		
+		if quantitativos_unidade is not None:
+			unidade.quantitativos_unidade = quantitativos_unidade
+		
+		if valor_contratual_unidade is not None:
+			unidade.valor_contratual_unidade = valor_contratual_unidade
+		
+		if ativo is not None:
+			unidade.ativo = ativo
+		
+		db.session.commit()
+		
+		return {
+			'success': True,
+			'message': f'Unidade "{unidade.nome}" atualizada com sucesso!'
+		}
+		
+	except Exception as e:
+		db.session.rollback()
+		print(f'Erro ao editar unidade: {str(e)}')
+		return {
+			'success': False,
+			'message': f'Erro ao editar unidade: {str(e)}'
+		}
+
+
+def api_excluir_unidade(unidade_id):
+	"""
+	API para excluir uma unidade
+	"""
+	try:
+		from .models import Lote
+		
+		# Buscar unidade
+		unidade = Unidade.query.get(unidade_id)
+		if not unidade:
+			return {'success': False, 'message': 'Unidade não encontrada'}
+		
+		nome_unidade = unidade.nome
+		lote_id = unidade.lote_id
+		
+		# Remover ID da unidade da lista de unidades do lote
+		if lote_id:
+			lote = Lote.query.get(lote_id)
+			if lote and lote.unidades:
+				try:
+					# Parse unidades atuais
+					unidades_atuais = json.loads(lote.unidades) if isinstance(lote.unidades, str) else lote.unidades
+					if isinstance(unidades_atuais, list) and unidade_id in unidades_atuais:
+						# Remover ID da unidade
+						unidades_atuais.remove(unidade_id)
+						# Atualizar campo unidades do lote
+						lote.unidades = json.dumps(unidades_atuais)
+				except Exception as e:
+					print(f'Aviso: Não foi possível atualizar lista de unidades do lote: {str(e)}')
+		
+		# Excluir unidade
+		db.session.delete(unidade)
+		db.session.commit()
+		
+		return {
+			'success': True,
+			'message': f'Unidade "{nome_unidade}" excluída com sucesso!'
+		}
+		
+	except Exception as e:
+		db.session.rollback()
+		print(f'Erro ao excluir unidade: {str(e)}')
+		return {
+			'success': False,
+			'message': f'Erro ao excluir unidade: {str(e)}'
+		}
+
+
+def api_listar_unidades(lote_id):
+	"""
+	API para listar todas as unidades de um lote
+	"""
+	try:
+		unidades = Unidade.query.filter_by(lote_id=lote_id, ativo=True).all()
+		
+		unidades_list = []
+		for u in unidades:
+			# Parse quantitativos se for string
+			quantitativos = {}
+			if u.quantitativos_unidade:
+				try:
+					quantitativos = json.loads(u.quantitativos_unidade) if isinstance(u.quantitativos_unidade, str) else u.quantitativos_unidade
+				except:
+					quantitativos = {}
+			
+			unidades_list.append({
+				'id': u.id,
+				'nome': u.nome,
+				'lote_id': u.lote_id,
+				'quantitativos_unidade': quantitativos,
+				'valor_contratual_unidade': u.valor_contratual_unidade,
+				'criado_em': u.criado_em,
+				'ativo': u.ativo
+			})
+		
+		return {
+			'success': True,
+			'unidades': unidades_list
+		}
+		
+	except Exception as e:
+		print(f'Erro ao listar unidades: {str(e)}')
+		return {
+			'success': False,
+			'message': f'Erro ao listar unidades: {str(e)}'
+		}

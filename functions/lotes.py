@@ -29,6 +29,25 @@ from .unidades import criar_unidade
 import json
 
 def lote_to_dict(lote):
+	# Garantir que quantitativos seja carregado mesmo se houver problema de cache do SQLAlchemy
+	quantitativos_value = None
+	try:
+		quantitativos_value = lote.quantitativos
+	except AttributeError:
+		# Se o atributo não existe no modelo (cache antigo), buscar diretamente do banco
+		import sqlite3
+		import os
+		BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+		DADOS_DIR = os.path.join(BASE_DIR, 'dados')
+		db_path = os.path.join(DADOS_DIR, 'dados.db')
+		conn = sqlite3.connect(db_path)
+		cursor = conn.cursor()
+		cursor.execute("SELECT quantitativos FROM lotes WHERE id = ?", (lote.id,))
+		result = cursor.fetchone()
+		conn.close()
+		if result:
+			quantitativos_value = result[0]
+	
 	return {
 		'id': lote.id,
 		'nome': lote.nome,
@@ -40,6 +59,7 @@ def lote_to_dict(lote):
 		'valor_contratual': lote.valor_contratual,
 		'unidades': json.loads(lote.unidades) if lote.unidades else [],
 		'precos': json.loads(lote.precos) if lote.precos else {},
+		'quantitativos': json.loads(quantitativos_value) if quantitativos_value else {},
 		'ativo': lote.ativo,
 		'criado_em': lote.criado_em,
 		'data_criacao': lote.data_criacao,
@@ -117,9 +137,18 @@ def salvar_novo_lote(payload: dict):
             match_iso = re.match(r'(\d{4})[-/](\d{2})[-/](\d{2})', data_fim)
             if match_iso:
                 data_fim = f"{match_iso.group(1)}-{match_iso.group(2)}-{match_iso.group(3)}"
-    valor_contratual = payload.get('valor_contratual', 0.0)
     unidades_nomes = payload.get('unidades', [])
     precos = payload.get('precos', {})
+    quantitativos = payload.get('quantitativos', {})
+    
+    # Calcular valor_contratual baseado em preços × quantitativos
+    valor_contratual = 0.0
+    for refeicao, tipos in precos.items():
+        if isinstance(tipos, dict):
+            for tipo, preco in tipos.items():
+                qtd = quantitativos.get(refeicao, {}).get(tipo, 0) if isinstance(quantitativos.get(refeicao), dict) else 0
+                valor_contratual += float(preco or 0) * int(qtd or 0)
+    
     ativo = payload.get('ativo', True)
     if isinstance(ativo, str):
         ativo = ativo.lower() in ['true', '1', 'sim', 'ativo']
@@ -145,6 +174,7 @@ def salvar_novo_lote(payload: dict):
         valor_contratual=valor_contratual,
         unidades="[]",  # será atualizado após criar as unidades
         precos=json.dumps(precos),
+        quantitativos=json.dumps(quantitativos),
         ativo=ativo,
         criado_em=criado_em,
         data_criacao=data_criacao,
@@ -188,9 +218,23 @@ def editar_lote(lote_id, payload: dict):
 			return {'success': False, 'error': f'Já existe um lote com o nome "{novo_nome}". Escolha um nome diferente.'}
 
 	try:
+		# Calcular valor_contratual se precos ou quantitativos forem atualizados
+		if 'precos' in payload or 'quantitativos' in payload:
+			precos = payload.get('precos', json.loads(lote.precos) if lote.precos else {})
+			quantitativos = payload.get('quantitativos', json.loads(lote.quantitativos) if lote.quantitativos else {})
+			
+			valor_contratual = 0.0
+			for refeicao, tipos in precos.items():
+				if isinstance(tipos, dict):
+					for tipo, preco in tipos.items():
+						qtd = quantitativos.get(refeicao, {}).get(tipo, 0) if isinstance(quantitativos.get(refeicao), dict) else 0
+						valor_contratual += float(preco or 0) * int(qtd or 0)
+			
+			payload['valor_contratual'] = valor_contratual
+		
 		for campo in [
 			'nome', 'empresa', 'numero_contrato', 'numero', 'data_inicio', 'data_fim',
-			'valor_contratual', 'unidades', 'precos', 'ativo', 'criado_em',
+			'valor_contratual', 'unidades', 'precos', 'quantitativos', 'ativo', 'criado_em',
 			'data_criacao', 'data_contrato', 'status', 'descricao'
 		]:
 			if campo in payload:
@@ -224,6 +268,8 @@ def editar_lote(lote_id, payload: dict):
 						valor = to_int_list(valor)
 					valor = json.dumps(valor)
 				elif campo == 'precos':
+					valor = json.dumps(valor)
+				elif campo == 'quantitativos':
 					valor = json.dumps(valor)
 				setattr(lote, campo, valor)
 		db.session.commit()

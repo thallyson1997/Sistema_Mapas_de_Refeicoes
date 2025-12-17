@@ -38,6 +38,7 @@ class Lote(db.Model):
     valor_contratual = db.Column(db.Float, nullable=True)
     unidades = db.Column(db.Text, nullable=True)  # Salvar como JSON/texto
     precos = db.Column(db.Text, nullable=True)    # Salvar como JSON/texto
+    quantitativos = db.Column(db.Text, nullable=True)  # Salvar como JSON/texto
     ativo = db.Column(db.Boolean, default=True)
     criado_em = db.Column(db.String(32), nullable=True)
     data_criacao = db.Column(db.String(32), nullable=True)
@@ -56,6 +57,8 @@ class Unidade(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(128), nullable=False)
     lote_id = db.Column(db.Integer, nullable=True)
+    quantitativos_unidade = db.Column(db.Text, nullable=True)  # JSON/texto
+    valor_contratual_unidade = db.Column(db.Float, nullable=True)
     criado_em = db.Column(db.String(32), nullable=True)
     ativo = db.Column(db.Boolean, default=True)
 

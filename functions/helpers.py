@@ -163,6 +163,7 @@ def carregar_lotes_para_dashboard():
 			'ativo': l.get('ativo', True),
 			'unidades': unidades_final,
 			'precos': normalizar_precos(l.get('precos')),
+			'quantitativos': l.get('quantitativos', {}),  # Adicionar quantitativos
 			'refeicoes_mes': refeicoes_mes,
 			'custo_mes': custo_mes,
 			'desvio_mes': desvio_mes,

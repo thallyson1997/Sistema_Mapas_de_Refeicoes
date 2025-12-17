@@ -192,15 +192,24 @@
                             </div>
 
                             <!-- Ações -->
-                            <div style="display: flex; flex-direction: column; gap: 0.5rem; align-items: stretch; min-width: 150px;">
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; align-items: start; min-width: 320px;">
                                     <a href="{{ url_for('lote_detalhes', lote_id=lote.id) }}" class="btn btn-primary btn-sm">
                                     🔍 Ver Detalhes
                                 </a>
+                                <button class="btn btn-success btn-sm" onclick="adicionarUnidade({{ lote.id }})">
+                                    ➕ Adicionar Unidade
+                                </button>
                                 <button class="btn btn-secondary btn-sm" onclick="ExportarDados({{ lote.id }})">
                                                 📤 Exportar Dados
                                           </button>
+                                          <button class="btn btn-secondary btn-sm" onclick="editarUnidade({{ lote.id }})">
+                                              ✏️ Editar Unidade
+                                          </button>
                                           <button class="btn btn-secondary btn-sm" onclick="alert('Funcionalidade de relatório para Lote {{ loop.index }} será implementada em versões futuras.')">
                                               📊 Relatório
+                                          </button>
+                                          <button class="btn btn-danger btn-sm" onclick="excluirUnidade({{ lote.id }})">
+                                              🗑️ Excluir Unidade
                                           </button>
                             </div>
                         </div>
@@ -250,17 +259,11 @@
                         </div>
                         <div>
                             <label for="novo-lote-valor-contratual" class="form-label" style="font-weight: 500;">Valor Contratual (R$)</label>
-                            <input type="number" step="0.01" min="0" id="novo-lote-valor-contratual" name="valor_contratual" class="form-input" placeholder="0,00" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                            <input type="text" id="novo-lote-valor-contratual" name="valor_contratual" class="form-input" placeholder="R$ 0,00" readonly style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300); background-color: #f5f5f5; cursor: not-allowed;">
+                            <small style="color: var(--gray-500); font-size: 0.85em;">Calculado automaticamente: Preços × Quantidades</small>
                         </div>
                     </div>
-                    <!-- Coluna 2: unidades -->
-                    <div style="flex: 1 1 220px; min-width: 180px; display: flex; flex-direction: column; gap: 0.02rem;">
-                        <label class="form-label" style="font-weight: 500;">Unidades do Lote</label>
-                        <div id="unidades-lista" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
-                        <input type="text" id="input-unidade" class="form-input" placeholder="Digite o nome da unidade e pressione Enter" style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
-                        <small style="color: var(--gray-500);">Pressione Enter para adicionar cada unidade. Clique no X para remover.</small>
-                    </div>
-                    <!-- Coluna 3: preços -->
+                    <!-- Coluna 2: preços -->
                     <div style="flex: 1 1 320px; min-width: 220px; display: flex; flex-direction: column; gap: 1rem;">
                         <label class="form-label" style="font-weight: 500;">Preços das Refeições (R$)</label>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
@@ -295,6 +298,44 @@
                             <div>
                                 <label for="preco-jantar-funcionario" style="font-size: 0.95em;">Jantar Funcionário</label>
                                 <input type="number" step="0.01" min="0" id="preco-jantar-funcionario" name="preco_jantar_funcionario" class="form-input" placeholder="0,00" required style="width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Coluna 3: quantitativos -->
+                    <div style="flex: 1 1 320px; min-width: 220px; display: flex; flex-direction: column; gap: 1rem;">
+                        <label class="form-label" style="font-weight: 500;">Quantitativo de Refeições</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                            <div>
+                                <label for="qtd-cafe-interno" style="font-size: 0.95em;">Café Interno</label>
+                                <input type="number" step="1" min="0" id="qtd-cafe-interno" name="qtd_cafe_interno" class="form-input" placeholder="0" required style="width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                            </div>
+                            <div>
+                                <label for="qtd-cafe-funcionario" style="font-size: 0.95em;">Café Funcionário</label>
+                                <input type="number" step="1" min="0" id="qtd-cafe-funcionario" name="qtd_cafe_funcionario" class="form-input" placeholder="0" required style="width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                            </div>
+                            <div>
+                                <label for="qtd-almoco-interno" style="font-size: 0.95em;">Almoço Interno</label>
+                                <input type="number" step="1" min="0" id="qtd-almoco-interno" name="qtd_almoco_interno" class="form-input" placeholder="0" required style="width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                            </div>
+                            <div>
+                                <label for="qtd-almoco-funcionario" style="font-size: 0.95em;">Almoço Funcionário</label>
+                                <input type="number" step="1" min="0" id="qtd-almoco-funcionario" name="qtd_almoco_funcionario" class="form-input" placeholder="0" required style="width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                            </div>
+                            <div>
+                                <label for="qtd-lanche-interno" style="font-size: 0.95em;">Lanche Interno</label>
+                                <input type="number" step="1" min="0" id="qtd-lanche-interno" name="qtd_lanche_interno" class="form-input" placeholder="0" required style="width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                            </div>
+                            <div>
+                                <label for="qtd-lanche-funcionario" style="font-size: 0.95em;">Lanche Funcionário</label>
+                                <input type="number" step="1" min="0" id="qtd-lanche-funcionario" name="qtd_lanche_funcionario" class="form-input" placeholder="0" required style="width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                            </div>
+                            <div>
+                                <label for="qtd-jantar-interno" style="font-size: 0.95em;">Jantar Interno</label>
+                                <input type="number" step="1" min="0" id="qtd-jantar-interno" name="qtd_jantar_interno" class="form-input" placeholder="0" required style="width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                            </div>
+                            <div>
+                                <label for="qtd-jantar-funcionario" style="font-size: 0.95em;">Jantar Funcionário</label>
+                                <input type="number" step="1" min="0" id="qtd-jantar-funcionario" name="qtd_jantar_funcionario" class="form-input" placeholder="0" required style="width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid var(--gray-300);">
                             </div>
                         </div>
                     </div>
@@ -346,7 +387,8 @@
                         </div>
                         <div>
                             <label for="editar-lote-valor-contratual" class="form-label" style="font-weight: 500;">Valor Contratual (R$)</label>
-                            <input type="number" step="0.01" min="0" id="editar-lote-valor-contratual" name="valor_contratual" class="form-input" placeholder="0,00" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                            <input type="text" id="editar-lote-valor-contratual" name="valor_contratual" class="form-input" placeholder="R$ 0,00" readonly style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300); background-color: #f5f5f5; cursor: not-allowed;">
+                            <small style="color: var(--gray-500); font-size: 0.85em;">Calculado automaticamente: Preços × Quantidades</small>
                         </div>
                         <div>
                             <label class="form-label" style="font-weight: 500;">Status</label>
@@ -362,14 +404,7 @@
                             </div>
                         </div>
                     </div>
-                    <!-- Coluna 2: unidades -->
-                    <div style="flex: 1 1 220px; min-width: 180px; display: flex; flex-direction: column; gap: 0.02rem;">
-                        <label class="form-label" style="font-weight: 500;">Unidades do Lote</label>
-                        <div id="editar-unidades-lista" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
-                        <input type="text" id="editar-input-unidade" class="form-input" placeholder="Digite o nome da unidade e pressione Enter" style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
-                        <small style="color: var(--gray-500);">Pressione Enter para adicionar novas unidades. Unidades existentes não podem ser removidas.</small>
-                    </div>
-                    <!-- Coluna 3: preços -->
+                    <!-- Coluna 2: preços -->
                     <div style="flex: 1 1 320px; min-width: 220px; display: flex; flex-direction: column; gap: 1rem;">
                         <label class="form-label" style="font-weight: 500;">Preços das Refeições (R$)</label>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
@@ -404,6 +439,44 @@
                             <div>
                                 <label for="editar-preco-jantar-funcionario" style="font-size: 0.95em;">Jantar Funcionário</label>
                                 <input type="number" step="0.01" min="0" id="editar-preco-jantar-funcionario" name="preco_jantar_funcionario" class="form-input" placeholder="0,00" required style="width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Coluna 3: quantitativos -->
+                    <div style="flex: 1 1 320px; min-width: 220px; display: flex; flex-direction: column; gap: 1rem;">
+                        <label class="form-label" style="font-weight: 500;">Quantitativo de Refeições</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                            <div>
+                                <label for="editar-qtd-cafe-interno" style="font-size: 0.95em;">Café Interno</label>
+                                <input type="number" step="1" min="0" id="editar-qtd-cafe-interno" name="qtd_cafe_interno" class="form-input" placeholder="0" required style="width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                            </div>
+                            <div>
+                                <label for="editar-qtd-cafe-funcionario" style="font-size: 0.95em;">Café Funcionário</label>
+                                <input type="number" step="1" min="0" id="editar-qtd-cafe-funcionario" name="qtd_cafe_funcionario" class="form-input" placeholder="0" required style="width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                            </div>
+                            <div>
+                                <label for="editar-qtd-almoco-interno" style="font-size: 0.95em;">Almoço Interno</label>
+                                <input type="number" step="1" min="0" id="editar-qtd-almoco-interno" name="qtd_almoco_interno" class="form-input" placeholder="0" required style="width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                            </div>
+                            <div>
+                                <label for="editar-qtd-almoco-funcionario" style="font-size: 0.95em;">Almoço Funcionário</label>
+                                <input type="number" step="1" min="0" id="editar-qtd-almoco-funcionario" name="qtd_almoco_funcionario" class="form-input" placeholder="0" required style="width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                            </div>
+                            <div>
+                                <label for="editar-qtd-lanche-interno" style="font-size: 0.95em;">Lanche Interno</label>
+                                <input type="number" step="1" min="0" id="editar-qtd-lanche-interno" name="qtd_lanche_interno" class="form-input" placeholder="0" required style="width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                            </div>
+                            <div>
+                                <label for="editar-qtd-lanche-funcionario" style="font-size: 0.95em;">Lanche Funcionário</label>
+                                <input type="number" step="1" min="0" id="editar-qtd-lanche-funcionario" name="qtd_lanche_funcionario" class="form-input" placeholder="0" required style="width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                            </div>
+                            <div>
+                                <label for="editar-qtd-jantar-interno" style="font-size: 0.95em;">Jantar Interno</label>
+                                <input type="number" step="1" min="0" id="editar-qtd-jantar-interno" name="qtd_jantar_interno" class="form-input" placeholder="0" required style="width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                            </div>
+                            <div>
+                                <label for="editar-qtd-jantar-funcionario" style="font-size: 0.95em;">Jantar Funcionário</label>
+                                <input type="number" step="1" min="0" id="editar-qtd-jantar-funcionario" name="qtd_jantar_funcionario" class="form-input" placeholder="0" required style="width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid var(--gray-300);">
                             </div>
                         </div>
                     </div>
@@ -484,92 +557,233 @@
         </div>
     </div>
 
+    <!-- Modal Adicionar Unidade -->
+    <div id="modal-adicionar-unidade" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); z-index: 2000; overflow-y: auto;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 16px; padding: 2rem; max-width: 700px; width: 95%; box-shadow: 0 8px 32px rgba(0,0,0,0.18); max-height: 90vh; overflow-y: auto;">
+            <h2 style="margin-bottom: 1.5rem; color: var(--success-color);">➕ Adicionar Nova Unidade</h2>
+            <form id="form-adicionar-unidade" autocomplete="off">
+                <input type="hidden" id="add-unidade-lote-id" name="lote_id">
+                
+                <!-- Nome da Unidade -->
+                <div style="margin-bottom: 1.5rem;">
+                    <label for="add-unidade-nome" class="form-label" style="font-weight: 500;">Nome da Unidade</label>
+                    <input type="text" id="add-unidade-nome" name="nome" class="form-input" placeholder="Ex: UPR São Luís 1" required style="width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid var(--gray-300); font-size: 1rem;">
+                </div>
+
+                <!-- Quantitativos de Refeições -->
+                <div style="margin-bottom: 1.5rem;">
+                    <label class="form-label" style="font-weight: 500; display: block; margin-bottom: 1rem;">Quantitativo de Refeições (Anual)</label>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;">
+                        <div>
+                            <label for="add-qtd-cafe-interno" style="font-size: 0.875rem; color: var(--gray-600); display: block; margin-bottom: 0.25rem;">Café Interno</label>
+                            <input type="number" id="add-qtd-cafe-interno" name="qtd_cafe_interno" class="form-input qtd-unidade-input" placeholder="0" min="0" step="1" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                        </div>
+                        <div>
+                            <label for="add-qtd-cafe-funcionario" style="font-size: 0.875rem; color: var(--gray-600); display: block; margin-bottom: 0.25rem;">Café Funcionário</label>
+                            <input type="number" id="add-qtd-cafe-funcionario" name="qtd_cafe_funcionario" class="form-input qtd-unidade-input" placeholder="0" min="0" step="1" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                        </div>
+                        <div>
+                            <label for="add-qtd-almoco-interno" style="font-size: 0.875rem; color: var(--gray-600); display: block; margin-bottom: 0.25rem;">Almoço Interno</label>
+                            <input type="number" id="add-qtd-almoco-interno" name="qtd_almoco_interno" class="form-input qtd-unidade-input" placeholder="0" min="0" step="1" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                        </div>
+                        <div>
+                            <label for="add-qtd-almoco-funcionario" style="font-size: 0.875rem; color: var(--gray-600); display: block; margin-bottom: 0.25rem;">Almoço Funcionário</label>
+                            <input type="number" id="add-qtd-almoco-funcionario" name="qtd_almoco_funcionario" class="form-input qtd-unidade-input" placeholder="0" min="0" step="1" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                        </div>
+                        <div>
+                            <label for="add-qtd-lanche-interno" style="font-size: 0.875rem; color: var(--gray-600); display: block; margin-bottom: 0.25rem;">Lanche Interno</label>
+                            <input type="number" id="add-qtd-lanche-interno" name="qtd_lanche_interno" class="form-input qtd-unidade-input" placeholder="0" min="0" step="1" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                        </div>
+                        <div>
+                            <label for="add-qtd-lanche-funcionario" style="font-size: 0.875rem; color: var(--gray-600); display: block; margin-bottom: 0.25rem;">Lanche Funcionário</label>
+                            <input type="number" id="add-qtd-lanche-funcionario" name="qtd_lanche_funcionario" class="form-input qtd-unidade-input" placeholder="0" min="0" step="1" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                        </div>
+                        <div>
+                            <label for="add-qtd-jantar-interno" style="font-size: 0.875rem; color: var(--gray-600); display: block; margin-bottom: 0.25rem;">Jantar Interno</label>
+                            <input type="number" id="add-qtd-jantar-interno" name="qtd_jantar_interno" class="form-input qtd-unidade-input" placeholder="0" min="0" step="1" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                        </div>
+                        <div>
+                            <label for="add-qtd-jantar-funcionario" style="font-size: 0.875rem; color: var(--gray-600); display: block; margin-bottom: 0.25rem;">Jantar Funcionário</label>
+                            <input type="number" id="add-qtd-jantar-funcionario" name="qtd_jantar_funcionario" class="form-input qtd-unidade-input" placeholder="0" min="0" step="1" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Valor Contratual (calculado automaticamente) -->
+                <div style="margin-bottom: 1.5rem;">
+                    <label for="add-unidade-valor" class="form-label" style="font-weight: 500;">Valor Contratual da Unidade (R$)</label>
+                    <input type="text" id="add-unidade-valor" name="valor_contratual" class="form-input" placeholder="R$ 0,00" readonly style="width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid var(--gray-300); background-color: #f5f5f5; cursor: not-allowed; font-size: 1rem; font-weight: 600; color: var(--success-color);">
+                    <small style="color: var(--gray-500); font-size: 0.85em;">Calculado automaticamente: Preços do Lote × Quantidades</small>
+                </div>
+
+                <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
+                    <button type="button" id="btn-cancelar-add-unidade" class="btn btn-secondary">Cancelar</button>
+                    <button type="submit" id="btn-salvar-add-unidade" class="btn btn-success">Adicionar Unidade</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Editar Unidade -->
+    <div id="modal-editar-unidade" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); z-index: 2000; overflow-y: auto;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 16px; padding: 2rem; max-width: 700px; width: 95%; box-shadow: 0 8px 32px rgba(0,0,0,0.18); max-height: 90vh; overflow-y: auto;">
+            <h2 style="margin-bottom: 1.5rem; color: var(--primary-color);">✏️ Editar Unidade</h2>
+            <form id="form-editar-unidade" autocomplete="off">
+                <input type="hidden" id="edit-unidade-lote-id" name="lote_id">
+                <input type="hidden" id="edit-unidade-id" name="unidade_id">
+                
+                <!-- Seleção da Unidade -->
+                <div style="margin-bottom: 1.5rem;">
+                    <label for="edit-unidade-selecao" class="form-label" style="font-weight: 500;">Selecione a Unidade</label>
+                    <select id="edit-unidade-selecao" name="unidade_selecao" class="form-select" required style="width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid var(--gray-300); font-size: 1rem;">
+                        <option value="">Selecione uma unidade...</option>
+                    </select>
+                </div>
+
+                <!-- Nome da Unidade -->
+                <div style="margin-bottom: 1.5rem;">
+                    <label for="edit-unidade-nome" class="form-label" style="font-weight: 500;">Nome da Unidade</label>
+                    <input type="text" id="edit-unidade-nome" name="nome" class="form-input" placeholder="Ex: UPR São Luís 1" required style="width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid var(--gray-300); font-size: 1rem;">
+                </div>
+
+                <!-- Quantitativos de Refeições -->
+                <div style="margin-bottom: 1.5rem;">
+                    <label class="form-label" style="font-weight: 500; display: block; margin-bottom: 1rem;">Quantitativo de Refeições (Anual)</label>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;">
+                        <div>
+                            <label for="edit-qtd-cafe-interno" style="font-size: 0.875rem; color: var(--gray-600); display: block; margin-bottom: 0.25rem;">Café Interno</label>
+                            <input type="number" id="edit-qtd-cafe-interno" name="qtd_cafe_interno" class="form-input qtd-edit-unidade-input" placeholder="0" min="0" step="1" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                        </div>
+                        <div>
+                            <label for="edit-qtd-cafe-funcionario" style="font-size: 0.875rem; color: var(--gray-600); display: block; margin-bottom: 0.25rem;">Café Funcionário</label>
+                            <input type="number" id="edit-qtd-cafe-funcionario" name="qtd_cafe_funcionario" class="form-input qtd-edit-unidade-input" placeholder="0" min="0" step="1" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                        </div>
+                        <div>
+                            <label for="edit-qtd-almoco-interno" style="font-size: 0.875rem; color: var(--gray-600); display: block; margin-bottom: 0.25rem;">Almoço Interno</label>
+                            <input type="number" id="edit-qtd-almoco-interno" name="qtd_almoco_interno" class="form-input qtd-edit-unidade-input" placeholder="0" min="0" step="1" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                        </div>
+                        <div>
+                            <label for="edit-qtd-almoco-funcionario" style="font-size: 0.875rem; color: var(--gray-600); display: block; margin-bottom: 0.25rem;">Almoço Funcionário</label>
+                            <input type="number" id="edit-qtd-almoco-funcionario" name="qtd_almoco_funcionario" class="form-input qtd-edit-unidade-input" placeholder="0" min="0" step="1" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                        </div>
+                        <div>
+                            <label for="edit-qtd-lanche-interno" style="font-size: 0.875rem; color: var(--gray-600); display: block; margin-bottom: 0.25rem;">Lanche Interno</label>
+                            <input type="number" id="edit-qtd-lanche-interno" name="qtd_lanche_interno" class="form-input qtd-edit-unidade-input" placeholder="0" min="0" step="1" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                        </div>
+                        <div>
+                            <label for="edit-qtd-lanche-funcionario" style="font-size: 0.875rem; color: var(--gray-600); display: block; margin-bottom: 0.25rem;">Lanche Funcionário</label>
+                            <input type="number" id="edit-qtd-lanche-funcionario" name="qtd_lanche_funcionario" class="form-input qtd-edit-unidade-input" placeholder="0" min="0" step="1" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                        </div>
+                        <div>
+                            <label for="edit-qtd-jantar-interno" style="font-size: 0.875rem; color: var(--gray-600); display: block; margin-bottom: 0.25rem;">Jantar Interno</label>
+                            <input type="number" id="edit-qtd-jantar-interno" name="qtd_jantar_interno" class="form-input qtd-edit-unidade-input" placeholder="0" min="0" step="1" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                        </div>
+                        <div>
+                            <label for="edit-qtd-jantar-funcionario" style="font-size: 0.875rem; color: var(--gray-600); display: block; margin-bottom: 0.25rem;">Jantar Funcionário</label>
+                            <input type="number" id="edit-qtd-jantar-funcionario" name="qtd_jantar_funcionario" class="form-input qtd-edit-unidade-input" placeholder="0" min="0" step="1" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Valor Contratual (calculado automaticamente) -->
+                <div style="margin-bottom: 1.5rem;">
+                    <label for="edit-unidade-valor" class="form-label" style="font-weight: 500;">Valor Contratual da Unidade (R$)</label>
+                    <input type="text" id="edit-unidade-valor" name="valor_contratual" class="form-input" placeholder="R$ 0,00" readonly style="width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid var(--gray-300); background-color: #f5f5f5; cursor: not-allowed; font-size: 1rem; font-weight: 600; color: var(--primary-color);">
+                    <small style="color: var(--gray-500); font-size: 0.85em;">Calculado automaticamente: Preços do Lote × Quantidades</small>
+                </div>
+
+                <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
+                    <button type="button" id="btn-cancelar-edit-unidade" class="btn btn-secondary">Cancelar</button>
+                    <button type="submit" id="btn-salvar-edit-unidade" class="btn btn-primary">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Selecionar Unidade para Excluir -->
+    <div id="modal-excluir-unidade" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); z-index: 2000;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 16px; padding: 2rem; max-width: 500px; width: 95%; box-shadow: 0 8px 32px rgba(0,0,0,0.18);">
+            <h2 style="margin-bottom: 1.5rem; color: var(--danger-color);">Excluir Unidade</h2>
+            <form id="form-excluir-unidade" autocomplete="off">
+                <input type="hidden" id="del-unidade-lote-id" name="lote_id">
+                
+                <!-- Seleção da Unidade -->
+                <div style="margin-bottom: 1.5rem;">
+                    <label for="del-unidade-selecao" class="form-label" style="font-weight: 500;">Selecione a Unidade para excluir</label>
+                    <select id="del-unidade-selecao" name="unidade_selecao" class="form-select" required style="width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid var(--gray-300); font-size: 1rem;">
+                        <option value="">Selecione...</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
+                    <button type="button" id="btn-cancelar-del-unidade" class="btn btn-secondary">Cancelar</button>
+                    <button type="button" id="btn-prosseguir-del-unidade" class="btn btn-danger">Prosseguir</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmação de Exclusão de Unidade -->
+    <div id="modal-confirmacao-exclusao-unidade" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 2001;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 16px; padding: 2rem; max-width: 600px; width: 90%;">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <div style="width: 80px; height: 80px; background: #dc2626; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; color: white; font-size: 2rem;">🗑️</div>
+                <h3 style="margin-bottom: 1rem; color: #dc2626;">Confirmar Exclusão da Unidade</h3>
+                <p id="mensagem-confirmacao-unidade" style="margin: 0; color: var(--gray-700); line-height: 1.5; font-size: 1rem;"></p>
+            </div>
+            
+            <div style="padding: 1rem; background-color: #fef2f2; border-radius: 8px; border-left: 4px solid #dc2626; margin-bottom: 2rem;">
+                <p style="font-size: 0.875rem; margin: 0; color: #991b1b;">
+                    <strong>⚠️ Atenção:</strong> Esta ação excluirá permanentemente a unidade e removerá sua associação com o lote. Esta operação não pode ser desfeita.
+                </p>
+            </div>
+            
+            <div style="display: flex; gap: 1rem; justify-content: center;">
+                <button class="btn btn-secondary" id="btn-cancelar-confirmacao-unidade" style="min-width: 120px;">Cancelar</button>
+                <button class="btn btn-danger" id="btn-confirmar-confirmacao-unidade" style="min-width: 120px;">Excluir Unidade</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const lotesData = JSON.parse(`{{ lotes|tojson|safe }}`);
 
-        // Campo dinâmico de unidades do lote
-        function adicionarCampoUnidade(nome = "") {
-            const lista = document.getElementById('unidades-lista');
-            const div = document.createElement('div');
-            div.style.display = 'flex';
-            div.style.alignItems = 'center';
-            div.style.gap = '0.5rem';
-            div.className = 'unidade-item';
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.className = 'form-input';
-            input.value = nome;
-            input.name = 'unidades[]';
-            input.placeholder = 'Nome da unidade';
-            input.required = true;
-            input.style.flex = '1';
-            input.style.padding = '0.5rem';
-            input.style.borderRadius = '6px';
-            input.style.border = '1px solid var(--gray-300)';
-            const btnRemover = document.createElement('button');
-            btnRemover.type = 'button';
-            btnRemover.textContent = '✖';
-            btnRemover.title = 'Remover unidade';
-            btnRemover.style.background = 'none';
-            btnRemover.style.border = 'none';
-            btnRemover.style.color = '#e53e3e';
-            btnRemover.style.fontSize = '1.1rem';
-            btnRemover.style.cursor = 'pointer';
-            btnRemover.addEventListener('click', function() {
-                lista.removeChild(div);
+        // Funções de unidades removidas - gerenciamento agora é separado do CRUD de lotes
+        // function adicionarCampoUnidade() { ... }
+        // function adicionarCampoUnidadeEditar() { ... }
+
+        // Função para calcular valor contratual no modal de criação
+        function calcularValorContratualCriacao() {
+            const refeicoes = ['cafe', 'almoco', 'lanche', 'jantar'];
+            const tipos = ['interno', 'funcionario'];
+            let total = 0;
+            
+            refeicoes.forEach(refeicao => {
+                tipos.forEach(tipo => {
+                    const preco = parseFloat(document.getElementById(`preco-${refeicao}-${tipo}`)?.value) || 0;
+                    const qtd = parseInt(document.getElementById(`qtd-${refeicao}-${tipo}`)?.value) || 0;
+                    total += preco * qtd;
+                });
             });
-            div.appendChild(input);
-            div.appendChild(btnRemover);
-            lista.appendChild(div);
+            
+            document.getElementById('novo-lote-valor-contratual').value = `R$ ${total.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
         }
 
-        // Campo dinâmico de unidades do lote (modal editar) - apenas exibição
-        function adicionarCampoUnidadeEditar(nome = "", unidadeId = null, isExisting = true) {
-            const lista = document.getElementById('editar-unidades-lista');
-            const div = document.createElement('div');
-            div.style.display = 'flex';
-            div.style.alignItems = 'center';
-            div.style.gap = '0.5rem';
-            div.className = 'unidade-item-editar';
-            if (unidadeId) div.dataset.unidadeId = unidadeId;
-            if (isExisting) div.dataset.existing = 'true';
+        // Função para calcular valor contratual no modal de edição
+        function calcularValorContratualEdicao() {
+            const refeicoes = ['cafe', 'almoco', 'lanche', 'jantar'];
+            const tipos = ['interno', 'funcionario'];
+            let total = 0;
             
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.className = 'form-input';
-            input.value = nome;
-            input.name = 'unidades[]';
-            input.placeholder = 'Nome da unidade';
-            input.required = true;
-            input.style.flex = '1';
-            input.style.padding = '0.5rem';
-            input.style.borderRadius = '6px';
-            input.style.border = '1px solid var(--gray-300)';
-            input.readOnly = true; // Unidades não podem ser renomeadas
-            input.style.backgroundColor = isExisting ? '#f3f4f6' : '#fff';
-            
-            // Apenas unidades NOVAS podem ser removidas
-            if (!isExisting) {
-                const btnRemover = document.createElement('button');
-                btnRemover.type = 'button';
-                btnRemover.textContent = '✖';
-                btnRemover.title = 'Remover unidade';
-                btnRemover.style.background = 'none';
-                btnRemover.style.border = 'none';
-                btnRemover.style.color = '#e53e3e';
-                btnRemover.style.fontSize = '1.1rem';
-                btnRemover.style.cursor = 'pointer';
-                btnRemover.addEventListener('click', function() {
-                    lista.removeChild(div);
+            refeicoes.forEach(refeicao => {
+                tipos.forEach(tipo => {
+                    const preco = parseFloat(document.getElementById(`editar-preco-${refeicao}-${tipo}`)?.value) || 0;
+                    const qtd = parseInt(document.getElementById(`editar-qtd-${refeicao}-${tipo}`)?.value) || 0;
+                    total += preco * qtd;
                 });
-                div.appendChild(input);
-                div.appendChild(btnRemover);
-            } else {
-                // Unidades existentes: apenas exibição, sem botão de remover
-                div.appendChild(input);
-            }
+            });
             
-            lista.appendChild(div);
+            document.getElementById('editar-lote-valor-contratual').value = `R$ ${total.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
         }
 
         // Carregar dados do lote selecionado
@@ -579,6 +793,10 @@
                 alert('Lote não encontrado');
                 return;
             }
+            
+            // Debug: verificar quantitativos
+            console.log('Lote carregado:', lote);
+            console.log('Quantitativos do lote:', lote.quantitativos);
 
             // Preencher campos básicos
             document.getElementById('editar-lote-nome').value = lote.nome || '';
@@ -610,17 +828,7 @@
                 document.getElementById('editar-lote-ativo-nao').checked = true;
             }
 
-            // Limpar unidades anteriores
-            const listaUnidades = document.getElementById('editar-unidades-lista');
-            listaUnidades.innerHTML = '';
-
-            // TODO: Carregar nomes das unidades (por enquanto só mostra IDs)
-            // Isso será implementado quando tivermos acesso aos dados de unidades
-            if (lote.unidades && Array.isArray(lote.unidades)) {
-                lote.unidades.forEach(unidadeId => {
-                    adicionarCampoUnidadeEditar(`Unidade ID ${unidadeId}`, unidadeId, true); // true = unidade existente
-                });
-            }
+            // Unidades não são mais editadas via modal de lote - gerenciamento separado
 
             // Preencher preços
             const precos = lote.precos || {};
@@ -642,38 +850,44 @@
             document.getElementById('editar-preco-lanche-funcionario').value = getPreco('lanche', 'funcionario');
             document.getElementById('editar-preco-jantar-interno').value = getPreco('jantar', 'interno');
             document.getElementById('editar-preco-jantar-funcionario').value = getPreco('jantar', 'funcionario');
+
+            // Preencher quantitativos
+            const quantitativos = lote.quantitativos || {};
+            
+            // Verificar se os quantitativos estão vazios (lote antigo)
+            const quantitativosVazios = Object.keys(quantitativos).length === 0;
+            
+            // Função auxiliar para extrair quantitativo
+            const getQuantitativo = (refeicao, tipo) => {
+                if (typeof quantitativos[refeicao] === 'object') {
+                    return quantitativos[refeicao][tipo] || 0;
+                }
+                const key = `${refeicao}_${tipo}`;
+                return quantitativos[key] || 0;
+            };
+
+            document.getElementById('editar-qtd-cafe-interno').value = getQuantitativo('cafe', 'interno');
+            document.getElementById('editar-qtd-cafe-funcionario').value = getQuantitativo('cafe', 'funcionario');
+            document.getElementById('editar-qtd-almoco-interno').value = getQuantitativo('almoco', 'interno');
+            document.getElementById('editar-qtd-almoco-funcionario').value = getQuantitativo('almoco', 'funcionario');
+            document.getElementById('editar-qtd-lanche-interno').value = getQuantitativo('lanche', 'interno');
+            document.getElementById('editar-qtd-lanche-funcionario').value = getQuantitativo('lanche', 'funcionario');
+            document.getElementById('editar-qtd-jantar-interno').value = getQuantitativo('jantar', 'interno');
+            document.getElementById('editar-qtd-jantar-funcionario').value = getQuantitativo('jantar', 'funcionario');
+
+            // Calcular valor contratual após carregar todos os dados
+            calcularValorContratualEdicao();
+            
+            // Mostrar aviso se os quantitativos estiverem vazios
+            if (quantitativosVazios) {
+                showNotification('warning', 'Quantitativos não preenchidos', 
+                    'Este lote foi criado antes da funcionalidade de quantitativos. Por favor, preencha os valores de quantidade de refeições.',
+                    false);
+            }
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            // Campo de adicionar unidade dinâmica
-            var inputUnidade = document.getElementById('input-unidade');
-            if (inputUnidade) {
-                inputUnidade.addEventListener('keydown', function(e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        const nome = inputUnidade.value.trim();
-                        if (nome.length > 0) {
-                            adicionarCampoUnidade(nome);
-                            inputUnidade.value = '';
-                        }
-                    }
-                });
-            }
-
-            // Campo de adicionar unidade no modal editar
-            var inputUnidadeEditar = document.getElementById('editar-input-unidade');
-            if (inputUnidadeEditar) {
-                inputUnidadeEditar.addEventListener('keydown', function(e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        const nome = inputUnidadeEditar.value.trim();
-                        if (nome.length > 0) {
-                            adicionarCampoUnidadeEditar(nome, null, false); // false = nova unidade (pode ser removida)
-                            inputUnidadeEditar.value = '';
-                        }
-                    }
-                });
-            }
+            // Campos de unidades removidos - gerenciamento separado
             
             // Observação: a verificação via localStorage foi removida para
             // evitar redirecionamentos indesejados quando a sessão Flask
@@ -746,6 +960,347 @@
                 filtroPercentual.addEventListener('change', applyFilters);
             }
 
+            // Modal Adicionar Unidade
+            var modalAdicionarUnidade = document.getElementById('modal-adicionar-unidade');
+            var btnCancelarAddUnidade = document.getElementById('btn-cancelar-add-unidade');
+            var formAdicionarUnidade = document.getElementById('form-adicionar-unidade');
+            
+            if (btnCancelarAddUnidade && modalAdicionarUnidade) {
+                btnCancelarAddUnidade.addEventListener('click', function() {
+                    modalAdicionarUnidade.style.display = 'none';
+                });
+            }
+            
+            if (modalAdicionarUnidade) {
+                modalAdicionarUnidade.addEventListener('click', function(e) {
+                    if (e.target === modalAdicionarUnidade) {
+                        modalAdicionarUnidade.style.display = 'none';
+                    }
+                });
+            }
+            
+            if (formAdicionarUnidade) {
+                formAdicionarUnidade.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    const loteId = document.getElementById('add-unidade-lote-id').value;
+                    const nome = document.getElementById('add-unidade-nome').value.trim();
+                    
+                    if (!nome) {
+                        showNotification('warning', 'Atenção', 'Digite o nome da unidade.');
+                        return;
+                    }
+                    
+                    // Coletar quantitativos
+                    const quantitativos = {
+                        cafe: {
+                            interno: parseInt(document.getElementById('add-qtd-cafe-interno').value) || 0,
+                            funcionario: parseInt(document.getElementById('add-qtd-cafe-funcionario').value) || 0
+                        },
+                        almoco: {
+                            interno: parseInt(document.getElementById('add-qtd-almoco-interno').value) || 0,
+                            funcionario: parseInt(document.getElementById('add-qtd-almoco-funcionario').value) || 0
+                        },
+                        lanche: {
+                            interno: parseInt(document.getElementById('add-qtd-lanche-interno').value) || 0,
+                            funcionario: parseInt(document.getElementById('add-qtd-lanche-funcionario').value) || 0
+                        },
+                        jantar: {
+                            interno: parseInt(document.getElementById('add-qtd-jantar-interno').value) || 0,
+                            funcionario: parseInt(document.getElementById('add-qtd-jantar-funcionario').value) || 0
+                        }
+                    };
+                    
+                    // Calcular valor_contratual_unidade
+                    const lote = lotesData.find(l => l.id === parseInt(loteId));
+                    if (!lote || !lote.precos) {
+                        showNotification('error', 'Erro', 'Não foi possível obter os preços do lote.');
+                        return;
+                    }
+                    
+                    const precos = lote.precos;
+                    let valor_contratual_unidade = 0;
+                    
+                    for (const refeicao in quantitativos) {
+                        for (const tipo in quantitativos[refeicao]) {
+                            const qtd = quantitativos[refeicao][tipo];
+                            let preco = 0;
+                            
+                            if (typeof precos[refeicao] === 'object') {
+                                preco = parseFloat(precos[refeicao][tipo]) || 0;
+                            } else {
+                                const key = `${refeicao}_${tipo}`;
+                                preco = parseFloat(precos[key]) || 0;
+                            }
+                            
+                            valor_contratual_unidade += preco * qtd;
+                        }
+                    }
+                    
+                    // Enviar para backend
+                    try {
+                        const resp = await fetch('/api/adicionar-unidade', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                lote_id: parseInt(loteId),
+                                nome: nome,
+                                quantitativos_unidade: JSON.stringify(quantitativos),
+                                valor_contratual_unidade: valor_contratual_unidade
+                            }),
+                            credentials: 'same-origin'
+                        });
+                        
+                        const data = await resp.json();
+                        
+                        if (resp.ok && data.success) {
+                            showNotification('success', 'Sucesso!', `Unidade "${nome}" adicionada com sucesso!`);
+                            modalAdicionarUnidade.style.display = 'none';
+                            setTimeout(() => window.location.reload(), 1500);
+                        } else {
+                            showNotification('error', 'Erro', data.message || 'Não foi possível adicionar a unidade.');
+                        }
+                    } catch (err) {
+                        showNotification('error', 'Erro de conexão', 'Não foi possível conectar ao servidor.');
+                    }
+                });
+            }
+            
+            // Modal Editar Unidade
+            var modalEditarUnidade = document.getElementById('modal-editar-unidade');
+            var btnCancelarEditUnidade = document.getElementById('btn-cancelar-edit-unidade');
+            var selectEditUnidade = document.getElementById('edit-unidade-selecao');
+            var formEditarUnidade = document.getElementById('form-editar-unidade');
+            
+            if (btnCancelarEditUnidade && modalEditarUnidade) {
+                btnCancelarEditUnidade.addEventListener('click', function() {
+                    modalEditarUnidade.style.display = 'none';
+                });
+            }
+            
+            if (modalEditarUnidade) {
+                modalEditarUnidade.addEventListener('click', function(e) {
+                    if (e.target === modalEditarUnidade) {
+                        modalEditarUnidade.style.display = 'none';
+                    }
+                });
+            }
+            
+            // Event listener para carregar dados quando selecionar unidade
+            if (selectEditUnidade) {
+                selectEditUnidade.addEventListener('change', carregarDadosUnidade);
+            }
+            
+            // Event listeners para recalcular valor ao mudar quantitativos
+            const qtdEditInputs = document.querySelectorAll('.qtd-edit-unidade-input');
+            qtdEditInputs.forEach(input => {
+                input.addEventListener('input', function() {
+                    const loteId = document.getElementById('edit-unidade-lote-id').value;
+                    if (loteId) {
+                        calcularValorEditUnidade(loteId);
+                    }
+                });
+            });
+            
+            // Submit do formulário de editar unidade
+            if (formEditarUnidade) {
+                formEditarUnidade.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    const unidadeId = document.getElementById('edit-unidade-id').value;
+                    const loteId = document.getElementById('edit-unidade-lote-id').value;
+                    const nome = document.getElementById('edit-unidade-nome').value.trim();
+                    
+                    if (!unidadeId) {
+                        showNotification('warning', 'Atenção', 'Selecione uma unidade.');
+                        return;
+                    }
+                    
+                    if (!nome) {
+                        showNotification('warning', 'Atenção', 'Digite o nome da unidade.');
+                        return;
+                    }
+                    
+                    // Coletar quantitativos
+                    const quantitativos = {
+                        cafe: {
+                            interno: parseInt(document.getElementById('edit-qtd-cafe-interno').value) || 0,
+                            funcionario: parseInt(document.getElementById('edit-qtd-cafe-funcionario').value) || 0
+                        },
+                        almoco: {
+                            interno: parseInt(document.getElementById('edit-qtd-almoco-interno').value) || 0,
+                            funcionario: parseInt(document.getElementById('edit-qtd-almoco-funcionario').value) || 0
+                        },
+                        lanche: {
+                            interno: parseInt(document.getElementById('edit-qtd-lanche-interno').value) || 0,
+                            funcionario: parseInt(document.getElementById('edit-qtd-lanche-funcionario').value) || 0
+                        },
+                        jantar: {
+                            interno: parseInt(document.getElementById('edit-qtd-jantar-interno').value) || 0,
+                            funcionario: parseInt(document.getElementById('edit-qtd-jantar-funcionario').value) || 0
+                        }
+                    };
+                    
+                    // Calcular valor_contratual_unidade
+                    const lote = lotesData.find(l => l.id === parseInt(loteId));
+                    if (!lote || !lote.precos) {
+                        showNotification('error', 'Erro', 'Não foi possível obter os preços do lote.');
+                        return;
+                    }
+                    
+                    const precos = lote.precos;
+                    let valor_contratual_unidade = 0;
+                    
+                    for (const refeicao in quantitativos) {
+                        for (const tipo in quantitativos[refeicao]) {
+                            const qtd = quantitativos[refeicao][tipo];
+                            let preco = 0;
+                            
+                            if (typeof precos[refeicao] === 'object') {
+                                preco = parseFloat(precos[refeicao][tipo]) || 0;
+                            } else {
+                                const key = `${refeicao}_${tipo}`;
+                                preco = parseFloat(precos[key]) || 0;
+                            }
+                            
+                            valor_contratual_unidade += preco * qtd;
+                        }
+                    }
+                    
+                    // Enviar para backend
+                    try {
+                        const resp = await fetch(`/api/editar-unidade/${unidadeId}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                nome: nome,
+                                quantitativos_unidade: JSON.stringify(quantitativos),
+                                valor_contratual_unidade: valor_contratual_unidade
+                            }),
+                            credentials: 'same-origin'
+                        });
+                        
+                        const data = await resp.json();
+                        
+                        if (resp.ok && data.success) {
+                            showNotification('success', 'Sucesso!', `Unidade "${nome}" atualizada com sucesso!`);
+                            modalEditarUnidade.style.display = 'none';
+                            setTimeout(() => window.location.reload(), 1500);
+                        } else {
+                            showNotification('error', 'Erro', data.message || 'Não foi possível atualizar a unidade.');
+                        }
+                    } catch (err) {
+                        showNotification('error', 'Erro de conexão', 'Não foi possível conectar ao servidor.');
+                    }
+                });
+            }
+            
+            // Modal Excluir Unidade
+            var modalExcluirUnidade = document.getElementById('modal-excluir-unidade');
+            var btnCancelarDelUnidade = document.getElementById('btn-cancelar-del-unidade');
+            var btnProsseguirDelUnidade = document.getElementById('btn-prosseguir-del-unidade');
+            var modalConfirmacaoUnidade = document.getElementById('modal-confirmacao-exclusao-unidade');
+            var btnCancelarConfirmacaoUnidade = document.getElementById('btn-cancelar-confirmacao-unidade');
+            var btnConfirmarConfirmacaoUnidade = document.getElementById('btn-confirmar-confirmacao-unidade');
+            var unidadeIdParaExcluir = null;
+            
+            if (btnCancelarDelUnidade && modalExcluirUnidade) {
+                btnCancelarDelUnidade.addEventListener('click', function() {
+                    modalExcluirUnidade.style.display = 'none';
+                });
+            }
+            
+            if (modalExcluirUnidade) {
+                modalExcluirUnidade.addEventListener('click', function(e) {
+                    if (e.target === modalExcluirUnidade) {
+                        modalExcluirUnidade.style.display = 'none';
+                    }
+                });
+            }
+            
+            // Botão prosseguir - abre modal de confirmação
+            if (btnProsseguirDelUnidade) {
+                btnProsseguirDelUnidade.addEventListener('click', function() {
+                    const selectUnidade = document.getElementById('del-unidade-selecao');
+                    const unidadeId = selectUnidade.value;
+                    
+                    if (!unidadeId) {
+                        showNotification('warning', 'Atenção', 'Selecione uma unidade para excluir.');
+                        return;
+                    }
+                    
+                    // Pegar nome da unidade
+                    const selectedOption = selectUnidade.options[selectUnidade.selectedIndex];
+                    const nomeUnidade = selectedOption.dataset.nome || selectedOption.text;
+                    
+                    // Guardar ID da unidade
+                    unidadeIdParaExcluir = unidadeId;
+                    
+                    // Atualizar mensagem de confirmação
+                    document.getElementById('mensagem-confirmacao-unidade').textContent = 
+                        `Você está prestes a excluir a unidade "${nomeUnidade}". A unidade será removida permanentemente do sistema.`;
+                    
+                    // Fechar modal de seleção e abrir modal de confirmação
+                    modalExcluirUnidade.style.display = 'none';
+                    modalConfirmacaoUnidade.style.display = 'block';
+                });
+            }
+            
+            // Cancelar confirmação
+            if (btnCancelarConfirmacaoUnidade) {
+                btnCancelarConfirmacaoUnidade.addEventListener('click', function() {
+                    modalConfirmacaoUnidade.style.display = 'none';
+                    unidadeIdParaExcluir = null;
+                });
+            }
+            
+            // Confirmar exclusão
+            if (btnConfirmarConfirmacaoUnidade) {
+                btnConfirmarConfirmacaoUnidade.addEventListener('click', async function() {
+                    if (!unidadeIdParaExcluir) return;
+                    
+                    // Desabilitar botão durante a requisição
+                    btnConfirmarConfirmacaoUnidade.disabled = true;
+                    btnConfirmarConfirmacaoUnidade.textContent = 'Excluindo...';
+                    
+                    try {
+                        const resp = await fetch(`/api/excluir-unidade/${unidadeIdParaExcluir}`, {
+                            method: 'DELETE',
+                            credentials: 'same-origin'
+                        });
+                        const data = await resp.json();
+                        
+                        if (resp.ok && data.success) {
+                            showNotification('success', 'Sucesso!', data.message);
+                            modalConfirmacaoUnidade.style.display = 'none';
+                            setTimeout(() => window.location.reload(), 1200);
+                        } else {
+                            showNotification('error', 'Erro', data.message || 'Não foi possível excluir a unidade.');
+                            btnConfirmarConfirmacaoUnidade.disabled = false;
+                            btnConfirmarConfirmacaoUnidade.textContent = 'Excluir Unidade';
+                        }
+                    } catch (err) {
+                        showNotification('error', 'Erro de conexão', 'Não foi possível conectar ao servidor.');
+                        btnConfirmarConfirmacaoUnidade.disabled = false;
+                        btnConfirmarConfirmacaoUnidade.textContent = 'Excluir Unidade';
+                    }
+                });
+            }
+            
+            // Fechar modal ao clicar fora
+            if (modalConfirmacaoUnidade) {
+                modalConfirmacaoUnidade.addEventListener('click', function(e) {
+                    if (e.target === modalConfirmacaoUnidade) {
+                        modalConfirmacaoUnidade.style.display = 'none';
+                        unidadeIdParaExcluir = null;
+                    }
+                });
+            }
+
             // Botão Novo Lote - abrir modal
             var novoLoteBtn = document.getElementById('novoLote');
             var modalNovoLote = document.getElementById('modal-novo-lote');
@@ -754,6 +1309,8 @@
             if (novoLoteBtn && modalNovoLote) {
                 novoLoteBtn.addEventListener('click', function() {
                     modalNovoLote.style.display = 'block';
+                    // Calcular valor inicial
+                    calcularValorContratualCriacao();
                 });
             }
             if (btnCancelarNovoLote && modalNovoLote) {
@@ -761,6 +1318,18 @@
                     modalNovoLote.style.display = 'none';
                 });
             }
+
+            // Adicionar event listeners para recalcular valor no modal de criação
+            const refeicoesCriacao = ['cafe', 'almoco', 'lanche', 'jantar'];
+            const tiposCriacao = ['interno', 'funcionario'];
+            refeicoesCriacao.forEach(refeicao => {
+                tiposCriacao.forEach(tipo => {
+                    const precoInput = document.getElementById(`preco-${refeicao}-${tipo}`);
+                    const qtdInput = document.getElementById(`qtd-${refeicao}-${tipo}`);
+                    if (precoInput) precoInput.addEventListener('input', calcularValorContratualCriacao);
+                    if (qtdInput) qtdInput.addEventListener('input', calcularValorContratualCriacao);
+                });
+            });
 
             // Botão Editar Lote - abrir modal
             var editarLoteBtn = document.getElementById('editarLote');
@@ -772,7 +1341,6 @@
                 editarLoteBtn.addEventListener('click', function() {
                     // Limpar seleção e campos
                     document.getElementById('editar-lote-selecao').value = '';
-                    document.getElementById('editar-unidades-lista').innerHTML = '';
                     modalEditarLote.style.display = 'block';
                 });
             }
@@ -790,12 +1358,21 @@
                     const loteId = this.value;
                     if (loteId) {
                         carregarDadosLote(loteId);
-                    } else {
-                        // Limpar campos se desselecionar
-                        document.getElementById('editar-unidades-lista').innerHTML = '';
                     }
                 });
             }
+
+            // Adicionar event listeners para recalcular valor no modal de edição
+            const refeicoesEdicao = ['cafe', 'almoco', 'lanche', 'jantar'];
+            const tiposEdicao = ['interno', 'funcionario'];
+            refeicoesEdicao.forEach(refeicao => {
+                tiposEdicao.forEach(tipo => {
+                    const precoInput = document.getElementById(`editar-preco-${refeicao}-${tipo}`);
+                    const qtdInput = document.getElementById(`editar-qtd-${refeicao}-${tipo}`);
+                    if (precoInput) precoInput.addEventListener('input', calcularValorContratualEdicao);
+                    if (qtdInput) qtdInput.addEventListener('input', calcularValorContratualEdicao);
+                });
+            });
 
             // Submit do formulário de edição
             var formEditarLote = document.getElementById('form-editar-lote');
@@ -815,20 +1392,10 @@
                     const numero_contrato = document.getElementById('editar-lote-contrato').value.trim();
                     const data_inicio = document.getElementById('editar-lote-inicio').value;
                     const data_fim = document.getElementById('editar-lote-fim').value;
-                    const valor_contratual = document.getElementById('editar-lote-valor-contratual').value;
                     const ativo = document.getElementById('editar-lote-ativo-sim').checked ? 'true' : 'false';
                     
-                    // Coletar novas unidades (apenas as que não são existentes)
-                    const unidadeInputs = Array.from(document.querySelectorAll('#editar-unidades-lista .unidade-item-editar'));
+                    // Unidades não são mais editadas via modal de lote
                     const novas_unidades = [];
-                    unidadeInputs.forEach(div => {
-                        if (!div.dataset.existing || div.dataset.existing !== 'true') {
-                            const input = div.querySelector('input[name="unidades[]"]');
-                            if (input && input.value.trim()) {
-                                novas_unidades.push(input.value.trim());
-                            }
-                        }
-                    });
                     
                     // Coletar preços
                     const precos = {
@@ -849,6 +1416,36 @@
                             funcionario: document.getElementById('editar-preco-jantar-funcionario').value
                         }
                     };
+                    
+                    // Coletar quantitativos
+                    const quantitativos = {
+                        cafe: {
+                            interno: parseInt(document.getElementById('editar-qtd-cafe-interno').value) || 0,
+                            funcionario: parseInt(document.getElementById('editar-qtd-cafe-funcionario').value) || 0
+                        },
+                        almoco: {
+                            interno: parseInt(document.getElementById('editar-qtd-almoco-interno').value) || 0,
+                            funcionario: parseInt(document.getElementById('editar-qtd-almoco-funcionario').value) || 0
+                        },
+                        lanche: {
+                            interno: parseInt(document.getElementById('editar-qtd-lanche-interno').value) || 0,
+                            funcionario: parseInt(document.getElementById('editar-qtd-lanche-funcionario').value) || 0
+                        },
+                        jantar: {
+                            interno: parseInt(document.getElementById('editar-qtd-jantar-interno').value) || 0,
+                            funcionario: parseInt(document.getElementById('editar-qtd-jantar-funcionario').value) || 0
+                        }
+                    };
+                    
+                    // Calcular valor_contratual
+                    let valor_contratual = 0;
+                    for (const refeicao in precos) {
+                        for (const tipo in precos[refeicao]) {
+                            const preco = parseFloat(precos[refeicao][tipo]) || 0;
+                            const qtd = quantitativos[refeicao][tipo] || 0;
+                            valor_contratual += preco * qtd;
+                        }
+                    }
                     
                     // Validação básica
                     if (!nome_lote || !nome_empresa || !numero_contrato || !data_inicio || !data_fim) {
@@ -871,6 +1468,7 @@
                                 valor_contratual,
                                 ativo,
                                 precos,
+                                quantitativos,
                                 novas_unidades
                             })
                         });
@@ -900,10 +1498,8 @@
                         const numero_contrato = document.getElementById('novo-lote-contrato').value.trim();
                         const data_inicio = document.getElementById('novo-lote-inicio').value;
                         const data_fim = document.getElementById('novo-lote-fim').value;
-                        const valor_contratual = document.getElementById('novo-lote-valor-contratual').value;
-                        // Unidades
-                        const unidadeInputs = Array.from(document.querySelectorAll('#unidades-lista input[name="unidades[]"]'));
-                        const unidades = unidadeInputs.map(i => i.value.trim()).filter(Boolean);
+                        // Unidades sempre vazio - gerenciamento separado
+                        const unidades = [];
                         // Preços
                         const precos = {
                             cafe: {
@@ -923,12 +1519,40 @@
                                 funcionario: document.getElementById('preco-jantar-funcionario')?.value || ''
                             }
                         };
+                        // Quantitativos
+                        const quantitativos = {
+                            cafe: {
+                                interno: parseInt(document.getElementById('qtd-cafe-interno').value) || 0,
+                                funcionario: parseInt(document.getElementById('qtd-cafe-funcionario').value) || 0
+                            },
+                            almoco: {
+                                interno: parseInt(document.getElementById('qtd-almoco-interno').value) || 0,
+                                funcionario: parseInt(document.getElementById('qtd-almoco-funcionario').value) || 0
+                            },
+                            lanche: {
+                                interno: parseInt(document.getElementById('qtd-lanche-interno')?.value) || 0,
+                                funcionario: parseInt(document.getElementById('qtd-lanche-funcionario')?.value) || 0
+                            },
+                            jantar: {
+                                interno: parseInt(document.getElementById('qtd-jantar-interno')?.value) || 0,
+                                funcionario: parseInt(document.getElementById('qtd-jantar-funcionario')?.value) || 0
+                            }
+                        };
+                        
+                        // Calcular valor_contratual
+                        let valor_contratual = 0;
+                        for (const refeicao in precos) {
+                            for (const tipo in precos[refeicao]) {
+                                const preco = parseFloat(precos[refeicao][tipo]) || 0;
+                                const qtd = quantitativos[refeicao][tipo] || 0;
+                                valor_contratual += preco * qtd;
+                            }
+                        }
+                        
                         // Validação: nenhum campo pode estar vazio
                         let erro = '';
                         if (!nome_lote || !nome_empresa || !numero_contrato || !data_inicio || !data_fim) {
                             erro = 'Preencha todos os campos obrigatórios.';
-                        } else if (unidades.length === 0 || unidadeInputs.some(i => !i.value.trim())) {
-                            erro = 'Adicione pelo menos uma unidade e não deixe campos de unidade em branco.';
                         } else {
                             for (const grupo in precos) {
                                 for (const tipo in precos[grupo]) {
@@ -950,7 +1574,7 @@
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 credentials: 'same-origin',
-                                body: JSON.stringify({ nome_lote, nome_empresa, numero_contrato, data_inicio, data_fim, valor_contratual, precos, unidades })
+                                body: JSON.stringify({ nome_lote, nome_empresa, numero_contrato, data_inicio, data_fim, valor_contratual, precos, quantitativos, unidades })
                             });
                             const data = await resp.json();
                             if (resp.ok && data.success) {
@@ -1315,6 +1939,221 @@ function closeNotification(button) {
         setTimeout(() => {
             notification.remove();
         }, 300);
+    }
+}
+
+// Funções para gerenciamento de unidades
+function adicionarUnidade(loteId) {
+    // Buscar dados do lote para obter os preços
+    const lote = lotesData.find(l => l.id === parseInt(loteId));
+    if (!lote) {
+        showNotification('error', 'Erro', 'Lote não encontrado.');
+        return;
+    }
+    
+    // Armazenar lote_id no campo hidden
+    document.getElementById('add-unidade-lote-id').value = loteId;
+    
+    // Limpar formulário
+    document.getElementById('form-adicionar-unidade').reset();
+    document.getElementById('add-unidade-lote-id').value = loteId;
+    document.getElementById('add-unidade-valor').value = 'R$ 0,00';
+    
+    // Abrir modal
+    document.getElementById('modal-adicionar-unidade').style.display = 'block';
+    
+    // Configurar event listeners para calcular valor automaticamente
+    const qtdInputs = document.querySelectorAll('.qtd-unidade-input');
+    qtdInputs.forEach(input => {
+        input.addEventListener('input', () => calcularValorUnidade(loteId));
+    });
+}
+
+function calcularValorUnidade(loteId) {
+    // Buscar preços do lote
+    const lote = lotesData.find(l => l.id === parseInt(loteId));
+    if (!lote || !lote.precos) {
+        return;
+    }
+    
+    const precos = lote.precos;
+    const refeicoes = ['cafe', 'almoco', 'lanche', 'jantar'];
+    const tipos = ['interno', 'funcionario'];
+    let total = 0;
+    
+    refeicoes.forEach(refeicao => {
+        tipos.forEach(tipo => {
+            const qtd = parseInt(document.getElementById(`add-qtd-${refeicao}-${tipo}`)?.value) || 0;
+            let preco = 0;
+            
+            // Extrair preço do lote
+            if (typeof precos[refeicao] === 'object') {
+                preco = parseFloat(precos[refeicao][tipo]) || 0;
+            } else {
+                const key = `${refeicao}_${tipo}`;
+                preco = parseFloat(precos[key]) || 0;
+            }
+            
+            total += preco * qtd;
+        });
+    });
+    
+    document.getElementById('add-unidade-valor').value = `R$ ${total.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+}
+
+async function editarUnidade(loteId) {
+    // Buscar dados do lote
+    const lote = lotesData.find(l => l.id === parseInt(loteId));
+    if (!lote) {
+        showNotification('error', 'Erro', 'Lote não encontrado.');
+        return;
+    }
+    
+    // Armazenar lote_id
+    document.getElementById('edit-unidade-lote-id').value = loteId;
+    
+    // Limpar formulário
+    document.getElementById('form-editar-unidade').reset();
+    document.getElementById('edit-unidade-lote-id').value = loteId;
+    document.getElementById('edit-unidade-valor').value = 'R$ 0,00';
+    
+    // Limpar select de unidades
+    const selectUnidade = document.getElementById('edit-unidade-selecao');
+    selectUnidade.innerHTML = '<option value="">Carregando unidades...</option>';
+    
+    // Buscar unidades do lote
+    try {
+        const resp = await fetch(`/api/listar-unidades/${loteId}`);
+        const data = await resp.json();
+        
+        if (resp.ok && data.success && data.unidades && data.unidades.length > 0) {
+            // Preencher select com unidades
+            selectUnidade.innerHTML = '<option value="">Selecione uma unidade...</option>';
+            data.unidades.forEach(u => {
+                const option = document.createElement('option');
+                option.value = u.id;
+                option.textContent = `${u.nome} (ID: ${u.id})`;
+                option.dataset.unidade = JSON.stringify(u);
+                selectUnidade.appendChild(option);
+            });
+            
+            // Abrir modal
+            document.getElementById('modal-editar-unidade').style.display = 'block';
+        } else {
+            showNotification('warning', 'Sem unidades', 'Este lote não possui unidades cadastradas.');
+        }
+    } catch (err) {
+        showNotification('error', 'Erro', 'Não foi possível carregar as unidades.');
+    }
+}
+
+function carregarDadosUnidade() {
+    const selectUnidade = document.getElementById('edit-unidade-selecao');
+    const selectedOption = selectUnidade.options[selectUnidade.selectedIndex];
+    
+    if (!selectedOption || !selectedOption.value) {
+        return;
+    }
+    
+    try {
+        const unidade = JSON.parse(selectedOption.dataset.unidade);
+        const loteId = document.getElementById('edit-unidade-lote-id').value;
+        
+        // Armazenar ID da unidade
+        document.getElementById('edit-unidade-id').value = unidade.id;
+        
+        // Preencher nome
+        document.getElementById('edit-unidade-nome').value = unidade.nome || '';
+        
+        // Preencher quantitativos
+        const quantitativos = unidade.quantitativos_unidade || {};
+        
+        document.getElementById('edit-qtd-cafe-interno').value = quantitativos.cafe?.interno || 0;
+        document.getElementById('edit-qtd-cafe-funcionario').value = quantitativos.cafe?.funcionario || 0;
+        document.getElementById('edit-qtd-almoco-interno').value = quantitativos.almoco?.interno || 0;
+        document.getElementById('edit-qtd-almoco-funcionario').value = quantitativos.almoco?.funcionario || 0;
+        document.getElementById('edit-qtd-lanche-interno').value = quantitativos.lanche?.interno || 0;
+        document.getElementById('edit-qtd-lanche-funcionario').value = quantitativos.lanche?.funcionario || 0;
+        document.getElementById('edit-qtd-jantar-interno').value = quantitativos.jantar?.interno || 0;
+        document.getElementById('edit-qtd-jantar-funcionario').value = quantitativos.jantar?.funcionario || 0;
+        
+        // Calcular valor
+        calcularValorEditUnidade(loteId);
+    } catch (err) {
+        console.error('Erro ao carregar dados da unidade:', err);
+    }
+}
+
+function calcularValorEditUnidade(loteId) {
+    // Buscar preços do lote
+    const lote = lotesData.find(l => l.id === parseInt(loteId));
+    if (!lote || !lote.precos) {
+        return;
+    }
+    
+    const precos = lote.precos;
+    const refeicoes = ['cafe', 'almoco', 'lanche', 'jantar'];
+    const tipos = ['interno', 'funcionario'];
+    let total = 0;
+    
+    refeicoes.forEach(refeicao => {
+        tipos.forEach(tipo => {
+            const qtd = parseInt(document.getElementById(`edit-qtd-${refeicao}-${tipo}`)?.value) || 0;
+            let preco = 0;
+            
+            // Extrair preço do lote
+            if (typeof precos[refeicao] === 'object') {
+                preco = parseFloat(precos[refeicao][tipo]) || 0;
+            } else {
+                const key = `${refeicao}_${tipo}`;
+                preco = parseFloat(precos[key]) || 0;
+            }
+            
+            total += preco * qtd;
+        });
+    });
+    
+    document.getElementById('edit-unidade-valor').value = `R$ ${total.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+}
+
+async function excluirUnidade(loteId) {
+    // Buscar dados do lote
+    const lote = lotesData.find(l => l.id === parseInt(loteId));
+    if (!lote) {
+        showNotification('error', 'Erro', 'Lote não encontrado.');
+        return;
+    }
+    
+    // Armazenar lote_id
+    document.getElementById('del-unidade-lote-id').value = loteId;
+    
+    // Limpar select de unidades
+    const selectUnidade = document.getElementById('del-unidade-selecao');
+    selectUnidade.innerHTML = '<option value="">Carregando unidades...</option>';
+    
+    // Buscar unidades do lote
+    try {
+        const resp = await fetch(`/api/listar-unidades/${loteId}`);
+        const data = await resp.json();
+        
+        if (resp.ok && data.success && data.unidades && data.unidades.length > 0) {
+            // Preencher select com unidades
+            selectUnidade.innerHTML = '<option value="">Selecione uma unidade...</option>';
+            data.unidades.forEach(u => {
+                const option = document.createElement('option');
+                option.value = u.id;
+                option.textContent = `${u.nome} (ID: ${u.id})`;
+                option.dataset.nome = u.nome;
+                selectUnidade.appendChild(option);
+            });
+            
+            // Abrir modal
+            document.getElementById('modal-excluir-unidade').style.display = 'block';
+        } else {
+            showNotification('warning', 'Sem unidades', 'Este lote não possui unidades cadastradas.');
+        }
+    } catch (err) {
+        showNotification('error', 'Erro', 'Não foi possível carregar as unidades.');
     }
 }
     </script>

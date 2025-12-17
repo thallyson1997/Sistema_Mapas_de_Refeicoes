@@ -223,6 +223,96 @@ def api_excluir_lote(lote_id):
     except Exception as e:
         return jsonify({'success': False, 'error': f'Erro interno: {e}'}), 500
 
+# ----- Rotas API para Unidades -----
+@app.route('/api/adicionar-unidade', methods=['POST'])
+def api_adicionar_unidade_route():
+    """Adiciona uma nova unidade ao lote"""
+    try:
+        from functions.unidades import api_adicionar_unidade
+        data = request.get_json()
+        
+        if not data.get('lote_id'):
+            return jsonify({'success': False, 'message': 'ID do lote é obrigatório'}), 400
+        
+        if not data.get('nome'):
+            return jsonify({'success': False, 'message': 'Nome da unidade é obrigatório'}), 400
+        
+        resultado = api_adicionar_unidade(
+            lote_id=data['lote_id'],
+            nome=data['nome'],
+            quantitativos_unidade=data.get('quantitativos_unidade', '{}'),
+            valor_contratual_unidade=data.get('valor_contratual_unidade', 0.0)
+        )
+        
+        if resultado['success']:
+            return jsonify(resultado), 200
+        else:
+            return jsonify(resultado), 400
+            
+    except Exception as e:
+        print(f'Erro na rota adicionar-unidade: {str(e)}')
+        return jsonify({'success': False, 'message': f'Erro interno: {str(e)}'}), 500
+
+
+@app.route('/api/editar-unidade/<int:unidade_id>', methods=['POST', 'PUT'])
+def api_editar_unidade_route(unidade_id):
+    """Edita uma unidade existente"""
+    try:
+        from functions.unidades import api_editar_unidade
+        data = request.get_json()
+        
+        resultado = api_editar_unidade(
+            unidade_id=unidade_id,
+            nome=data.get('nome'),
+            quantitativos_unidade=data.get('quantitativos_unidade'),
+            valor_contratual_unidade=data.get('valor_contratual_unidade'),
+            ativo=data.get('ativo')
+        )
+        
+        if resultado['success']:
+            return jsonify(resultado), 200
+        else:
+            return jsonify(resultado), 400
+            
+    except Exception as e:
+        print(f'Erro na rota editar-unidade: {str(e)}')
+        return jsonify({'success': False, 'message': f'Erro interno: {str(e)}'}), 500
+
+
+@app.route('/api/excluir-unidade/<int:unidade_id>', methods=['DELETE'])
+def api_excluir_unidade_route(unidade_id):
+    """Exclui uma unidade"""
+    try:
+        from functions.unidades import api_excluir_unidade
+        
+        resultado = api_excluir_unidade(unidade_id)
+        
+        if resultado['success']:
+            return jsonify(resultado), 200
+        else:
+            return jsonify(resultado), 400
+            
+    except Exception as e:
+        print(f'Erro na rota excluir-unidade: {str(e)}')
+        return jsonify({'success': False, 'message': f'Erro interno: {str(e)}'}), 500
+
+
+@app.route('/api/listar-unidades/<int:lote_id>', methods=['GET'])
+def api_listar_unidades_route(lote_id):
+    """Lista todas as unidades de um lote"""
+    try:
+        from functions.unidades import api_listar_unidades
+        
+        resultado = api_listar_unidades(lote_id)
+        
+        if resultado['success']:
+            return jsonify(resultado), 200
+        else:
+            return jsonify(resultado), 400
+            
+    except Exception as e:
+        print(f'Erro na rota listar-unidades: {str(e)}')
+        return jsonify({'success': False, 'message': f'Erro interno: {str(e)}'}), 500
 @app.route('/dashboard')
 def dashboard():
     #Página do dashboard

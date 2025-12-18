@@ -45,6 +45,7 @@ class Lote(db.Model):
     data_contrato = db.Column(db.String(32), nullable=True)
     status = db.Column(db.String(32), nullable=True)
     descricao = db.Column(db.Text, nullable=True)
+    lote_predecessor_id = db.Column(db.Integer, nullable=True)  # ID do lote predecessor (histórico)
 
     def __repr__(self):
         return f'<Lote {self.id} {self.nome}>'
@@ -57,6 +58,7 @@ class Unidade(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(128), nullable=False)
     lote_id = db.Column(db.Integer, nullable=True)
+    unidade_principal_id = db.Column(db.Integer, nullable=True)  # ID da unidade principal (NULL se independente)
     quantitativos_unidade = db.Column(db.Text, nullable=True)  # JSON/texto
     valor_contratual_unidade = db.Column(db.Float, nullable=True)
     criado_em = db.Column(db.String(32), nullable=True)

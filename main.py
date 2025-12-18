@@ -241,7 +241,8 @@ def api_adicionar_unidade_route():
             lote_id=data['lote_id'],
             nome=data['nome'],
             quantitativos_unidade=data.get('quantitativos_unidade', '{}'),
-            valor_contratual_unidade=data.get('valor_contratual_unidade', 0.0)
+            valor_contratual_unidade=data.get('valor_contratual_unidade', 0.0),
+            unidade_principal_id=data.get('unidade_principal_id')
         )
         
         if resultado['success']:
@@ -266,7 +267,8 @@ def api_editar_unidade_route(unidade_id):
             nome=data.get('nome'),
             quantitativos_unidade=data.get('quantitativos_unidade'),
             valor_contratual_unidade=data.get('valor_contratual_unidade'),
-            ativo=data.get('ativo')
+            ativo=data.get('ativo'),
+            unidade_principal_id=data.get('unidade_principal_id')
         )
         
         if resultado['success']:
@@ -859,10 +861,37 @@ def exportar_tabela():
 def relatorios():
     #Página de relatórios e análises gráficas
     data = carregar_lotes_para_dashboard()
-    lotes = data.get('lotes', [])
+    lotes_raw = data.get('lotes', [])
+    
+    # Filtrar apenas lotes ATIVOS e adicionar informação de predecessores
+    from functions.lotes import Lote
+    from functions.unidades import Unidade
+    
+    lotes = []
+    for lote_dict in lotes_raw:
+        lote_id = lote_dict.get('id')
+        lote_obj = db.session.get(Lote, lote_id)
+        
+        if lote_obj and lote_obj.ativo:
+            # Contar quantos predecessores este lote tem (cadeia histórica)
+            num_predecessores = 0
+            predecessor_id = lote_obj.lote_predecessor_id
+            
+            while predecessor_id:
+                num_predecessores += 1
+                predecessor = db.session.get(Lote, predecessor_id)
+                predecessor_id = predecessor.lote_predecessor_id if predecessor else None
+            
+            # Adicionar indicação de histórico no nome
+            lote_dict_modificado = lote_dict.copy()
+            if num_predecessores > 0:
+                lote_dict_modificado['nome_display'] = f"{lote_dict['nome']} (+ {num_predecessores} período{'s' if num_predecessores > 1 else ''} histórico{'s' if num_predecessores > 1 else ''})"
+            else:
+                lote_dict_modificado['nome_display'] = lote_dict['nome']
+            
+            lotes.append(lote_dict_modificado)
     
     # Criar mapeamento de lote_id -> unidades e lista completa de unidades
-    from functions.unidades import Unidade
     lotes_unidades = {}  # {lote_id: [unidade1, unidade2, ...]}
     unidades_set = set()
     
@@ -872,11 +901,27 @@ def relatorios():
         lotes_unidades[lote_id] = []
         
         if unidades_ids:
-            for uid in unidades_ids:
-                unidade = db.session.get(Unidade, uid)
-                if unidade:
-                    lotes_unidades[lote_id].append(unidade.nome)
-                    unidades_set.add(unidade.nome)
+            # Buscar todas as unidades do lote
+            unidades_lote = Unidade.query.filter(
+                Unidade.id.in_(unidades_ids),
+                Unidade.ativo == True
+            ).all()
+            
+            # Contar subunidades por principal
+            subunidades_count = {}
+            for u in unidades_lote:
+                if u.unidade_principal_id:
+                    subunidades_count[u.unidade_principal_id] = subunidades_count.get(u.unidade_principal_id, 0) + 1
+            
+            # Adicionar apenas unidades principais (não subunidades)
+            for unidade in unidades_lote:
+                if not unidade.unidade_principal_id:  # Apenas independentes
+                    # Contar quantas subunidades esta principal tem
+                    num_agregadas = subunidades_count.get(unidade.id, 0)
+                    nome_exibicao = f"{unidade.nome} (+ {num_agregadas} agregada{'s' if num_agregadas != 1 else ''})" if num_agregadas > 0 else unidade.nome
+                    
+                    lotes_unidades[lote_id].append(nome_exibicao)
+                    unidades_set.add(nome_exibicao)
     
     unidades = sorted(list(unidades_set))
     

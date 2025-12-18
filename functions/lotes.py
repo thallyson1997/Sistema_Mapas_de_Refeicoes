@@ -22,11 +22,68 @@ def calcular_ultima_atividade_lotes(lotes, mapas=None):
 	datas = [d for d in datas if d]
 	return max(datas) if datas else None
 
-from .models import Lote, db
+from .models import Lote, Unidade, db
 from datetime import datetime
 from .unidades import criar_unidade
 
 import json
+
+def copiar_unidades_de_predecessor(lote_predecessor_id, novo_lote_id):
+	"""
+	Copia todas as unidades (incluindo subunidades) do lote predecessor para o novo lote.
+	Retorna a lista de IDs das novas unidades criadas.
+	"""
+	# Buscar unidades principais do predecessor (sem unidade_principal_id)
+	unidades_predecessor = Unidade.query.filter_by(
+		lote_id=lote_predecessor_id, 
+		unidade_principal_id=None
+	).all()
+	
+	novos_ids = []
+	mapeamento_ids = {}  # predecessor_id -> novo_id
+	
+	# Primeiro, copiar unidades principais
+	for unidade in unidades_predecessor:
+		nova_unidade = Unidade(
+			nome=unidade.nome,
+			lote_id=novo_lote_id,
+			unidade_principal_id=None,
+			quantitativos_unidade=unidade.quantitativos_unidade,
+			valor_contratual_unidade=unidade.valor_contratual_unidade,
+			criado_em=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+			ativo=unidade.ativo
+		)
+		db.session.add(nova_unidade)
+		db.session.flush()  # Para obter o ID
+		
+		novos_ids.append(nova_unidade.id)
+		mapeamento_ids[unidade.id] = nova_unidade.id
+	
+	# Depois, copiar subunidades e vincular às novas principais
+	subunidades_predecessor = Unidade.query.filter(
+		Unidade.lote_id == lote_predecessor_id,
+		Unidade.unidade_principal_id.isnot(None)
+	).all()
+	
+	for subunidade in subunidades_predecessor:
+		# Buscar o novo ID da unidade principal correspondente
+		nova_principal_id = mapeamento_ids.get(subunidade.unidade_principal_id)
+		if nova_principal_id:
+			nova_subunidade = Unidade(
+				nome=subunidade.nome,
+				lote_id=novo_lote_id,
+				unidade_principal_id=nova_principal_id,
+				quantitativos_unidade=subunidade.quantitativos_unidade,
+				valor_contratual_unidade=subunidade.valor_contratual_unidade,
+				criado_em=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+				ativo=subunidade.ativo
+			)
+			db.session.add(nova_subunidade)
+	
+	db.session.commit()
+	print(f"Copiadas {len(novos_ids)} unidades principais e {len(subunidades_predecessor)} subunidades do predecessor")
+	
+	return novos_ids
 
 def lote_to_dict(lote):
 	# Garantir que quantitativos seja carregado mesmo se houver problema de cache do SQLAlchemy
@@ -75,7 +132,7 @@ def listar_lotes():
 def deletar_lote(lote_id, db):
 	"""
 	Deleta um lote pelo ID e todos os dados associados (mapas e unidades).
-	Isso evita dados órfãos e conflitos de integridade referencial.
+	IMPORTANTE: Lotes predecessores NÃO são apagados (apenas o vínculo é removido).
 	"""
 	from .models import Mapa, Unidade
 	
@@ -84,21 +141,31 @@ def deletar_lote(lote_id, db):
 		return False
 	
 	try:
+		# 0. Se este lote tem um predecessor, preservá-lo (apenas limpar vínculo em outros lotes que apontam para este)
+		# Buscar lotes que tem este lote como predecessor
+		lotes_sucessores = db.session.query(Lote).filter_by(lote_predecessor_id=lote_id).all()
+		if lotes_sucessores:
+			print(f"⚠️ Lote {lote_id} é predecessor de {len(lotes_sucessores)} lote(s). Removendo vínculos...")
+			for sucessor in lotes_sucessores:
+				sucessor.lote_predecessor_id = None
+		
 		# 1. Excluir todos os mapas associados ao lote
 		mapas_deletados = db.session.query(Mapa).filter_by(lote_id=lote_id).delete()
 		print(f"🗑️ Excluídos {mapas_deletados} mapas do lote {lote_id}")
 		
-		# 2. Excluir todas as unidades associadas ao lote
+		# 2. Excluir todas as unidades associadas ao lote (incluindo subunidades)
 		unidades_deletadas = db.session.query(Unidade).filter_by(lote_id=lote_id).delete()
 		print(f"🗑️ Excluídas {unidades_deletadas} unidades do lote {lote_id}")
 		
-		# 3. Excluir o lote
+		# 3. Excluir o lote (predecessor fica intacto)
 		db.session.delete(lote)
 		
 		# 4. Commit de todas as alterações
 		db.session.commit()
 		
-		print(f"✅ Lote {lote_id} e todos os dados associados foram excluídos com sucesso")
+		print(f"✅ Lote {lote_id} e seus dados associados foram excluídos com sucesso")
+		if lote.lote_predecessor_id:
+			print(f"ℹ️ Lote predecessor (ID {lote.lote_predecessor_id}) foi preservado")
 		return True
 		
 	except Exception as e:
@@ -164,6 +231,27 @@ def salvar_novo_lote(payload: dict):
     if Lote.query.filter_by(nome=nome).first():
         return {'success': False, 'error': f'Já existe um lote com o nome "{nome}". Escolha um nome diferente.'}
 
+    # Validar predecessor se fornecido
+    lote_predecessor_id = payload.get('lote_predecessor_id')
+    if lote_predecessor_id:
+        try:
+            lote_predecessor_id = int(lote_predecessor_id) if lote_predecessor_id else None
+            
+            if lote_predecessor_id:
+                predecessor = Lote.query.get(lote_predecessor_id)
+                if not predecessor:
+                    return {'success': False, 'error': 'Lote predecessor não encontrado'}
+                
+                if predecessor.ativo:
+                    return {'success': False, 'error': 'Lote predecessor deve estar INATIVO'}
+                
+                # Verificar se predecessor já tem sucessor
+                sucessor_existente = Lote.query.filter_by(lote_predecessor_id=lote_predecessor_id).first()
+                if sucessor_existente:
+                    return {'success': False, 'error': f'Lote predecessor já tem um sucessor: "{sucessor_existente.nome}"'}
+        except ValueError:
+            lote_predecessor_id = None
+
     novo_lote = Lote(
         nome=nome,
         empresa=empresa,
@@ -180,17 +268,26 @@ def salvar_novo_lote(payload: dict):
         data_criacao=data_criacao,
         data_contrato=data_contrato,
         status=status,
-        descricao=descricao
+        descricao=descricao,
+        lote_predecessor_id=lote_predecessor_id
     )
     db.session.add(novo_lote)
     db.session.commit()
 
     # Criar unidades e associar ao lote
     unidade_ids = []
-    for nome_unidade in unidades_nomes:
-        res = criar_unidade(nome_unidade, lote_id=novo_lote.id)
-        if res.get('success'):
-            unidade_ids.append(res['id'])
+    
+    # Se tem predecessor, copiar unidades dele automaticamente
+    if lote_predecessor_id:
+        print(f"Copiando unidades do predecessor {lote_predecessor_id} para o novo lote {novo_lote.id}")
+        unidade_ids = copiar_unidades_de_predecessor(lote_predecessor_id, novo_lote.id)
+    else:
+        # Criar unidades manualmente fornecidas
+        for nome_unidade in unidades_nomes:
+            res = criar_unidade(nome_unidade, lote_id=novo_lote.id)
+            if res.get('success'):
+                unidade_ids.append(res['id'])
+    
     # Atualizar campo unidades do lote
     novo_lote.unidades = json.dumps(unidade_ids)
     db.session.commit()
@@ -217,6 +314,69 @@ def editar_lote(lote_id, payload: dict):
 		if lote_existente:
 			return {'success': False, 'error': f'Já existe um lote com o nome "{novo_nome}". Escolha um nome diferente.'}
 
+	# Verificar se está tentando ativar um lote que é predecessor de outro
+	if 'ativo' in payload:
+		novo_status_ativo = payload.get('ativo')
+		if isinstance(novo_status_ativo, str):
+			novo_status_ativo = novo_status_ativo.lower() in ['true', '1', 'sim', 'ativo']
+		
+		# Se está tentando ativar um lote que está inativo
+		if novo_status_ativo and not lote.ativo:
+			# Verificar se este lote é predecessor de algum outro
+			sucessor = Lote.query.filter_by(lote_predecessor_id=lote_id).first()
+			if sucessor:
+				return {
+					'success': False, 
+					'error': f'Este lote não pode ser ativado pois é predecessor do lote "{sucessor.nome}". Para reativá-lo, edite o lote sucessor e remova o vínculo de predecessor.'
+				}
+
+	# Validar predecessor se fornecido
+	if 'lote_predecessor_id' in payload:
+		lote_predecessor_id = payload.get('lote_predecessor_id')
+		
+		try:
+			lote_predecessor_id = int(lote_predecessor_id) if lote_predecessor_id else None
+			
+			if lote_predecessor_id:
+				# Não permitir self-reference
+				if lote_predecessor_id == lote_id:
+					return {'success': False, 'error': 'Um lote não pode ser predecessor de si mesmo'}
+				
+				predecessor = Lote.query.get(lote_predecessor_id)
+				if not predecessor:
+					return {'success': False, 'error': 'Lote predecessor não encontrado'}
+				
+				if predecessor.ativo:
+					return {'success': False, 'error': 'Lote predecessor deve estar INATIVO'}
+				
+				# Verificar se predecessor já tem outro sucessor
+				sucessor_existente = Lote.query.filter(
+					Lote.lote_predecessor_id == lote_predecessor_id,
+					Lote.id != lote_id
+				).first()
+				if sucessor_existente:
+					return {'success': False, 'error': f'Lote predecessor já tem um sucessor: "{sucessor_existente.nome}"'}
+		except ValueError:
+			lote_predecessor_id = None
+		
+		payload['lote_predecessor_id'] = lote_predecessor_id
+		
+		# Se o predecessor foi alterado e agora tem um predecessor válido, copiar unidades
+		predecessor_atual = lote.lote_predecessor_id
+		if lote_predecessor_id and lote_predecessor_id != predecessor_atual:
+			print(f"Predecessor alterado para {lote_predecessor_id}. Copiando unidades...")
+			
+			# Remover unidades antigas do lote (mas não deletar do banco, só desvincular)
+			# Na verdade, vamos deletar as antigas e criar novas baseadas no predecessor
+			unidades_antigas = Unidade.query.filter_by(lote_id=lote_id).all()
+			for unidade in unidades_antigas:
+				db.session.delete(unidade)
+			db.session.commit()
+			
+			# Copiar unidades do novo predecessor
+			unidade_ids = copiar_unidades_de_predecessor(lote_predecessor_id, lote_id)
+			payload['unidades'] = json.dumps(unidade_ids)
+
 	try:
 		# Calcular valor_contratual se precos ou quantitativos forem atualizados
 		if 'precos' in payload or 'quantitativos' in payload:
@@ -235,7 +395,7 @@ def editar_lote(lote_id, payload: dict):
 		for campo in [
 			'nome', 'empresa', 'numero_contrato', 'numero', 'data_inicio', 'data_fim',
 			'valor_contratual', 'unidades', 'precos', 'quantitativos', 'ativo', 'criado_em',
-			'data_criacao', 'data_contrato', 'status', 'descricao'
+			'data_criacao', 'data_contrato', 'status', 'descricao', 'lote_predecessor_id'
 		]:
 			if campo in payload:
 				valor = payload[campo]

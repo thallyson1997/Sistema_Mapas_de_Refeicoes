@@ -1356,8 +1356,8 @@
                         responsive: true,
                         maintainAspectRatio: true,
                         interaction: {
-                            mode: 'index',
-                            intersect: false
+                            mode: 'nearest',
+                            intersect: true
                         },
                         plugins: {
                             legend: {
@@ -1377,8 +1377,8 @@
                                 }
                             },
                             tooltip: {
-                                mode: 'index',
-                                intersect: false,
+                                mode: 'nearest',
+                                intersect: true,
                                 callbacks: {
                                     label: function(context) {
                                         let label = context.dataset.label || '';
@@ -1830,7 +1830,7 @@
                 }
                 
                 // Adicionar linhas de valor contratual APENAS em modo acumulada
-                if (tipoVisualizacao === 'acumulada' && dados.valores_contratuais && dados.valores_contratuais.length > 0) {
+                if (tipoVisualizacao === 'acumulada') {
                     const coresContratuais = [
                         'rgb(220, 38, 38)',   // vermelho
                         'rgb(234, 88, 12)',   // laranja
@@ -1839,23 +1839,52 @@
                         'rgb(6, 182, 212)',   // ciano
                     ];
                     
-                    dados.valores_contratuais.forEach((contrato, idx) => {
-                        const linhaValorContratual = Array(allLabels.length).fill(contrato.valor_contratual);
-                        const cor = coresContratuais[idx % coresContratuais.length];
-                        
-                        datasets.push({
-                            label: `Valor Contratual - ${contrato.lote_nome}`,
-                            data: linhaValorContratual,
-                            borderColor: cor,
-                            backgroundColor: 'transparent',
-                            borderWidth: 2,
-                            borderDash: [8, 4],
-                            fill: false,
-                            pointRadius: 0,
-                            pointHoverRadius: 4,
-                            tension: 0
+                    // Se modo for 'unidade', usar valores contratuais das unidades
+                    if (dados.modo === 'unidade' && dados.valores_contratuais_unidades) {
+                        console.log('💰 Adicionando valores contratuais por unidade:', dados.valores_contratuais_unidades);
+                        let idx = 0;
+                        for (const [nomeUnidade, valorContratual] of Object.entries(dados.valores_contratuais_unidades)) {
+                            const linhaValorContratual = Array(allLabels.length).fill(valorContratual);
+                            const cor = coresContratuais[idx % coresContratuais.length];
+                            
+                            datasets.push({
+                                label: `Valor Contratual - ${nomeUnidade}`,
+                                data: linhaValorContratual,
+                                borderColor: cor,
+                                backgroundColor: 'transparent',
+                                borderWidth: 2,
+                                borderDash: [8, 4],
+                                fill: false,
+                                pointRadius: 0,
+                                pointHoverRadius: 6,
+                                hitRadius: 20,
+                                tension: 0
+                            });
+                            idx++;
+                        }
+                    }
+                    // Caso contrário, usar valor contratual do lote (modo acumulado)
+                    else if (dados.valores_contratuais && dados.valores_contratuais.length > 0) {
+                        console.log('💰 Adicionando valores contratuais do lote:', dados.valores_contratuais);
+                        dados.valores_contratuais.forEach((contrato, idx) => {
+                            const linhaValorContratual = Array(allLabels.length).fill(contrato.valor_contratual);
+                            const cor = coresContratuais[idx % coresContratuais.length];
+                            
+                            datasets.push({
+                                label: `Valor Contratual - ${contrato.lote_nome}`,
+                                data: linhaValorContratual,
+                                borderColor: cor,
+                                backgroundColor: 'transparent',
+                                borderWidth: 2,
+                                borderDash: [8, 4],
+                                fill: false,
+                                pointRadius: 0,
+                                pointHoverRadius: 6,
+                                hitRadius: 20,
+                                tension: 0
+                            });
                         });
-                    });
+                    }
                 }
                 
                 chartInstanceGastos = new Chart(ctx, {
@@ -1864,7 +1893,7 @@
                     options: {
                         responsive: true,
                         maintainAspectRatio: true,
-                        interaction: { mode: 'index', intersect: false },
+                        interaction: { mode: 'nearest', intersect: true },
                         plugins: {
                             legend: {
                                 display: true,
@@ -2482,24 +2511,6 @@
             document.getElementById('chart-placeholder').style.display = 'flex';
             document.getElementById('placeholder-grafico-gastos').style.display = 'flex';
         });
-    </script>
-    <script type="module">
-    // Import the functions you need from the SDKs you need
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-analytics.js";
-    
-    const firebaseConfig = {
-        apiKey: "AIzaSyAp2Xg1g5MwxuD3m6QlroJVmi6V6SEYeGo",
-        authDomain: "sgmrp-sfa-seap.firebaseapp.com",
-        projectId: "sgmrp-sfa-seap",
-        storageBucket: "sgmrp-sfa-seap.firebasestorage.app",
-        messagingSenderId: "890046403125",
-        appId: "1:890046403125:web:36c3cb60d4e6960f1a977c",
-        measurementId: "G-Z0KXSCHS4Q"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const analytics = getAnalytics(app);
     </script>
 </body>
 </html>

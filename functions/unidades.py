@@ -238,25 +238,65 @@ def desassociar_unidade_do_lote(unidade_id):
 
 
 # ----- API Functions for Flask Routes -----
-def api_adicionar_unidade(lote_id, nome, quantitativos_unidade, valor_contratual_unidade):
+def api_adicionar_unidade(lote_id, nome, quantitativos_unidade, valor_contratual_unidade, unidade_principal_id=None):
 	"""
 	API para adicionar uma nova unidade
 	"""
 	try:
 		from .models import Lote
 		
+		# Buscar o lote para validação
+		lote = Lote.query.get(lote_id)
+		if not lote:
+			return {'success': False, 'message': 'Lote não encontrado'}
+		
+		# Validações para subunidades
+		if unidade_principal_id:
+			# Verificar se a unidade principal existe e é independente
+			unidade_principal = Unidade.query.get(unidade_principal_id)
+			if not unidade_principal:
+				return {'success': False, 'message': 'Unidade principal não encontrada'}
+			
+			if unidade_principal.unidade_principal_id:
+				return {'success': False, 'message': 'Uma subunidade não pode ser unidade principal de outra'}
+			
+			# Subunidade não deve ter quantitativos nem valor contratual
+			quantitativos_unidade = None
+			valor_contratual_unidade = None
+		
+		# Calcular soma atual dos valores das unidades ativas do lote (apenas independentes)
+		unidades_existentes = Unidade.query.filter_by(lote_id=lote_id, ativo=True).all()
+		soma_valores_atual = sum(u.valor_contratual_unidade or 0 for u in unidades_existentes if not u.unidade_principal_id)
+		
+		# Verificar se adicionar esta unidade ultrapassaria o valor contratual do lote (apenas se for independente)
+		if not unidade_principal_id:
+			nova_soma = soma_valores_atual + (valor_contratual_unidade or 0)
+			valor_contratual_lote = lote.valor_contratual or 0
+			
+			# Arredondar para 2 casas decimais para evitar erros de precisão
+			nova_soma = round(nova_soma, 2)
+			valor_contratual_lote = round(valor_contratual_lote, 2)
+			
+			if nova_soma > valor_contratual_lote:
+				valor_disponivel = valor_contratual_lote - round(soma_valores_atual, 2)
+				return {
+					'success': False,
+					'message': f'Valor ultrapassa o limite! Valor disponível: R$ {valor_disponivel:.2f}. Total do lote: R$ {valor_contratual_lote:.2f}. Valor já utilizado: R$ {soma_valores_atual:.2f}.'
+				}
+		
 		# Obter o maior ID atual
 		max_id_result = db.session.query(db.func.max(Unidade.id)).scalar()
 		novo_id = (max_id_result + 1) if max_id_result is not None else 0
 		
-		# Criar data/hora atual no formato correto
-		criado_em = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+		# Criar data/hora atual no formato ISO com microsegundos
+		criado_em = datetime.now().isoformat()
 		
 		# Criar nova unidade
 		nova_unidade = Unidade(
 			id=novo_id,
 			nome=nome,
 			lote_id=lote_id,
+			unidade_principal_id=unidade_principal_id,
 			quantitativos_unidade=quantitativos_unidade,
 			valor_contratual_unidade=valor_contratual_unidade,
 			criado_em=criado_em,
@@ -266,7 +306,6 @@ def api_adicionar_unidade(lote_id, nome, quantitativos_unidade, valor_contratual
 		db.session.add(nova_unidade)
 		
 		# Atualizar lista de unidades no lote
-		lote = Lote.query.get(lote_id)
 		if lote:
 			# Parse unidades atuais
 			unidades_atuais = []
@@ -302,25 +341,91 @@ def api_adicionar_unidade(lote_id, nome, quantitativos_unidade, valor_contratual
 		}
 
 
-def api_editar_unidade(unidade_id, nome=None, quantitativos_unidade=None, valor_contratual_unidade=None, ativo=None):
+def api_editar_unidade(unidade_id, nome=None, quantitativos_unidade=None, valor_contratual_unidade=None, ativo=None, unidade_principal_id=None):
 	"""
 	API para editar uma unidade existente
 	"""
 	try:
+		from .models import Lote
+		
 		# Buscar unidade
 		unidade = Unidade.query.get(unidade_id)
 		if not unidade:
 			return {'success': False, 'message': 'Unidade não encontrada'}
 		
+		# Validar se está tentando definir unidade_principal_id
+		if unidade_principal_id is not None:
+			# Se for string vazia, converter para None
+			if unidade_principal_id == '' or unidade_principal_id == 'None':
+				unidade_principal_id = None
+			else:
+				# Validar se a unidade principal existe e é independente
+				unidade_principal = Unidade.query.get(unidade_principal_id)
+				if not unidade_principal:
+					return {'success': False, 'message': 'Unidade principal não encontrada'}
+				
+				if unidade_principal.unidade_principal_id:
+					return {'success': False, 'message': 'Uma subunidade não pode ser unidade principal de outra'}
+				
+				if unidade_principal.id == unidade_id:
+					return {'success': False, 'message': 'Uma unidade não pode ser subunidade de si mesma'}
+				
+				# Verificar se alguma unidade já é subunidade desta unidade (evitar ciclo)
+				subunidades = Unidade.query.filter_by(unidade_principal_id=unidade_id).all()
+				if subunidades:
+					return {'success': False, 'message': 'Esta unidade já possui subunidades. Não pode se tornar subunidade de outra.'}
+		
+		# Se está se tornando subunidade, limpar quantitativos e valor
+		if unidade_principal_id:
+			quantitativos_unidade = None
+			valor_contratual_unidade = None
+		
+		# Se está alterando o valor contratual, validar (apenas se não for subunidade)
+		if valor_contratual_unidade is not None and unidade.lote_id and not unidade_principal_id:
+			lote = Lote.query.get(unidade.lote_id)
+			if lote:
+				# Calcular soma dos valores das outras unidades ativas do lote (exceto esta e excluindo subunidades)
+				unidades_existentes = Unidade.query.filter(
+					Unidade.lote_id == unidade.lote_id,
+					Unidade.ativo == True,
+					Unidade.id != unidade_id
+				).all()
+				soma_valores_outras = sum(u.valor_contratual_unidade or 0 for u in unidades_existentes if not u.unidade_principal_id)
+				
+				# Verificar se o novo valor ultrapassaria o limite
+				nova_soma = soma_valores_outras + valor_contratual_unidade
+				valor_contratual_lote = lote.valor_contratual or 0
+				
+				# Arredondar para 2 casas decimais para evitar erros de precisão
+				nova_soma = round(nova_soma, 2)
+				valor_contratual_lote = round(valor_contratual_lote, 2)
+				
+				if nova_soma > valor_contratual_lote:
+					valor_disponivel = valor_contratual_lote - round(soma_valores_outras, 2)
+					return {
+						'success': False,
+						'message': f'Valor ultrapassa o limite! Valor disponível: R$ {valor_disponivel:.2f}. Total do lote: R$ {valor_contratual_lote:.2f}. Valor já utilizado por outras unidades: R$ {soma_valores_outras:.2f}.'
+					}
+		
 		# Atualizar campos
 		if nome is not None:
 			unidade.nome = nome
 		
-		if quantitativos_unidade is not None:
-			unidade.quantitativos_unidade = quantitativos_unidade
-		
-		if valor_contratual_unidade is not None:
-			unidade.valor_contratual_unidade = valor_contratual_unidade
+		# Atualizar unidade_principal_id
+		if unidade_principal_id != unidade.unidade_principal_id:
+			unidade.unidade_principal_id = unidade_principal_id
+			
+			# Se está virando subunidade, zerar quantitativos e valor
+			if unidade_principal_id is not None:
+				unidade.quantitativos_unidade = None
+				unidade.valor_contratual_unidade = None
+		else:
+			# Se permanece com o mesmo status, permitir atualizar quantitativos e valor
+			if quantitativos_unidade is not None:
+				unidade.quantitativos_unidade = quantitativos_unidade
+			
+			if valor_contratual_unidade is not None:
+				unidade.valor_contratual_unidade = valor_contratual_unidade
 		
 		if ativo is not None:
 			unidade.ativo = ativo
@@ -343,7 +448,7 @@ def api_editar_unidade(unidade_id, nome=None, quantitativos_unidade=None, valor_
 
 def api_excluir_unidade(unidade_id):
 	"""
-	API para excluir uma unidade
+	API para excluir uma unidade (e suas subunidades, se houver)
 	"""
 	try:
 		from .models import Lote
@@ -356,28 +461,54 @@ def api_excluir_unidade(unidade_id):
 		nome_unidade = unidade.nome
 		lote_id = unidade.lote_id
 		
-		# Remover ID da unidade da lista de unidades do lote
+		# Verificar se esta unidade é principal (tem subunidades)
+		subunidades = Unidade.query.filter_by(unidade_principal_id=unidade_id, ativo=True).all()
+		
+		ids_para_remover = [unidade_id]
+		nomes_excluidos = [nome_unidade]
+		
+		if subunidades:
+			# Coletar IDs e nomes das subunidades
+			for sub in subunidades:
+				ids_para_remover.append(sub.id)
+				nomes_excluidos.append(sub.nome)
+			
+			print(f'🗑️ Unidade principal "{nome_unidade}" tem {len(subunidades)} subunidade(s). Excluindo todas...')
+		
+		# Remover IDs das unidades da lista de unidades do lote
 		if lote_id:
 			lote = Lote.query.get(lote_id)
 			if lote and lote.unidades:
 				try:
 					# Parse unidades atuais
 					unidades_atuais = json.loads(lote.unidades) if isinstance(lote.unidades, str) else lote.unidades
-					if isinstance(unidades_atuais, list) and unidade_id in unidades_atuais:
-						# Remover ID da unidade
-						unidades_atuais.remove(unidade_id)
+					if isinstance(unidades_atuais, list):
+						# Remover todos os IDs (principal + subunidades)
+						for uid in ids_para_remover:
+							if uid in unidades_atuais:
+								unidades_atuais.remove(uid)
 						# Atualizar campo unidades do lote
 						lote.unidades = json.dumps(unidades_atuais)
 				except Exception as e:
 					print(f'Aviso: Não foi possível atualizar lista de unidades do lote: {str(e)}')
 		
-		# Excluir unidade
-		db.session.delete(unidade)
+		# Excluir unidade principal e subunidades
+		for uid in ids_para_remover:
+			unidade_para_excluir = Unidade.query.get(uid)
+			if unidade_para_excluir:
+				db.session.delete(unidade_para_excluir)
+		
 		db.session.commit()
+		
+		# Mensagem de sucesso
+		if len(nomes_excluidos) > 1:
+			msg = f'Unidade principal "{nome_unidade}" e {len(subunidades)} subunidade(s) excluídas com sucesso!'
+		else:
+			msg = f'Unidade "{nome_unidade}" excluída com sucesso!'
 		
 		return {
 			'success': True,
-			'message': f'Unidade "{nome_unidade}" excluída com sucesso!'
+			'message': msg
 		}
 		
 	except Exception as e:
@@ -413,7 +544,8 @@ def api_listar_unidades(lote_id):
 				'quantitativos_unidade': quantitativos,
 				'valor_contratual_unidade': u.valor_contratual_unidade,
 				'criado_em': u.criado_em,
-				'ativo': u.ativo
+				'ativo': u.ativo,
+				'unidade_principal_id': u.unidade_principal_id
 			})
 		
 		return {

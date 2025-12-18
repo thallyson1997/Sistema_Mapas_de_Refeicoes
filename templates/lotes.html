@@ -262,6 +262,13 @@
                             <input type="text" id="novo-lote-valor-contratual" name="valor_contratual" class="form-input" placeholder="R$ 0,00" readonly style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300); background-color: #f5f5f5; cursor: not-allowed;">
                             <small style="color: var(--gray-500); font-size: 0.85em;">Calculado automaticamente: Preços × Quantidades</small>
                         </div>
+                        <div>
+                            <label for="novo-lote-predecessor" class="form-label" style="font-weight: 500;">🔗 Lote Predecessor (Histórico)</label>
+                            <select id="novo-lote-predecessor" name="lote_predecessor_id" class="form-input" style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                                <option value="">Nenhum (novo contrato)</option>
+                            </select>
+                            <small style="color: var(--gray-500); font-size: 0.85em;">Selecione se este lote substitui outro (reajuste de preços)</small>
+                        </div>
                     </div>
                     <!-- Coluna 2: preços -->
                     <div style="flex: 1 1 320px; min-width: 220px; display: flex; flex-direction: column; gap: 1rem;">
@@ -441,6 +448,13 @@
                                 <input type="number" step="0.01" min="0" id="editar-preco-jantar-funcionario" name="preco_jantar_funcionario" class="form-input" placeholder="0,00" required style="width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid var(--gray-300);">
                             </div>
                         </div>
+                        <div style="margin-top: 0.5rem;">
+                            <label for="editar-lote-predecessor" style="font-size: 0.9em; font-weight: 500;">🔗 Lote Predecessor</label>
+                            <select id="editar-lote-predecessor" name="lote_predecessor_id" class="form-input" style="width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid var(--gray-300); font-size: 0.9em;">
+                                <option value="">Nenhum</option>
+                            </select>
+                            <small style="color: var(--gray-500); font-size: 0.8em; display: block; margin-top: 0.2rem;">Para reajustes de preços</small>
+                        </div>
                     </div>
                     <!-- Coluna 3: quantitativos -->
                     <div style="flex: 1 1 320px; min-width: 220px; display: flex; flex-direction: column; gap: 1rem;">
@@ -570,6 +584,15 @@
                     <input type="text" id="add-unidade-nome" name="nome" class="form-input" placeholder="Ex: UPR São Luís 1" required style="width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid var(--gray-300); font-size: 1rem;">
                 </div>
 
+                <!-- Unidade Principal (opcional para subunidades) -->
+                <div style="margin-bottom: 1.5rem;">
+                    <label for="add-unidade-principal" class="form-label" style="font-weight: 500;">🔗 Unidade Principal (opcional)</label>
+                    <select id="add-unidade-principal" name="unidade_principal_id" class="form-select" style="width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid var(--gray-300); font-size: 1rem;">
+                        <option value="">Unidade Independente</option>
+                    </select>
+                    <small style="color: var(--gray-500); font-size: 0.85em;">⚠️ Se esta unidade for subunidade de outra, selecione a unidade principal. Os quantitativos serão herdados.</small>
+                </div>
+
                 <!-- Quantitativos de Refeições -->
                 <div style="margin-bottom: 1.5rem;">
                     <label class="form-label" style="font-weight: 500; display: block; margin-bottom: 1rem;">Quantitativo de Refeições (Anual)</label>
@@ -644,6 +667,15 @@
                 <div style="margin-bottom: 1.5rem;">
                     <label for="edit-unidade-nome" class="form-label" style="font-weight: 500;">Nome da Unidade</label>
                     <input type="text" id="edit-unidade-nome" name="nome" class="form-input" placeholder="Ex: UPR São Luís 1" required style="width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid var(--gray-300); font-size: 1rem;">
+                </div>
+
+                <!-- Unidade Principal (opcional para subunidades) -->
+                <div style="margin-bottom: 1.5rem;">
+                    <label for="edit-unidade-principal" class="form-label" style="font-weight: 500;">🔗 Unidade Principal (opcional)</label>
+                    <select id="edit-unidade-principal" name="unidade_principal_id" class="form-select" style="width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid var(--gray-300); font-size: 1rem;">
+                        <option value="">Unidade Independente</option>
+                    </select>
+                    <small style="color: var(--gray-500); font-size: 0.85em;">⚠️ Se esta unidade for subunidade de outra, selecione a unidade principal. Os quantitativos serão herdados.</small>
                 </div>
 
                 <!-- Quantitativos de Refeições -->
@@ -878,11 +910,53 @@
             // Calcular valor contratual após carregar todos os dados
             calcularValorContratualEdicao();
             
+            // Carregar predecessores e definir valor selecionado
+            carregarLotesPredecessores('editar-lote-predecessor', lote.id);
+            
+            // Definir predecessor selecionado
+            if (lote.lote_predecessor_id) {
+                setTimeout(() => {
+                    document.getElementById('editar-lote-predecessor').value = lote.lote_predecessor_id;
+                }, 100); // Aguardar o carregamento da lista
+            }
+            
             // Mostrar aviso se os quantitativos estiverem vazios
             if (quantitativosVazios) {
                 showNotification('warning', 'Quantitativos não preenchidos', 
                     'Este lote foi criado antes da funcionalidade de quantitativos. Por favor, preencha os valores de quantidade de refeições.',
                     false);
+            }
+        }
+        
+        // Função para carregar a lista de lotes predecessores (inativos)
+        function carregarLotesPredecessores(selectId, excludeLoteId = null) {
+            const select = document.getElementById(selectId);
+            if (!select) return;
+            
+            // Limpar opções existentes
+            select.innerHTML = '<option value="">Nenhum (novo lote)</option>';
+            
+            try {
+                // Filtrar apenas lotes inativos e excluir o lote atual (se fornecido)
+                const lotesInativos = lotesData.filter(lote => 
+                    !lote.ativo && lote.id !== excludeLoteId
+                );
+                
+                // Ordenar por nome
+                lotesInativos.sort((a, b) => a.nome.localeCompare(b.nome));
+                
+                // Adicionar opções
+                lotesInativos.forEach(lote => {
+                    const option = document.createElement('option');
+                    option.value = lote.id;
+                    option.textContent = `${lote.nome} (Inativo)`;
+                    select.appendChild(option);
+                });
+                
+                console.log(`Carregados ${lotesInativos.length} lotes inativos para seleção de predecessor`);
+            } catch (error) {
+                console.error('Erro ao carregar lotes predecessores:', error);
+                showNotification('error', 'Erro', 'Não foi possível carregar a lista de lotes predecessores.');
             }
         }
 
@@ -986,6 +1060,10 @@
                     const loteId = document.getElementById('add-unidade-lote-id').value;
                     const nome = document.getElementById('add-unidade-nome').value.trim();
                     
+                    // Capturar unidade_principal_id (pode ser vazio)
+                    const unidadePrincipalSelect = document.getElementById('add-unidade-principal');
+                    const unidade_principal_id = unidadePrincipalSelect.value ? parseInt(unidadePrincipalSelect.value) : null;
+                    
                     if (!nome) {
                         showNotification('warning', 'Atenção', 'Digite o nome da unidade.');
                         return;
@@ -1048,7 +1126,8 @@
                                 lote_id: parseInt(loteId),
                                 nome: nome,
                                 quantitativos_unidade: JSON.stringify(quantitativos),
-                                valor_contratual_unidade: valor_contratual_unidade
+                                valor_contratual_unidade: valor_contratual_unidade,
+                                unidade_principal_id: unidade_principal_id
                             }),
                             credentials: 'same-origin'
                         });
@@ -1112,6 +1191,10 @@
                     const unidadeId = document.getElementById('edit-unidade-id').value;
                     const loteId = document.getElementById('edit-unidade-lote-id').value;
                     const nome = document.getElementById('edit-unidade-nome').value.trim();
+                    
+                    // Capturar unidade_principal_id (pode ser vazio)
+                    const unidadePrincipalSelect = document.getElementById('edit-unidade-principal');
+                    const unidade_principal_id = unidadePrincipalSelect.value ? parseInt(unidadePrincipalSelect.value) : null;
                     
                     if (!unidadeId) {
                         showNotification('warning', 'Atenção', 'Selecione uma unidade.');
@@ -1179,7 +1262,8 @@
                             body: JSON.stringify({
                                 nome: nome,
                                 quantitativos_unidade: JSON.stringify(quantitativos),
-                                valor_contratual_unidade: valor_contratual_unidade
+                                valor_contratual_unidade: valor_contratual_unidade,
+                                unidade_principal_id: unidade_principal_id
                             }),
                             credentials: 'same-origin'
                         });
@@ -1311,6 +1395,8 @@
                     modalNovoLote.style.display = 'block';
                     // Calcular valor inicial
                     calcularValorContratualCriacao();
+                    // Carregar lotes inativos como opções de predecessor
+                    carregarLotesPredecessores('novo-lote-predecessor');
                 });
             }
             if (btnCancelarNovoLote && modalNovoLote) {
@@ -1453,6 +1539,9 @@
                         return;
                     }
                     
+                    // Capturar lote predecessor
+                    const lote_predecessor_id = document.getElementById('editar-lote-predecessor').value || null;
+                    
                     // Enviar para backend
                     try {
                         const resp = await fetch(`/api/editar-lote/${loteId}`, {
@@ -1469,7 +1558,8 @@
                                 ativo,
                                 precos,
                                 quantitativos,
-                                novas_unidades
+                                novas_unidades,
+                                lote_predecessor_id
                             })
                         });
                         const data = await resp.json();
@@ -1568,13 +1658,16 @@
                             alert(erro);
                             return;
                         }
+                        // Capturar lote predecessor
+                        const lote_predecessor_id = document.getElementById('novo-lote-predecessor').value || null;
+                        
                         // Enviar para backend
                         try {
                             const resp = await fetch('/api/novo-lote', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 credentials: 'same-origin',
-                                body: JSON.stringify({ nome_lote, nome_empresa, numero_contrato, data_inicio, data_fim, valor_contratual, precos, quantitativos, unidades })
+                                body: JSON.stringify({ nome_lote, nome_empresa, numero_contrato, data_inicio, data_fim, valor_contratual, precos, quantitativos, unidades, lote_predecessor_id })
                             });
                             const data = await resp.json();
                             if (resp.ok && data.success) {
@@ -1943,7 +2036,7 @@ function closeNotification(button) {
 }
 
 // Funções para gerenciamento de unidades
-function adicionarUnidade(loteId) {
+async function adicionarUnidade(loteId) {
     // Buscar dados do lote para obter os preços
     const lote = lotesData.find(l => l.id === parseInt(loteId));
     if (!lote) {
@@ -1959,6 +2052,18 @@ function adicionarUnidade(loteId) {
     document.getElementById('add-unidade-lote-id').value = loteId;
     document.getElementById('add-unidade-valor').value = 'R$ 0,00';
     
+    // Carregar unidades independentes para o select de unidade principal
+    await carregarUnidadesPrincipaisParaAdicionar(loteId);
+    
+    // Configurar event listener para mudança na unidade principal
+    const selectPrincipal = document.getElementById('add-unidade-principal');
+    selectPrincipal.addEventListener('change', function() {
+        toggleQuantitativosAdicionar(this.value);
+    });
+    
+    // Habilitar campos por padrão (unidade independente)
+    toggleQuantitativosAdicionar('');
+    
     // Abrir modal
     document.getElementById('modal-adicionar-unidade').style.display = 'block';
     
@@ -1967,6 +2072,61 @@ function adicionarUnidade(loteId) {
     qtdInputs.forEach(input => {
         input.addEventListener('input', () => calcularValorUnidade(loteId));
     });
+}
+
+// Função para carregar unidades principais (apenas independentes) no select
+async function carregarUnidadesPrincipaisParaAdicionar(loteId) {
+    const selectPrincipal = document.getElementById('add-unidade-principal');
+    selectPrincipal.innerHTML = '<option value="">Unidade Independente</option>';
+    
+    try {
+        const resp = await fetch(`/api/listar-unidades/${loteId}`);
+        const data = await resp.json();
+        
+        if (resp.ok && data.success && data.unidades) {
+            // Filtrar apenas unidades independentes (sem unidade_principal_id)
+            const unidadesIndependentes = data.unidades.filter(u => !u.unidade_principal_id);
+            
+            unidadesIndependentes.forEach(u => {
+                const option = document.createElement('option');
+                option.value = u.id;
+                option.textContent = `${u.nome}`;
+                selectPrincipal.appendChild(option);
+            });
+        }
+    } catch (err) {
+        console.error('Erro ao carregar unidades principais:', err);
+    }
+}
+
+// Função para bloquear/desbloquear campos de quantitativos no modal Adicionar
+function toggleQuantitativosAdicionar(unidadePrincipalId) {
+    const refeicoes = ['cafe', 'almoco', 'lanche', 'jantar'];
+    const tipos = ['interno', 'funcionario'];
+    const desabilitar = !!unidadePrincipalId;
+    
+    refeicoes.forEach(refeicao => {
+        tipos.forEach(tipo => {
+            const input = document.getElementById(`add-qtd-${refeicao}-${tipo}`);
+            if (input) {
+                input.disabled = desabilitar;
+                input.style.backgroundColor = desabilitar ? '#f0f0f0' : 'white';
+                input.style.cursor = desabilitar ? 'not-allowed' : 'text';
+                if (desabilitar) {
+                    input.value = 0;
+                }
+            }
+        });
+    });
+    
+    // Bloquear também o campo de valor
+    const inputValor = document.getElementById('add-unidade-valor');
+    if (inputValor) {
+        inputValor.style.backgroundColor = desabilitar ? '#f0f0f0' : '#f5f5f5';
+        if (desabilitar) {
+            inputValor.value = 'R$ 0,00';
+        }
+    }
 }
 
 function calcularValorUnidade(loteId) {
@@ -2037,6 +2197,12 @@ async function editarUnidade(loteId) {
                 selectUnidade.appendChild(option);
             });
             
+            // Configurar event listener para mudança na unidade principal
+            const selectPrincipal = document.getElementById('edit-unidade-principal');
+            selectPrincipal.addEventListener('change', function() {
+                toggleQuantitativosEditar(this.value);
+            });
+            
             // Abrir modal
             document.getElementById('modal-editar-unidade').style.display = 'block';
         } else {
@@ -2047,7 +2213,7 @@ async function editarUnidade(loteId) {
     }
 }
 
-function carregarDadosUnidade() {
+async function carregarDadosUnidade() {
     const selectUnidade = document.getElementById('edit-unidade-selecao');
     const selectedOption = selectUnidade.options[selectUnidade.selectedIndex];
     
@@ -2065,6 +2231,13 @@ function carregarDadosUnidade() {
         // Preencher nome
         document.getElementById('edit-unidade-nome').value = unidade.nome || '';
         
+        // Carregar unidades principais para o select (excluindo a própria unidade)
+        await carregarUnidadesPrincipaisParaEditar(loteId, unidade.id);
+        
+        // Preencher unidade principal se existir
+        const selectPrincipal = document.getElementById('edit-unidade-principal');
+        selectPrincipal.value = unidade.unidade_principal_id || '';
+        
         // Preencher quantitativos
         const quantitativos = unidade.quantitativos_unidade || {};
         
@@ -2077,10 +2250,70 @@ function carregarDadosUnidade() {
         document.getElementById('edit-qtd-jantar-interno').value = quantitativos.jantar?.interno || 0;
         document.getElementById('edit-qtd-jantar-funcionario').value = quantitativos.jantar?.funcionario || 0;
         
+        // Aplicar bloqueio/desbloqueio baseado na unidade principal
+        toggleQuantitativosEditar(unidade.unidade_principal_id || '');
+        
         // Calcular valor
         calcularValorEditUnidade(loteId);
     } catch (err) {
         console.error('Erro ao carregar dados da unidade:', err);
+    }
+}
+
+// Função para carregar unidades principais no modal Editar (excluindo a unidade atual)
+async function carregarUnidadesPrincipaisParaEditar(loteId, unidadeAtualId) {
+    const selectPrincipal = document.getElementById('edit-unidade-principal');
+    selectPrincipal.innerHTML = '<option value="">Unidade Independente</option>';
+    
+    try {
+        const resp = await fetch(`/api/listar-unidades/${loteId}`);
+        const data = await resp.json();
+        
+        if (resp.ok && data.success && data.unidades) {
+            // Filtrar: apenas independentes (sem unidade_principal_id) e diferente da unidade atual
+            const unidadesDisponiveis = data.unidades.filter(u => 
+                !u.unidade_principal_id && u.id !== unidadeAtualId
+            );
+            
+            unidadesDisponiveis.forEach(u => {
+                const option = document.createElement('option');
+                option.value = u.id;
+                option.textContent = `${u.nome}`;
+                selectPrincipal.appendChild(option);
+            });
+        }
+    } catch (err) {
+        console.error('Erro ao carregar unidades principais:', err);
+    }
+}
+
+// Função para bloquear/desbloquear campos de quantitativos no modal Editar
+function toggleQuantitativosEditar(unidadePrincipalId) {
+    const refeicoes = ['cafe', 'almoco', 'lanche', 'jantar'];
+    const tipos = ['interno', 'funcionario'];
+    const desabilitar = !!unidadePrincipalId;
+    
+    refeicoes.forEach(refeicao => {
+        tipos.forEach(tipo => {
+            const input = document.getElementById(`edit-qtd-${refeicao}-${tipo}`);
+            if (input) {
+                input.disabled = desabilitar;
+                input.style.backgroundColor = desabilitar ? '#f0f0f0' : 'white';
+                input.style.cursor = desabilitar ? 'not-allowed' : 'text';
+                if (desabilitar) {
+                    input.value = 0;
+                }
+            }
+        });
+    });
+    
+    // Bloquear também o campo de valor
+    const inputValor = document.getElementById('edit-unidade-valor');
+    if (inputValor) {
+        inputValor.style.backgroundColor = desabilitar ? '#f0f0f0' : '#f5f5f5';
+        if (desabilitar) {
+            inputValor.value = 'R$ 0,00';
+        }
     }
 }
 
@@ -2157,28 +2390,6 @@ async function excluirUnidade(loteId) {
     }
 }
     </script>
-    <script type="module">
-    // Import the functions you need from the SDKs you need
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-analytics.js";
-    // TODO: Add SDKs for Firebase products that you want to use
-    // https://firebase.google.com/docs/web/setup#available-libraries
 
-    // Your web app's Firebase configuration
-    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-    const firebaseConfig = {
-        apiKey: "AIzaSyAp2Xg1g5MwxuD3m6QlroJVmi6V6SEYeGo",
-        authDomain: "sgmrp-sfa-seap.firebaseapp.com",
-        projectId: "sgmrp-sfa-seap",
-        storageBucket: "sgmrp-sfa-seap.firebasestorage.app",
-        messagingSenderId: "890046403125",
-        appId: "1:890046403125:web:36c3cb60d4e6960f1a977c",
-        measurementId: "G-Z0KXSCHS4Q"
-    };
-
-    // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const analytics = getAnalytics(app);
-    </script>
 </body>
 </html>

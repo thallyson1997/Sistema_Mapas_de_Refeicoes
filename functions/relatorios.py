@@ -71,14 +71,65 @@ def buscar_dados_graficos(lotes_ids, unidades, periodo='mes', data_inicio=None, 
                 'total_registros': 0
             }
         
+        # Remover sufixo de agregadas dos nomes das unidades para busca
+        import re
+        unidades_limpas = []
+        for u in unidades:
+            # Remove " (+ N agregada/agregadas)" do final
+            u_limpo = re.sub(r'\s*\(\+\s*\d+\s+agregadas?\)$', '', u)
+            unidades_limpas.append(u_limpo)
+        
+        print(f"📝 Unidades recebidas: {unidades}")
+        print(f"🧹 Unidades limpas: {unidades_limpas}")
+        
+        # Expandir lotes para incluir predecessores (cadeia histórica)
+        lotes_expandidos = set(lotes_ids)
+        for lote_id in lotes_ids:
+            lote = Lote.query.get(lote_id)
+            if lote and lote.lote_predecessor_id:
+                # Adicionar predecessor e seus predecessores (cadeia)
+                predecessor_id = lote.lote_predecessor_id
+                while predecessor_id:
+                    lotes_expandidos.add(predecessor_id)
+                    predecessor = Lote.query.get(predecessor_id)
+                    predecessor_id = predecessor.lote_predecessor_id if predecessor else None
+        
+        lotes_para_buscar = list(lotes_expandidos)
+        print(f"🔗 Lotes expandidos (com predecessores): {lotes_para_buscar}")
+        
+        # Buscar unidades principais e suas subunidades
+        from functions.unidades import Unidade
+        unidades_principais = Unidade.query.filter(
+            Unidade.nome.in_(unidades_limpas),
+            Unidade.lote_id.in_(lotes_para_buscar),  # Buscar em todos os lotes (incluindo predecessores)
+            Unidade.ativo == True,
+            Unidade.unidade_principal_id.is_(None)  # Apenas principais
+        ).all()
+        
+        # Coletar nomes de principais e subunidades
+        nomes_para_buscar = []
+        for unidade in unidades_principais:
+            nomes_para_buscar.append(unidade.nome)
+            
+            # Buscar subunidades desta principal
+            subunidades = Unidade.query.filter(
+                Unidade.unidade_principal_id == unidade.id,
+                Unidade.ativo == True
+            ).all()
+            
+            for sub in subunidades:
+                nomes_para_buscar.append(sub.nome)
+        
+        print(f"🔍 Buscando mapas para unidades (principais + subunidades): {nomes_para_buscar}")
+        
         # Construir query base
         query = db.session.query(Mapa)
         
-        # Filtrar por lotes (obrigatório)
-        query = query.filter(Mapa.lote_id.in_(lotes_ids))
+        # Filtrar por lotes (incluindo predecessores)
+        query = query.filter(Mapa.lote_id.in_(lotes_para_buscar))
         
-        # Filtrar por unidades (obrigatório)
-        query = query.filter(Mapa.unidade.in_(unidades))
+        # Filtrar por unidades (principais + subunidades)
+        query = query.filter(Mapa.unidade.in_(nomes_para_buscar))
         
         # Filtrar por período se especificado
         if data_inicio:
@@ -295,11 +346,32 @@ def agregar_por_grupo(mapas, periodo='mes', tipo_grupo='unidade', lotes_ids=None
         'jantar_interno', 'jantar_funcionario'
     ]
     
+    # Se tipo_grupo == 'unidade', criar mapeamento de subunidades -> principais
+    mapeamento_unidade = {}
+    if tipo_grupo == 'unidade':
+        from functions.unidades import Unidade
+        
+        # Obter todas as unidades dos mapas
+        nomes_unidades = list(set(m.unidade for m in mapas))
+        unidades = Unidade.query.filter(Unidade.nome.in_(nomes_unidades)).all()
+        
+        for unidade in unidades:
+            if unidade.unidade_principal_id:
+                # É subunidade - mapear para a principal
+                principal = db.session.get(Unidade, unidade.unidade_principal_id)
+                if principal:
+                    mapeamento_unidade[unidade.nome] = principal.nome
+                    print(f"📎 Mapeando subunidade '{unidade.nome}' -> principal '{principal.nome}'")
+            else:
+                # É principal - mapear para si mesma
+                mapeamento_unidade[unidade.nome] = unidade.nome
+    
     # Processar cada mapa
     for mapa in mapas:
         # Determinar o nome do grupo
         if tipo_grupo == 'unidade':
-            grupo_nome = mapa.unidade
+            # Mapear subunidade para principal (ou manter se já é principal)
+            grupo_nome = mapeamento_unidade.get(mapa.unidade, mapa.unidade)
         else:  # tipo_grupo == 'lote'
             # Buscar nome do lote
             from functions.lotes import Lote
@@ -613,21 +685,89 @@ def buscar_dados_gastos(lotes_ids, unidades, periodo='mes', data_inicio=None, da
                 'total_registros': 0
             }
         
+        # Remover sufixo de agregadas dos nomes das unidades para busca
+        import re
+        unidades_limpas = []
+        for u in unidades:
+            u_limpo = re.sub(r'\s*\(\+\s*\d+\s+agregadas?\)$', '', u)
+            unidades_limpas.append(u_limpo)
+        
+        print(f"💰 Unidades recebidas (gastos): {unidades}")
+        print(f"💰 Unidades limpas (gastos): {unidades_limpas}")
+        
+        # Expandir lotes para incluir predecessores (cadeia histórica) - GASTOS
+        lotes_expandidos = set(lotes_ids)
+        for lote_id in lotes_ids:
+            lote = db.session.get(Lote, lote_id)
+            if lote and lote.lote_predecessor_id:
+                predecessor_id = lote.lote_predecessor_id
+                while predecessor_id:
+                    lotes_expandidos.add(predecessor_id)
+                    predecessor = db.session.get(Lote, predecessor_id)
+                    predecessor_id = predecessor.lote_predecessor_id if predecessor else None
+        
+        lotes_para_buscar = list(lotes_expandidos)
+        print(f"💰 Lotes expandidos (gastos, com predecessores): {lotes_para_buscar}")
+        
+        # Buscar unidades principais e suas subunidades
+        from functions.unidades import Unidade
+        unidades_principais = Unidade.query.filter(
+            Unidade.nome.in_(unidades_limpas),
+            Unidade.lote_id.in_(lotes_para_buscar),  # Buscar em todos os lotes (incluindo predecessores)
+            Unidade.ativo == True,
+            Unidade.unidade_principal_id.is_(None)
+        ).all()
+        
+        # Coletar nomes de principais e subunidades
+        nomes_para_buscar = []
+        for unidade in unidades_principais:
+            nomes_para_buscar.append(unidade.nome)
+            
+            subunidades = Unidade.query.filter(
+                Unidade.unidade_principal_id == unidade.id,
+                Unidade.ativo == True
+            ).all()
+            
+            for sub in subunidades:
+                nomes_para_buscar.append(sub.nome)
+        
+        print(f"💰 Buscando mapas gastos para: {nomes_para_buscar}")
+        
         # Buscar preços dos lotes e coletar valores contratuais
         precos_por_lote = {}
         valores_contratuais = []
-        for lote_id in lotes_ids:
+        valores_contratuais_unidades = {}  # Armazenar valor contratual por unidade PRINCIPAL
+        
+        for lote_id in lotes_para_buscar:  # Incluir predecessores
             lote = db.session.get(Lote, lote_id)
             print(f"💰 Verificando lote {lote_id}: encontrado={lote is not None}")
             if lote:
                 print(f"💰 Lote {lote_id} - precos={lote.precos}, tipo={type(lote.precos)}")
-                # Coletar valor contratual de cada lote
+                # Coletar valor contratual de cada lote (para modo acumulado)
                 if lote.valor_contratual:
                     valores_contratuais.append({
                         'lote_id': lote_id,
                         'lote_nome': lote.nome,
                         'valor_contratual': float(lote.valor_contratual)
                     })
+                
+                # Coletar valor_contratual_unidade para unidades PRINCIPAIS e somar com subunidades
+                for unidade_principal in unidades_principais:
+                    if unidade_principal.lote_id == lote_id:
+                        # Somar valor da principal com valores das subunidades
+                        valor_total = unidade_principal.valor_contratual_unidade or 0
+                        
+                        subunidades = Unidade.query.filter(
+                            Unidade.unidade_principal_id == unidade_principal.id,
+                            Unidade.ativo == True
+                        ).all()
+                        
+                        for sub in subunidades:
+                            valor_total += sub.valor_contratual_unidade or 0
+                        
+                        if valor_total > 0:
+                            valores_contratuais_unidades[unidade_principal.nome] = float(valor_total)
+                            print(f"💰 Valor contratual agregado para '{unidade_principal.nome}': R$ {valor_total}")
             
             if lote and lote.precos:
                 try:
@@ -643,8 +783,8 @@ def buscar_dados_gastos(lotes_ids, unidades, periodo='mes', data_inicio=None, da
         
         # Buscar mapas
         query = db.session.query(Mapa)
-        query = query.filter(Mapa.lote_id.in_(lotes_ids))
-        query = query.filter(Mapa.unidade.in_(unidades))
+        query = query.filter(Mapa.lote_id.in_(lotes_para_buscar))  # Incluir predecessores
+        query = query.filter(Mapa.unidade.in_(nomes_para_buscar))
         
         if data_inicio:
             query = query.filter(Mapa.ano >= data_inicio.year)
@@ -657,15 +797,20 @@ def buscar_dados_gastos(lotes_ids, unidades, periodo='mes', data_inicio=None, da
         # Agregar gastos por período e modo
         if modo == 'acumulado':
             dados_agregados = agregar_gastos_por_periodo(mapas, periodo, precos_por_lote)
+            # Modo acumulado: usar valor_contratual do lote
+            dados_agregados['valores_contratuais'] = valores_contratuais
         elif modo == 'unidade':
             dados_agregados = agregar_gastos_por_grupo(mapas, periodo, 'unidade', precos_por_lote)
+            # Modo por unidade: usar valor_contratual_unidade de cada unidade
+            dados_agregados['valores_contratuais_unidades'] = valores_contratuais_unidades
+            dados_agregados['valores_contratuais'] = []  # Não usar valor contratual do lote
         elif modo == 'lote':
             dados_agregados = agregar_gastos_por_grupo(mapas, periodo, 'lote', precos_por_lote, lotes_ids)
+            # Modo por lote: usar valor_contratual de cada lote
+            dados_agregados['valores_contratuais'] = valores_contratuais
         else:
             dados_agregados = agregar_gastos_por_periodo(mapas, periodo, precos_por_lote)
-        
-        # Adicionar valores contratuais individuais aos dados
-        dados_agregados['valores_contratuais'] = valores_contratuais
+            dados_agregados['valores_contratuais'] = valores_contratuais
         
         return {
             'success': True,
@@ -797,10 +942,28 @@ def agregar_gastos_por_grupo(mapas, periodo='mes', tipo_grupo='unidade', precos_
         'jantar_interno', 'jantar_funcionario'
     ]
     
+    # Se tipo_grupo == 'unidade', criar mapeamento de subunidades -> principais (gastos)
+    mapeamento_unidade = {}
+    if tipo_grupo == 'unidade':
+        from functions.unidades import Unidade
+        
+        nomes_unidades = list(set(m.unidade for m in mapas))
+        unidades = Unidade.query.filter(Unidade.nome.in_(nomes_unidades)).all()
+        
+        for unidade in unidades:
+            if unidade.unidade_principal_id:
+                principal = db.session.get(Unidade, unidade.unidade_principal_id)
+                if principal:
+                    mapeamento_unidade[unidade.nome] = principal.nome
+                    print(f"💰 Mapeando subunidade '{unidade.nome}' -> principal '{principal.nome}' (gastos)")
+            else:
+                mapeamento_unidade[unidade.nome] = unidade.nome
+    
     for mapa in mapas:
         # Determinar o nome do grupo
         if tipo_grupo == 'unidade':
-            grupo_nome = mapa.unidade
+            # Mapear subunidade para principal (ou manter se já é principal)
+            grupo_nome = mapeamento_unidade.get(mapa.unidade, mapa.unidade)
         else:  # tipo_grupo == 'lote'
             lote = db.session.get(Lote, mapa.lote_id)
             grupo_nome = lote.nome if lote else f"Lote {mapa.lote_id}"

@@ -173,7 +173,10 @@ def carregar_lotes_para_dashboard():
 			'alertas': l.get('alertas'),
 			'saldo_consumido': saldo_consumido,
 			'criado_em': l.get('criado_em'),  # Adicionar data de criação
-			'atualizado_em': l.get('atualizado_em')  # Adicionar data de atualização
+			'atualizado_em': l.get('atualizado_em'),  # Adicionar data de atualização
+			'percentual_executado': l.get('percentual_executado', 0.0),  # Adicionar percentual calculado
+			'refeicoes_por_mes': l.get('refeicoes_por_mes', {}),  # Adicionar refeições por mês
+			'lote_predecessor_id': l.get('lote_predecessor_id')  # Adicionar predecessor
 		}
 		lotes.append(lote_obj)
 

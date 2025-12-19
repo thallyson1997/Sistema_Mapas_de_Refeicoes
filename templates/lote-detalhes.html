@@ -1251,6 +1251,25 @@
     const precosLote = JSON.parse(`{{ lote.precos | tojson | safe }}`);
     // ID do lote atual
     const loteId = "{{ lote.id }}";
+    
+    // Dados do predecessor (se existir)
+    const predecessorData = {% if predecessor_data %}JSON.parse(`{{ predecessor_data | tojson | safe }}`){% else %}null{% endif %};
+    
+    // Mapa de preços por lote_id para busca rápida
+    const precosPorLote = {
+        "{{ lote.id }}": precosLote
+    };
+    
+    if (predecessorData) {
+        precosPorLote[predecessorData.id.toString()] = predecessorData.precos;
+        console.log('📋 Lote com predecessor detectado:', {
+            loteAtualId: loteId,
+            predecessorId: predecessorData.id,
+            totalMapas: mapasLote.length,
+            mapasLoteAtual: mapasLote.filter(m => m.lote_id == loteId).length,
+            mapasPredecessor: mapasLote.filter(m => m.lote_id == predecessorData.id).length
+        });
+    }
         
         // Variáveis globais para controle dos filtros
         let filtrosAtivos = {
@@ -1286,6 +1305,7 @@
                 const registro = {
                     data: datasArray[i],
                     unidade: nomeUnidade,
+                    lote_id: mapa.lote_id, // Adicionar lote_id para buscar preços corretos
                     cafeInt: (mapa.cafe_interno && mapa.cafe_interno[i]) || 0,
                     cafeFunc: (mapa.cafe_funcionario && mapa.cafe_funcionario[i]) || 0,
                     almocoInt: (mapa.almoco_interno && mapa.almoco_interno[i]) || 0,
@@ -1636,17 +1656,23 @@
                         const classificacao = getClassificacaoSiisp(refeicao.valorSiisp);
                         totalCelulasComSiisp++; // Contar total de células com dados SIISP
                         
+                        // Buscar o preço correto baseado no lote_id do row
+                        let precosAtual = precosLote; // Padrão
+                        if (row.lote_id && precosPorLote[row.lote_id.toString()]) {
+                            precosAtual = precosPorLote[row.lote_id.toString()];
+                        }
+                        
                         if (classificacao.class === 'cell-warning') {
                             diferencasPequenas++; // Contar célula azul (diferença pequena)
                             // Somar valor monetário do excedente usando preço específico da refeição
-                            if (precosLote && refeicao.valorSiisp > 0) {
-                                totalExcedentesInternos += refeicao.valorSiisp * precosLote[refeicao.tipo].interno;
+                            if (precosAtual && refeicao.valorSiisp > 0) {
+                                totalExcedentesInternos += refeicao.valorSiisp * precosAtual[refeicao.tipo].interno;
                             }
                         } else if (classificacao.class === 'cell-danger') {
                             discrepanciasCriticas++; // Contar célula vermelha (discrepância crítica)
                             // Somar valor monetário do excedente usando preço específico da refeição
-                            if (precosLote && refeicao.valorSiisp > 0) {
-                                totalExcedentesInternos += refeicao.valorSiisp * precosLote[refeicao.tipo].interno;
+                            if (precosAtual && refeicao.valorSiisp > 0) {
+                                totalExcedentesInternos += refeicao.valorSiisp * precosAtual[refeicao.tipo].interno;
                             }
                         } else if (classificacao.class === 'cell-ok') {
                             celulasOk++; // Contar célula verde (OK)
@@ -1665,14 +1691,20 @@
                         if (func.valorSiisp !== null && func.valorSiisp !== undefined) {
                             totalCelulasComSiisp++; // Contar célula de funcionário
                             
+                            // Buscar o preço correto baseado no lote_id do row
+                            let precosAtual = precosLote; // Padrão
+                            if (row.lote_id && precosPorLote[row.lote_id.toString()]) {
+                                precosAtual = precosPorLote[row.lote_id.toString()];
+                            }
+                            
                             // Para funcionários: valores <= 0 são OK (verde), valores > 0 são críticos (vermelho)
                             if (func.valorSiisp <= 0) {
                                 celulasOk++; // Células verdes (OK)
                             } else {
                                 discrepanciasCriticas++; // Células vermelhas (críticas)
                                 // Somar valor monetário do excedente usando preço específico da refeição
-                                if (precosLote) {
-                                    totalExcedentesFuncionarios += func.valorSiisp * precosLote[func.tipo].funcionario;
+                                if (precosAtual) {
+                                    totalExcedentesFuncionarios += func.valorSiisp * precosAtual[func.tipo].funcionario;
                                 }
                             }
                         }
@@ -1718,26 +1750,38 @@
             let valorJantarFuncionario = 0;
             let valorDesvio = 0;
             
-            if (precosLote) {
-                valorCafeInterno = totalCafeInterno * precosLote.cafe.interno;
-                valorCafeFuncionario = totalCafeFuncionario * precosLote.cafe.funcionario;
-                valorAlmocoInterno = totalAlmocoInterno * precosLote.almoco.interno;
-                valorAlmocoFuncionario = totalAlmocoFuncionario * precosLote.almoco.funcionario;
-                valorLancheInterno = totalLancheInterno * precosLote.lanche.interno;
-                valorLancheFuncionario = totalLancheFuncionario * precosLote.lanche.funcionario;
-                valorJantarInterno = totalJantarInterno * precosLote.jantar.interno;
-                valorJantarFuncionario = totalJantarFuncionario * precosLote.jantar.funcionario;
+            // Calcular valores monetários usando o preço correto de cada mapa
+            dadosRefeicoes.forEach(row => {
+                // Buscar o preço correto baseado no lote_id do mapa original
+                let precosAtual = precosLote; // Padrão: usar preços do lote atual
                 
-                valorTotal = valorCafeInterno + valorCafeFuncionario + valorAlmocoInterno + valorAlmocoFuncionario + 
-                           valorLancheInterno + valorLancheFuncionario + valorJantarInterno + valorJantarFuncionario;
+                // Se existe predecessorData e o row tem referência ao lote_id
+                if (row.lote_id && precosPorLote[row.lote_id.toString()]) {
+                    precosAtual = precosPorLote[row.lote_id.toString()];
+                }
                 
-                // Calcular valor total do desvio (já calculado com preços específicos)
-                valorDesvio = totalExcedentesInternos + totalExcedentesFuncionarios;
-            }
+                if (precosAtual) {
+                    // Calcular valores parciais com o preço correto
+                    valorCafeInterno += row.cafeInt * precosAtual.cafe.interno;
+                    valorCafeFuncionario += row.cafeFunc * precosAtual.cafe.funcionario;
+                    valorAlmocoInterno += row.almocoInt * precosAtual.almoco.interno;
+                    valorAlmocoFuncionario += row.almocoFunc * precosAtual.almoco.funcionario;
+                    valorLancheInterno += row.lancheInt * precosAtual.lanche.interno;
+                    valorLancheFuncionario += row.lancheFunc * precosAtual.lanche.funcionario;
+                    valorJantarInterno += row.jantarInt * precosAtual.jantar.interno;
+                    valorJantarFuncionario += row.jantarFunc * precosAtual.jantar.funcionario;
+                }
+            });
+            
+            valorTotal = valorCafeInterno + valorCafeFuncionario + valorAlmocoInterno + valorAlmocoFuncionario + 
+                       valorLancheInterno + valorLancheFuncionario + valorJantarInterno + valorJantarFuncionario;
+            
+            // Calcular valor do desvio (já calculado com preços específicos nos loops acima)
+            valorDesvio = totalExcedentesInternos + totalExcedentesFuncionarios;
             
             // Calcular conformidade geral: (valor geral - desvio) / valor geral * 100
             let conformidadeGeral = 0;
-            if (precosLote && valorTotal > 0) {
+            if (valorTotal > 0) {
                 conformidadeGeral = ((valorTotal - valorDesvio) / valorTotal) * 100;
                 // Garantir que não seja negativo
                 conformidadeGeral = Math.max(0, conformidadeGeral);
@@ -1756,7 +1800,7 @@
             if (diferencasPequenas_elemento) diferencasPequenas_elemento.textContent = diferencasPequenas.toString();
             if (discrepanciasCriticas_elemento) discrepanciasCriticas_elemento.textContent = discrepanciasCriticas.toString();
             if (conformidadeGeral_elemento) {
-                if (precosLote && valorTotal > 0) {
+                if (valorTotal > 0) {
                     conformidadeGeral_elemento.textContent = conformidadeGeral.toFixed(1) + '%';
                 } else {
                     conformidadeGeral_elemento.textContent = 'N/A';
@@ -1765,84 +1809,67 @@
             
             // Atualizar valor total formatado como moeda brasileira
             if (valorTotal_elemento) {
-                if (precosLote) {
-                    valorTotal_elemento.textContent = valorTotal.toLocaleString('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL'
-                    });
-                } else {
-                    valorTotal_elemento.textContent = 'N/A';
-                }
+                valorTotal_elemento.textContent = valorTotal.toLocaleString('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL'
+                });
             }
             
             // Atualizar valor de desvio formatado como moeda brasileira
             if (valorDesvio_elemento) {
-                if (precosLote) {
-                    valorDesvio_elemento.textContent = valorDesvio.toLocaleString('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL'
-                    });
-                } else {
-                    valorDesvio_elemento.textContent = 'N/A';
-                }
+                valorDesvio_elemento.textContent = valorDesvio.toLocaleString('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL'
+                });
             }
             
             // Atualizar valores parciais formatados como moeda brasileira
-            if (precosLote) {
-                if (valorCafeInterno_elemento) {
-                    valorCafeInterno_elemento.textContent = valorCafeInterno.toLocaleString('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL'
-                    });
-                }
-                if (valorCafeFuncionario_elemento) {
-                    valorCafeFuncionario_elemento.textContent = valorCafeFuncionario.toLocaleString('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL'
-                    });
-                }
-                if (valorAlmocoInterno_elemento) {
-                    valorAlmocoInterno_elemento.textContent = valorAlmocoInterno.toLocaleString('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL'
-                    });
-                }
-                if (valorAlmocoFuncionario_elemento) {
-                    valorAlmocoFuncionario_elemento.textContent = valorAlmocoFuncionario.toLocaleString('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL'
-                    });
-                }
-                if (valorLancheInterno_elemento) {
-                    valorLancheInterno_elemento.textContent = valorLancheInterno.toLocaleString('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL'
-                    });
-                }
-                if (valorLancheFuncionario_elemento) {
-                    valorLancheFuncionario_elemento.textContent = valorLancheFuncionario.toLocaleString('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL'
-                    });
-                }
-                if (valorJantarInterno_elemento) {
-                    valorJantarInterno_elemento.textContent = valorJantarInterno.toLocaleString('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL'
-                    });
-                }
-                if (valorJantarFuncionario_elemento) {
-                    valorJantarFuncionario_elemento.textContent = valorJantarFuncionario.toLocaleString('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL'
-                    });
-                }
-            } else {
-                // Se não há preços, mostrar N/A para todos os valores parciais e desvio
-                [valorCafeInterno_elemento, valorCafeFuncionario_elemento, valorAlmocoInterno_elemento, 
-                 valorAlmocoFuncionario_elemento, valorLancheInterno_elemento, valorLancheFuncionario_elemento,
-                 valorJantarInterno_elemento, valorJantarFuncionario_elemento, valorDesvio_elemento].forEach(elemento => {
-                    if (elemento) elemento.textContent = 'N/A';
+            if (valorCafeInterno_elemento) {
+                valorCafeInterno_elemento.textContent = valorCafeInterno.toLocaleString('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL'
+                });
+            }
+            if (valorCafeFuncionario_elemento) {
+                valorCafeFuncionario_elemento.textContent = valorCafeFuncionario.toLocaleString('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL'
+                });
+            }
+            if (valorAlmocoInterno_elemento) {
+                valorAlmocoInterno_elemento.textContent = valorAlmocoInterno.toLocaleString('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL'
+                });
+            }
+            if (valorAlmocoFuncionario_elemento) {
+                valorAlmocoFuncionario_elemento.textContent = valorAlmocoFuncionario.toLocaleString('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL'
+                });
+            }
+            if (valorLancheInterno_elemento) {
+                valorLancheInterno_elemento.textContent = valorLancheInterno.toLocaleString('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL'
+                });
+            }
+            if (valorLancheFuncionario_elemento) {
+                valorLancheFuncionario_elemento.textContent = valorLancheFuncionario.toLocaleString('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL'
+                });
+            }
+            if (valorJantarInterno_elemento) {
+                valorJantarInterno_elemento.textContent = valorJantarInterno.toLocaleString('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL'
+                });
+            }
+            if (valorJantarFuncionario_elemento) {
+                valorJantarFuncionario_elemento.textContent = valorJantarFuncionario.toLocaleString('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL'
                 });
             }
         }

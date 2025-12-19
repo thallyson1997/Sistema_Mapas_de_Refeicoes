@@ -349,6 +349,10 @@ def dashboard():
                 if isinstance(vals, list):
                     total_refeicoes += sum(int(x) if x is not None else 0 for x in vals)
         lote['total_refeicoes'] = total_refeicoes
+    
+    # Ordenar lotes: ativos primeiro, depois inativos
+    lotes.sort(key=lambda x: (not x.get('ativo', True), x.get('id', 0)))
+    
     return render_template('dashboard.html', lotes=lotes, mapas_dados=mapas_dados,
                            mostrar_login_sucesso=mostrar_login_sucesso,
                            usuario_nome=usuario_nome)
@@ -360,7 +364,8 @@ def lotes():
     lotes = data.get('lotes', [])
     from functions.mapas import carregar_mapas_db
     mapas = carregar_mapas_db()
-    calcular_metricas_lotes(lotes, mapas)
+    # Nota: calcular_metricas_lotes já foi chamada dentro de carregar_lotes_para_dashboard()
+    # Não precisamos chamar novamente, pois isso sobrescreveria os valores
     calcular_ultima_atividade_lotes(lotes, mapas)
 
     # Debug: Mostrar cálculo de refeições por mês
@@ -376,32 +381,8 @@ def lotes():
         'cafe_interno', 'cafe_funcionario', 'almoco_interno', 'almoco_funcionario',
         'lanche_interno', 'lanche_funcionario', 'jantar_interno', 'jantar_funcionario'
     ]
-    # Agrupar mapas por lote e por mês/ano
-    mapas_por_lote = {}
-    for mapa in mapas:
-        lid = str(mapa.get('lote_id'))
-        mes = mapa.get('mes')
-        ano = mapa.get('ano')
-        key = (lid, mes, ano)
-        if key not in mapas_por_lote:
-            mapas_por_lote[key] = []
-        mapas_por_lote[key].append(mapa)
-
-    for lote in lotes:
-        lid = str(lote.get('id'))
-        refeicoes_por_mes = {}
-        # Buscar todos os mapas desse lote
-        for key in mapas_por_lote:
-            lote_id, mes, ano = key
-            if lote_id == lid:
-                total = 0
-                for mapa in mapas_por_lote[key]:
-                    for campo in campos_refeicoes:
-                        vals = mapa.get(campo, [])
-                        if isinstance(vals, list):
-                            total += sum(int(x) if x is not None else 0 for x in vals)
-                refeicoes_por_mes[f'{mes}/{ano}'] = total
-        lote['refeicoes_por_mes'] = refeicoes_por_mes
+    # Nota: calcular_metricas_lotes já calcula refeicoes_por_mes incluindo predecessores
+    # Removido código duplicado que estava sobrescrevendo os valores
 
     empresas = []
     seen = set()
@@ -461,8 +442,59 @@ def lote_detalhes(lote_id):
                 unidades_lote.append(unidade.nome)
 
     from functions.mapas import carregar_mapas_db, serialize_mapa
+    
+    # Buscar mapas do lote atual
     mapas_lote = carregar_mapas_db({'lote_id': lote.get('id')})
-    return render_template('lote-detalhes.html', lote=lote, unidades_lote=unidades_lote, mapas_lote=mapas_lote)
+    
+    # Se o lote tiver predecessor, buscar também os mapas do predecessor
+    predecessor_id = lote.get('lote_predecessor_id')
+    predecessor_data = None
+    
+    if predecessor_id:
+        # Buscar dados do predecessor
+        predecessor_lote = None
+        for l in lotes:
+            try:
+                if int(l.get('id')) == int(predecessor_id):
+                    predecessor_lote = l
+                    break
+            except Exception:
+                continue
+        
+        if predecessor_lote:
+            # Converter preços do predecessor para float
+            precos_predecessor = predecessor_lote.get('precos', {})
+            for tipo_refeicao in precos_predecessor:
+                if isinstance(precos_predecessor[tipo_refeicao], dict):
+                    for subcampo in precos_predecessor[tipo_refeicao]:
+                        try:
+                            precos_predecessor[tipo_refeicao][subcampo] = float(precos_predecessor[tipo_refeicao][subcampo])
+                        except Exception:
+                            precos_predecessor[tipo_refeicao][subcampo] = 0.0
+                else:
+                    try:
+                        precos_predecessor[tipo_refeicao] = float(precos_predecessor[tipo_refeicao])
+                    except Exception:
+                        precos_predecessor[tipo_refeicao] = 0.0
+            
+            # Buscar mapas do predecessor
+            mapas_predecessor = carregar_mapas_db({'lote_id': predecessor_id})
+            
+            # Adicionar mapas do predecessor à lista (mantendo lote_id original para cálculos)
+            mapas_lote.extend(mapas_predecessor)
+            
+            # Passar dados do predecessor para o template
+            predecessor_data = {
+                'id': predecessor_lote.get('id'),
+                'nome': predecessor_lote.get('nome'),
+                'precos': precos_predecessor
+            }
+    
+    return render_template('lote-detalhes.html', 
+                         lote=lote, 
+                         unidades_lote=unidades_lote, 
+                         mapas_lote=mapas_lote,
+                         predecessor_data=predecessor_data)
 
 @app.route('/api/adicionar-dados', methods=['POST'])
 def api_adicionar_dados():

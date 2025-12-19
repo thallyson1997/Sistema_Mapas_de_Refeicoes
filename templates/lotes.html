@@ -125,7 +125,7 @@
                             <!-- Informações principais -->
                             <div>
                                 <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
-                                    <h3 style="margin: 0; color: var(--primary-color);">Lote {{ loop.index }}</h3>
+                                    <h3 style="margin: 0; color: var(--primary-color);">{{ lote.nome }}</h3>
                                     {% if lote.ativo %}
                                     <div class="badge" style="background-color: var(--success-color); color: white; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 500;">
                                         ATIVO
@@ -205,7 +205,7 @@
                                           <button class="btn btn-secondary btn-sm" onclick="editarUnidade({{ lote.id }})">
                                               ✏️ Editar Unidade
                                           </button>
-                                          <button class="btn btn-secondary btn-sm" onclick="alert('Funcionalidade de relatório para Lote {{ loop.index }} será implementada em versões futuras.')">
+                                          <button class="btn btn-secondary btn-sm" onclick="alert('Funcionalidade de relatório para {{ lote.nome }} será implementada em versões futuras.')">
                                               📊 Relatório
                                           </button>
                                           <button class="btn btn-danger btn-sm" onclick="excluirUnidade({{ lote.id }})">

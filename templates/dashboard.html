@@ -433,10 +433,10 @@
                 <div class="lote-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem;">
                     {% for lote in lotes %}
                     <!-- Lote {{ lote.id }} -->
-                    <a href="{{ url_for('lote_detalhes', lote_id=lote.id) }}" class="lote-card fade-in" data-lote-id="{{ lote.id }}" style="min-width:0;">
+                    <a href="{{ url_for('lote_detalhes', lote_id=lote.id) }}" class="lote-card fade-in" data-lote-id="{{ lote.id }}" data-lote-ativo="{{ lote.ativo|lower }}" style="min-width:0; {% if not lote.ativo %}background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); border-color: #991b1b;{% endif %}">
                         <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
                             <div>
-                                <h3 style="margin-bottom: 0.25rem;">{{ lote.nome }}</h3>
+                                <h3 style="margin-bottom: 0.25rem; {% if not lote.ativo %}opacity: 0.95;{% endif %}">{{ lote.nome }}</h3>
                                 <div style="font-size: 0.75rem; opacity: 0.8;">
                                     <strong>{{ lote.contrato }}</strong> -
                                     {% if lote.data_inicio %}
@@ -955,7 +955,68 @@
             }
             
             if (loteId) {
-                mapasFiltrados = mapasFiltrados.filter(mapa => mapa.lote_id === loteId);
+                // Se um lote específico é selecionado, verificar se é ativo
+                const loteAtual = lotesGlobal.find(l => l.id === loteId);
+                
+                // Se o lote selecionado é INATIVO, zerar métricas e não processar
+                if (loteAtual && !loteAtual.ativo) {
+                    document.getElementById('resumo-unidades').textContent = '0';
+                    document.getElementById('resumo-refeicoes').textContent = '0';
+                    document.getElementById('resumo-discrepancias').textContent = '0';
+                    document.getElementById('resumo-conformidade').textContent = '0.0%';
+                    atualizarCardsLotes();
+                    return;
+                }
+                
+                // Se o lote é ATIVO, incluir seus predecessores automaticamente
+                let lotesParaIncluir = [loteId];
+                
+                if (loteAtual && loteAtual.lote_predecessor_id) {
+                    // Expandir cadeia de predecessores
+                    let predecessorId = loteAtual.lote_predecessor_id;
+                    let tentativas = 0;
+                    
+                    while (predecessorId && tentativas < 10) {
+                        lotesParaIncluir.push(predecessorId);
+                        const lotePred = lotesGlobal.find(l => l.id === predecessorId);
+                        predecessorId = lotePred ? lotePred.lote_predecessor_id : null;
+                        tentativas++;
+                    }
+                }
+                
+                mapasFiltrados = mapasFiltrados.filter(mapa => {
+                    const mapaLoteId = parseInt(mapa.lote_id) || mapa.lote_id;
+                    return lotesParaIncluir.some(id => id === mapaLoteId || id.toString() === mapaLoteId.toString());
+                });
+            } else {
+                // Se nenhum lote específico, incluir mapas de lotes ATIVOS e seus predecessores
+                let lotesAtivosComPredecessores = [];
+                
+                lotesGlobal.forEach(lote => {
+                    if (lote.ativo) {
+                        lotesAtivosComPredecessores.push(lote.id);
+                        
+                        // Se o lote ativo tem predecessor, incluir a cadeia
+                        if (lote.lote_predecessor_id) {
+                            let predecessorId = lote.lote_predecessor_id;
+                            let tentativas = 0;
+                            
+                            while (predecessorId && tentativas < 10) {
+                                if (!lotesAtivosComPredecessores.includes(predecessorId)) {
+                                    lotesAtivosComPredecessores.push(predecessorId);
+                                }
+                                const lotePred = lotesGlobal.find(l => l.id === predecessorId);
+                                predecessorId = lotePred ? lotePred.lote_predecessor_id : null;
+                                tentativas++;
+                            }
+                        }
+                    }
+                });
+                
+                mapasFiltrados = mapasFiltrados.filter(mapa => {
+                    const mapaLoteId = parseInt(mapa.lote_id) || mapa.lote_id;
+                    return lotesAtivosComPredecessores.some(id => id === mapaLoteId || id.toString() === mapaLoteId.toString());
+                });
             }
             
             
@@ -984,8 +1045,10 @@
                 const loteEspecifico = lotesGlobal.find(l => l.id === loteIdSelecionado);
                 totalUnidadesLotes = loteEspecifico ? loteEspecifico.unidades.length : 0;
             } else {
-                // Se nenhum lote específico, mostrar total de todas as unidades de todos os lotes
-                totalUnidadesLotes = lotesGlobal.reduce((total, lote) => total + lote.unidades.length, 0);
+                // Se nenhum lote específico, mostrar total de unidades de lotes ATIVOS apenas
+                totalUnidadesLotes = lotesGlobal
+                    .filter(lote => lote.ativo)
+                    .reduce((total, lote) => total + lote.unidades.length, 0);
             }
             
             if (!mapas || mapas.length === 0) {
@@ -1120,13 +1183,13 @@
         }
         
         // Função para calcular estatísticas individuais de cada lote
-        function calcularEstatisticasLote(loteId, mapasFiltrados) {
+        function calcularEstatisticasLote(loteId, mapasDoLote) {
             // Obter número total de unidades do lote (independente dos mapas)
             const lote = lotesGlobal.find(l => l.id === loteId);
             const totalUnidadesLote = lote ? lote.unidades.length : 0;
             
-            // Filtrar mapas apenas para o lote específico
-            const mapasDoLote = mapasFiltrados.filter(mapa => mapa.lote_id === loteId);
+            // NOTA: mapasDoLote já vem filtrado (incluindo predecessores se necessário)
+            // NÃO filtrar novamente aqui!
             
             if (!mapasDoLote || mapasDoLote.length === 0) {
                 return {
@@ -1142,29 +1205,36 @@
             let totalRegistros = 0;
             let registrosComProblema = 0;
             
-            // Usar preços reais do lote se possível
-            let precos = null;
-            const loteObj = lotesGlobal.find(l => l.id === loteId);
-            if (loteObj && loteObj.precos) {
-                precos = loteObj.precos;
-            }
-            // Fallback para preços simulados se não houver preços reais
-            if (!precos) {
-                precos = {
-                    cafe: { interno: 4.50, funcionario: 5.00 },
-                    almoco: { interno: 12.00, funcionario: 13.50 },
-                    lanche: { interno: 6.00, funcionario: 6.50 },
-                    jantar: { interno: 10.00, funcionario: 11.00 }
-                };
-            }
-            
             let valorTotal = 0;
             let valorDesvio = 0;
             
+            console.log(`[DEBUG] calcularEstatisticasLote para loteId=${loteId}, mapasDoLote.length=${mapasDoLote.length}`);
+            
             mapasDoLote.forEach(mapa => {
                 unidadesUnicas.add(mapa.nome_unidade);
+                
+                // Buscar preços do lote específico deste mapa (não do loteId passado)
+                let precos = null;
+                const mapaLoteId = parseInt(mapa.lote_id) || mapa.lote_id;
+                const loteDoMapa = lotesGlobal.find(l => l.id === mapaLoteId);
+                if (loteDoMapa && loteDoMapa.precos) {
+                    precos = loteDoMapa.precos;
+                }
+                // Fallback para preços simulados se não houver preços reais
+                if (!precos) {
+                    precos = {
+                        cafe: { interno: 4.50, funcionario: 5.00 },
+                        almoco: { interno: 12.00, funcionario: 13.50 },
+                        lanche: { interno: 6.00, funcionario: 6.50 },
+                        jantar: { interno: 10.00, funcionario: 11.00 }
+                    };
+                }
+                
                 // Calcular total de refeições e valores financeiros para cada dia do mês
                 const dias = Array.isArray(mapa.data) ? mapa.data.length : (Array.isArray(mapa.cafe_interno) ? mapa.cafe_interno.length : 0);
+                
+                console.log(`[DEBUG] Processando mapa loteId=${loteId}, mapa.lote_id=${mapa.lote_id}, mapa.id=${mapa.id}, dias=${dias}, tem cafe_interno=${!!mapa.cafe_interno}`);
+                
                 for (let i = 0; i < dias; i++) {
                     const refeicoesDia = 
                         mapa.cafe_interno[i] + mapa.cafe_funcionario[i] +
@@ -1264,27 +1334,63 @@
             const ano = parseInt(document.getElementById('filtro-ano').value);
             const loteId = parseInt(document.getElementById('filtro-lote').value);
             
-            // Filtrar mapas baseado nos critérios
-            let mapasFiltrados = mapasDados;
-            
-            if (mes) {
-                mapasFiltrados = mapasFiltrados.filter(mapa => mapa.mes === mes);
-            }
-            
-            if (ano) {
-                mapasFiltrados = mapasFiltrados.filter(mapa => mapa.ano === ano);
-            }
-            
-            if (loteId) {
-                mapasFiltrados = mapasFiltrados.filter(mapa => mapa.lote_id === loteId);
-            }
-            
             // Atualizar cada card de lote
             document.querySelectorAll('.lote-card').forEach(card => {
-                const loteId = parseInt(card.getAttribute('data-lote-id'));
-                // Filtrar mapas apenas do lote atual, respeitando filtros globais de mês e ano
-                const mapasDoLote = mapasFiltrados.filter(mapa => mapa.lote_id === loteId);
-                const estatisticas = calcularEstatisticasLote(loteId, mapasDoLote);
+                const cardLoteId = parseInt(card.getAttribute('data-lote-id'));
+                const loteAtual = lotesGlobal.find(l => l.id === cardLoteId);
+                
+                // Filtrar mapas baseado nos critérios do filtro global
+                let mapasBase = mapasDados;
+                
+                if (mes) {
+                    mapasBase = mapasBase.filter(mapa => mapa.mes === mes);
+                }
+                
+                if (ano) {
+                    mapasBase = mapasBase.filter(mapa => mapa.ano === ano);
+                }
+                
+                // Se há filtro de lote e não é este card, pular
+                if (loteId && loteId !== cardLoteId) {
+                    // Zerar métricas deste card pois não está no filtro
+                    const unidadesElement = card.querySelector('.unidades-count');
+                    if (unidadesElement) unidadesElement.textContent = loteAtual ? loteAtual.unidades.length : '0';
+                    
+                    const refeicoesElement = card.querySelector('.refeicoes-count');
+                    if (refeicoesElement) refeicoesElement.textContent = '0';
+                    
+                    const conformidadePercentElement = card.querySelector('.conformidade-percent');
+                    if (conformidadePercentElement) conformidadePercentElement.textContent = '0.0%';
+                    
+                    const discrepanciasElement = card.querySelector('.discrepancias-count');
+                    if (discrepanciasElement) discrepanciasElement.textContent = '0';
+                    
+                    return;
+                }
+                
+                // Incluir predecessores automaticamente para lotes ATIVOS
+                let lotesParaIncluir = [cardLoteId];
+                if (loteAtual && loteAtual.ativo && loteAtual.lote_predecessor_id) {
+                    let predecessorId = loteAtual.lote_predecessor_id;
+                    let tentativas = 0;
+                    
+                    while (predecessorId && tentativas < 10) {
+                        lotesParaIncluir.push(predecessorId);
+                        const lotePred = lotesGlobal.find(l => l.id === predecessorId);
+                        predecessorId = lotePred ? lotePred.lote_predecessor_id : null;
+                        tentativas++;
+                    }
+                }
+                
+                // Filtrar mapas do lote atual (e seus predecessores se for ativo)
+                const mapasDoLote = mapasBase.filter(mapa => {
+                    const mapaLoteId = parseInt(mapa.lote_id) || mapa.lote_id;
+                    return lotesParaIncluir.some(id => id === mapaLoteId || id.toString() === mapaLoteId.toString());
+                });
+                
+                const estatisticas = calcularEstatisticasLote(cardLoteId, mapasDoLote);
+                
+                console.log(`[DEBUG] Lote ${cardLoteId}: Estatísticas calculadas:`, estatisticas);
 
                 // Atualizar unidades
                 const unidadesElement = card.querySelector('.unidades-count');

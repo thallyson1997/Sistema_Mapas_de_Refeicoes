@@ -79,9 +79,12 @@ def copiar_unidades_de_predecessor(lote_predecessor_id, novo_lote_id):
 				ativo=subunidade.ativo
 			)
 			db.session.add(nova_subunidade)
+			db.session.flush()  # Para obter o ID
+			novos_ids.append(nova_subunidade.id)  # Adicionar ID da subunidade à lista
 	
 	db.session.commit()
-	print(f"Copiadas {len(novos_ids)} unidades principais e {len(subunidades_predecessor)} subunidades do predecessor")
+	print(f"Copiadas {len(unidades_predecessor)} unidades principais e {len(subunidades_predecessor)} subunidades do predecessor")
+	print(f"Total de IDs retornados: {len(novos_ids)}")
 	
 	return novos_ids
 
@@ -105,6 +108,11 @@ def lote_to_dict(lote):
 		if result:
 			quantitativos_value = result[0]
 	
+	# Debug: verificar predecessor_id
+	predecessor_id_value = lote.lote_predecessor_id if hasattr(lote, 'lote_predecessor_id') else None
+	if predecessor_id_value:
+		print(f"[DEBUG lote_to_dict] Lote {lote.id}: lote_predecessor_id = {predecessor_id_value}")
+	
 	return {
 		'id': lote.id,
 		'nome': lote.nome,
@@ -123,6 +131,7 @@ def lote_to_dict(lote):
 		'data_contrato': lote.data_contrato,
 		'status': lote.status,
 		'descricao': lote.descricao,
+		'lote_predecessor_id': predecessor_id_value,
 	}
 
 def listar_lotes():

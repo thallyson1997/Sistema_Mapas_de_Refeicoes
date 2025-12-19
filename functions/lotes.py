@@ -31,8 +31,21 @@ import json
 def copiar_unidades_de_predecessor(lote_predecessor_id, novo_lote_id):
 	"""
 	Copia todas as unidades (incluindo subunidades) do lote predecessor para o novo lote.
+	Recalcula valor_contratual_unidade usando os NOVOS preços do lote destino.
 	Retorna a lista de IDs das novas unidades criadas.
 	"""
+	# Buscar o novo lote para pegar os preços atualizados
+	novo_lote = Lote.query.get(novo_lote_id)
+	if not novo_lote:
+		print(f"Erro: Novo lote {novo_lote_id} não encontrado")
+		return []
+	
+	# Parse dos preços do novo lote
+	try:
+		novos_precos = json.loads(novo_lote.precos) if isinstance(novo_lote.precos, str) else novo_lote.precos
+	except Exception:
+		novos_precos = {}
+	
 	# Buscar unidades principais do predecessor (sem unidade_principal_id)
 	unidades_predecessor = Unidade.query.filter_by(
 		lote_id=lote_predecessor_id, 
@@ -44,12 +57,28 @@ def copiar_unidades_de_predecessor(lote_predecessor_id, novo_lote_id):
 	
 	# Primeiro, copiar unidades principais
 	for unidade in unidades_predecessor:
+		# Recalcular valor_contratual_unidade com os NOVOS preços
+		quantitativos_unidade = unidade.quantitativos_unidade
+		try:
+			qtds = json.loads(quantitativos_unidade) if isinstance(quantitativos_unidade, str) else quantitativos_unidade
+		except Exception:
+			qtds = {}
+		
+		novo_valor_contratual = 0.0
+		if qtds and novos_precos:
+			for refeicao, tipos in qtds.items():
+				if isinstance(tipos, dict) and refeicao in novos_precos:
+					for tipo, qtd in tipos.items():
+						if tipo in novos_precos[refeicao]:
+							preco = float(novos_precos[refeicao][tipo] or 0)
+							novo_valor_contratual += preco * int(qtd or 0)
+		
 		nova_unidade = Unidade(
 			nome=unidade.nome,
 			lote_id=novo_lote_id,
 			unidade_principal_id=None,
 			quantitativos_unidade=unidade.quantitativos_unidade,
-			valor_contratual_unidade=unidade.valor_contratual_unidade,
+			valor_contratual_unidade=novo_valor_contratual,  # NOVO VALOR CALCULADO
 			criado_em=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
 			ativo=unidade.ativo
 		)
@@ -69,12 +98,28 @@ def copiar_unidades_de_predecessor(lote_predecessor_id, novo_lote_id):
 		# Buscar o novo ID da unidade principal correspondente
 		nova_principal_id = mapeamento_ids.get(subunidade.unidade_principal_id)
 		if nova_principal_id:
+			# Recalcular valor_contratual_unidade com os NOVOS preços
+			quantitativos_unidade = subunidade.quantitativos_unidade
+			try:
+				qtds = json.loads(quantitativos_unidade) if isinstance(quantitativos_unidade, str) else quantitativos_unidade
+			except Exception:
+				qtds = {}
+			
+			novo_valor_contratual = 0.0
+			if qtds and novos_precos:
+				for refeicao, tipos in qtds.items():
+					if isinstance(tipos, dict) and refeicao in novos_precos:
+						for tipo, qtd in tipos.items():
+							if tipo in novos_precos[refeicao]:
+								preco = float(novos_precos[refeicao][tipo] or 0)
+								novo_valor_contratual += preco * int(qtd or 0)
+			
 			nova_subunidade = Unidade(
 				nome=subunidade.nome,
 				lote_id=novo_lote_id,
 				unidade_principal_id=nova_principal_id,
 				quantitativos_unidade=subunidade.quantitativos_unidade,
-				valor_contratual_unidade=subunidade.valor_contratual_unidade,
+				valor_contratual_unidade=novo_valor_contratual,  # NOVO VALOR CALCULADO
 				criado_em=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
 				ativo=subunidade.ativo
 			)
@@ -83,8 +128,9 @@ def copiar_unidades_de_predecessor(lote_predecessor_id, novo_lote_id):
 			novos_ids.append(nova_subunidade.id)  # Adicionar ID da subunidade à lista
 	
 	db.session.commit()
-	print(f"Copiadas {len(unidades_predecessor)} unidades principais e {len(subunidades_predecessor)} subunidades do predecessor")
-	print(f"Total de IDs retornados: {len(novos_ids)}")
+	print(f"✅ Copiadas {len(unidades_predecessor)} unidades principais e {len(subunidades_predecessor)} subunidades do predecessor")
+	print(f"✅ Valores contratuais recalculados com os novos preços do lote {novo_lote_id}")
+	print(f"✅ Total de IDs retornados: {len(novos_ids)}")
 	
 	return novos_ids
 

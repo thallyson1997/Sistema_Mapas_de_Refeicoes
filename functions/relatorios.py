@@ -743,8 +743,8 @@ def buscar_dados_gastos(lotes_ids, unidades, periodo='mes', data_inicio=None, da
             print(f"💰 Verificando lote {lote_id}: encontrado={lote is not None}")
             if lote:
                 print(f"💰 Lote {lote_id} - precos={lote.precos}, tipo={type(lote.precos)}")
-                # Coletar valor contratual de cada lote (para modo acumulado)
-                if lote.valor_contratual:
+                # Coletar valor contratual APENAS do lote atual (não predecessores)
+                if lote.valor_contratual and lote_id in lotes_ids:
                     valores_contratuais.append({
                         'lote_id': lote_id,
                         'lote_nome': lote.nome,

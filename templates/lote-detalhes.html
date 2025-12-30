@@ -1392,14 +1392,12 @@
                             incluir = false;
                         } else {
                             const unidadeIncluida = filtrosAtivos.unidadesSelecionadas.some(unidadeSelecionada => {
-                                // Comparar nomes completos das unidades (exact match ou contains)
+                                // Comparar nomes completos das unidades (exact match apenas)
                                 const nomeRegistro = registro.unidade.toLowerCase().trim();
                                 const nomeSelecionado = unidadeSelecionada.toLowerCase().trim();
 
-                                // Exact match ou contains
-                                return nomeRegistro === nomeSelecionado || 
-                                       nomeRegistro.includes(nomeSelecionado) ||
-                                       nomeSelecionado.includes(nomeRegistro);
+                                // Apenas exact match para evitar conflitos com nomes similares
+                                return nomeRegistro === nomeSelecionado;
                             });
 
                             if (!unidadeIncluida) {

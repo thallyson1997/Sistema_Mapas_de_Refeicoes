@@ -959,6 +959,110 @@
                 showNotification('error', 'Erro', 'Não foi possível carregar a lista de lotes predecessores.');
             }
         }
+        
+        // Função para carregar dados do predecessor no formulário de criação
+        function carregarDadosPredecessor(predecessorId) {
+            console.log('🔍 carregarDadosPredecessor chamada com ID:', predecessorId);
+            
+            if (!predecessorId) {
+                // Se nenhum predecessor selecionado, limpar formulário
+                console.log('❌ Nenhum predecessor selecionado - limpando formulário');
+                document.getElementById('form-novo-lote').reset();
+                // Recarregar o valor do predecessor (que foi resetado)
+                document.getElementById('novo-lote-predecessor').value = '';
+                calcularValorContratualCriacao();
+                return;
+            }
+            
+            // Buscar dados do lote predecessor
+            const predecessor = lotesData.find(l => l.id === parseInt(predecessorId));
+            if (!predecessor) {
+                console.error('❌ Predecessor não encontrado para ID:', predecessorId);
+                showNotification('error', 'Erro', 'Predecessor não encontrado.');
+                return;
+            }
+            
+            console.log('📋 Carregando dados do predecessor:', predecessor);
+            
+            // Preencher campos básicos (sugerindo novo nome baseado no predecessor)
+            document.getElementById('novo-lote-nome').value = `${predecessor.nome} - Renovação`;
+            document.getElementById('novo-lote-empresa').value = predecessor.empresa || '';
+            document.getElementById('novo-lote-contrato').value = predecessor.numero_contrato || predecessor.contrato || ''; // Copiar número do contrato
+            
+            // Datas: copiar para referência (usuário deve ajustar)
+            if (predecessor.data_inicio || predecessor.inicio_contrato) {
+                const dataInicio = predecessor.data_inicio || predecessor.inicio_contrato;
+                document.getElementById('novo-lote-inicio').value = dataInicio;
+                console.log('✅ Data início carregada:', dataInicio);
+            }
+            
+            if (predecessor.data_fim || predecessor.fim_contrato) {
+                let dataFim = predecessor.data_fim || predecessor.fim_contrato;
+                // Tenta converter formatos comuns para YYYY-MM-DD
+                const match = dataFim.match(/(\d{4})[-/](\d{2})[-/](\d{2})/);
+                if (match) {
+                    dataFim = `${match[1]}-${match[2]}-${match[3]}`;
+                }
+                document.getElementById('novo-lote-fim').value = dataFim;
+                console.log('✅ Data fim carregada:', dataFim);
+            }
+            
+            // Preencher preços do predecessor
+            const precos = predecessor.precos || {};
+            console.log('💰 Preços do predecessor:', precos);
+            
+            const getPreco = (refeicao, tipo) => {
+                if (typeof precos[refeicao] === 'object') {
+                    return precos[refeicao][tipo] || 0;
+                }
+                const key = `${refeicao}_${tipo}`;
+                return precos[key] || 0;
+            };
+            
+            document.getElementById('preco-cafe-interno').value = getPreco('cafe', 'interno');
+            document.getElementById('preco-cafe-funcionario').value = getPreco('cafe', 'funcionario');
+            document.getElementById('preco-almoco-interno').value = getPreco('almoco', 'interno');
+            document.getElementById('preco-almoco-funcionario').value = getPreco('almoco', 'funcionario');
+            document.getElementById('preco-lanche-interno').value = getPreco('lanche', 'interno');
+            document.getElementById('preco-lanche-funcionario').value = getPreco('lanche', 'funcionario');
+            document.getElementById('preco-jantar-interno').value = getPreco('jantar', 'interno');
+            document.getElementById('preco-jantar-funcionario').value = getPreco('jantar', 'funcionario');
+            
+            console.log('✅ Preços carregados');
+            
+            // Preencher quantitativos do predecessor
+            const quantitativos = predecessor.quantitativos || {};
+            console.log('🔢 Quantitativos do predecessor:', quantitativos);
+            
+            const getQuantitativo = (refeicao, tipo) => {
+                if (typeof quantitativos[refeicao] === 'object') {
+                    return quantitativos[refeicao][tipo] || 0;
+                }
+                const key = `${refeicao}_${tipo}`;
+                return quantitativos[key] || 0;
+            };
+            
+            document.getElementById('qtd-cafe-interno').value = getQuantitativo('cafe', 'interno');
+            document.getElementById('qtd-cafe-funcionario').value = getQuantitativo('cafe', 'funcionario');
+            document.getElementById('qtd-almoco-interno').value = getQuantitativo('almoco', 'interno');
+            document.getElementById('qtd-almoco-funcionario').value = getQuantitativo('almoco', 'funcionario');
+            document.getElementById('qtd-lanche-interno').value = getQuantitativo('lanche', 'interno');
+            document.getElementById('qtd-lanche-funcionario').value = getQuantitativo('lanche', 'funcionario');
+            document.getElementById('qtd-jantar-interno').value = getQuantitativo('jantar', 'interno');
+            document.getElementById('qtd-jantar-funcionario').value = getQuantitativo('jantar', 'funcionario');
+            
+            console.log('✅ Quantitativos carregados');
+            
+            // Recalcular valor contratual com os dados carregados
+            calcularValorContratualCriacao();
+            
+            // Mostrar notificação informativa
+            showNotification('success', 'Dados carregados!', 
+                `Dados do lote "${predecessor.nome}" foram carregados. Você pode editar os campos conforme necessário.`, 
+                true);
+            
+            console.log('✅ Dados do predecessor carregados com sucesso');
+        }
 
         document.addEventListener('DOMContentLoaded', function() {
             // Campos de unidades removidos - gerenciamento separado
@@ -1392,11 +1496,26 @@
             var btnAdicionarNovoLote = document.getElementById('btn-adicionar-novo-lote');
             if (novoLoteBtn && modalNovoLote) {
                 novoLoteBtn.addEventListener('click', function() {
+                    // Limpar formulário primeiro
+                    document.getElementById('form-novo-lote').reset();
+                    
                     modalNovoLote.style.display = 'block';
                     // Calcular valor inicial
                     calcularValorContratualCriacao();
                     // Carregar lotes inativos como opções de predecessor
                     carregarLotesPredecessores('novo-lote-predecessor');
+                    
+                    // Configurar event listener para carregar dados do predecessor quando selecionado
+                    const selectPredecessor = document.getElementById('novo-lote-predecessor');
+                    if (selectPredecessor) {
+                        // Remover listeners antigos para evitar duplicação
+                        const novoSelect = selectPredecessor.cloneNode(true);
+                        selectPredecessor.parentNode.replaceChild(novoSelect, selectPredecessor);
+                        
+                        novoSelect.addEventListener('change', function() {
+                            carregarDadosPredecessor(this.value);
+                        });
+                    }
                 });
             }
             if (btnCancelarNovoLote && modalNovoLote) {

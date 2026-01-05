@@ -79,7 +79,7 @@ def copiar_unidades_de_predecessor(lote_predecessor_id, novo_lote_id):
 			unidade_principal_id=None,
 			quantitativos_unidade=unidade.quantitativos_unidade,
 			valor_contratual_unidade=novo_valor_contratual,  # NOVO VALOR CALCULADO
-			criado_em=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+			criado_em=datetime.now().isoformat(),
 			ativo=unidade.ativo
 		)
 		db.session.add(nova_unidade)
@@ -120,7 +120,7 @@ def copiar_unidades_de_predecessor(lote_predecessor_id, novo_lote_id):
 				unidade_principal_id=nova_principal_id,
 				quantitativos_unidade=subunidade.quantitativos_unidade,
 				valor_contratual_unidade=novo_valor_contratual,  # NOVO VALOR CALCULADO
-				criado_em=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+				criado_em=datetime.now().isoformat(),
 				ativo=subunidade.ativo
 			)
 			db.session.add(nova_subunidade)
@@ -404,33 +404,55 @@ def editar_lote(lote_id, payload: dict):
 				if predecessor.ativo:
 					return {'success': False, 'error': 'Lote predecessor deve estar INATIVO'}
 				
-				# Verificar se predecessor já tem outro sucessor
-				sucessor_existente = Lote.query.filter(
-					Lote.lote_predecessor_id == lote_predecessor_id,
-					Lote.id != lote_id
-				).first()
-				if sucessor_existente:
-					return {'success': False, 'error': f'Lote predecessor já tem um sucessor: "{sucessor_existente.nome}"'}
+				# Verificar se predecessor já tem outro sucessor (excluindo o lote atual)
+				# Permitir re-vincular o mesmo lote que já estava vinculado
+				predecessor_atual = lote.lote_predecessor_id
+				
+				# Só verificar conflito se estiver mudando para um predecessor diferente
+				if lote_predecessor_id != predecessor_atual:
+					sucessor_existente = Lote.query.filter(
+						Lote.lote_predecessor_id == lote_predecessor_id,
+						Lote.id != lote_id
+					).first()
+					if sucessor_existente:
+						return {'success': False, 'error': f'Lote predecessor já tem um sucessor: "{sucessor_existente.nome}"'}
 		except ValueError:
 			lote_predecessor_id = None
 		
 		payload['lote_predecessor_id'] = lote_predecessor_id
 		
-		# Se o predecessor foi alterado e agora tem um predecessor válido, copiar unidades
+		# Gerenciar mudança de predecessor
 		predecessor_atual = lote.lote_predecessor_id
+		
+		# Se vinculou/mudou o predecessor, copiar apenas unidades que NÃO existem ainda
 		if lote_predecessor_id and lote_predecessor_id != predecessor_atual:
-			print(f"Predecessor alterado para {lote_predecessor_id}. Copiando unidades...")
+			# Buscar unidades existentes no lote
+			unidades_existentes = Unidade.query.filter_by(lote_id=lote_id).all()
+			nomes_existentes = {u.nome for u in unidades_existentes}
 			
-			# Remover unidades antigas do lote (mas não deletar do banco, só desvincular)
-			# Na verdade, vamos deletar as antigas e criar novas baseadas no predecessor
-			unidades_antigas = Unidade.query.filter_by(lote_id=lote_id).all()
-			for unidade in unidades_antigas:
-				db.session.delete(unidade)
-			db.session.commit()
-			
-			# Copiar unidades do novo predecessor
-			unidade_ids = copiar_unidades_de_predecessor(lote_predecessor_id, lote_id)
-			payload['unidades'] = json.dumps(unidade_ids)
+			# Buscar unidades do predecessor
+			predecessor = Lote.query.get(lote_predecessor_id)
+			if predecessor:
+				unidades_pred = Unidade.query.filter_by(lote_id=lote_predecessor_id).all()
+				
+				# Copiar apenas unidades que não existem no lote
+				for u_pred in unidades_pred:
+					if u_pred.nome not in nomes_existentes:
+						nova_unidade = Unidade(
+							nome=u_pred.nome,
+							lote_id=lote_id,
+							quantitativos_unidade=u_pred.quantitativos_unidade,
+							valor_contratual_unidade=u_pred.valor_contratual_unidade,
+							criado_em=datetime.now().isoformat(),
+							ativo=True
+						)
+						db.session.add(nova_unidade)
+				
+				db.session.commit()
+				
+				# Atualizar lista de IDs de todas as unidades do lote
+				todas_unidades = Unidade.query.filter_by(lote_id=lote_id).all()
+				payload['unidades'] = json.dumps([u.id for u in todas_unidades])
 
 	try:
 		# Calcular valor_contratual se precos ou quantitativos forem atualizados
@@ -467,27 +489,58 @@ def editar_lote(lote_id, payload: dict):
 					if isinstance(valor, str):
 						valor = valor.lower() in ['true', '1', 'sim', 'ativo']
 				if campo == 'unidades':
-					# Se vier nomes, gera novos IDs únicos (não repete)
-					if valor and isinstance(valor[0], str):
-						max_id = 0
+					# Verificar se já é JSON string
+					if isinstance(valor, str):
 						try:
-							todos_lotes = Lote.query.all()
-							for l in todos_lotes:
-								ids = json.loads(l.unidades) if l.unidades else []
-								if ids:
-									max_id = max(max_id, max(ids))
-						except Exception:
-							pass
-						valor = list(range(max_id + 1, max_id + 1 + len(valor)))
+							valor_parsed = json.loads(valor)
+							# Se já são IDs válidos, manter
+							if valor_parsed and isinstance(valor_parsed[0], int):
+								print(f"📌 Campo 'unidades' já contém IDs válidos: {valor_parsed}")
+								valor = valor  # Já está em formato JSON string
+							else:
+								# São nomes, gerar novos IDs
+								print(f"⚠️ Campo 'unidades' contém nomes, gerando IDs...")
+								max_id = 0
+								try:
+									todos_lotes = Lote.query.all()
+									for l in todos_lotes:
+										ids = json.loads(l.unidades) if l.unidades else []
+										if ids:
+											max_id = max(max_id, max(ids))
+								except Exception:
+									pass
+								valor = json.dumps(list(range(max_id + 1, max_id + 1 + len(valor_parsed))))
+						except:
+							# Se não for JSON válido, tratar como antes
+							valor = json.dumps(valor)
+					elif valor and isinstance(valor, list):
+						if isinstance(valor[0], str):
+							# São nomes, gerar novos IDs
+							print(f"⚠️ Campo 'unidades' é lista de nomes, gerando IDs...")
+							max_id = 0
+							try:
+								todos_lotes = Lote.query.all()
+								for l in todos_lotes:
+									ids = json.loads(l.unidades) if l.unidades else []
+									if ids:
+										max_id = max(max_id, max(ids))
+							except Exception:
+								pass
+							valor = json.dumps(list(range(max_id + 1, max_id + 1 + len(valor))))
+						else:
+							# São IDs, converter para JSON
+							valor = json.dumps(to_int_list(valor))
 					else:
-						valor = to_int_list(valor)
-					valor = json.dumps(valor)
+						valor = json.dumps([])
 				elif campo == 'precos':
 					valor = json.dumps(valor)
 				elif campo == 'quantitativos':
 					valor = json.dumps(valor)
+				
 				setattr(lote, campo, valor)
+		
 		db.session.commit()
+		
 		return {'success': True, 'lote': lote_to_dict(lote)}
 	except Exception as e:
 		print(f'[ERRO editar_lote] {e}')

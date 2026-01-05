@@ -397,9 +397,10 @@ def lotes():
 @app.route('/lote/<int:lote_id>')
 def lote_detalhes(lote_id):
     #Página de detalhes do lote
-    data = carregar_lotes_para_dashboard()
-    lotes = data.get('lotes', [])
-    mapas_dados = data.get('mapas_dados', [])
+    # Forçar recarregamento dos dados para evitar cache
+    from functions.lotes import _load_lotes_data
+    
+    lotes = _load_lotes_data()
 
     lote = None
     for l in lotes:
@@ -412,6 +413,8 @@ def lote_detalhes(lote_id):
 
     if lote is None:
         abort(404)
+    
+    print(f"🔍 DEBUG lote_detalhes: Lote ID={lote_id}, predecessor_id={lote.get('lote_predecessor_id')}")
 
     # Converter todos os preços para float, inclusive aninhados
     precos = lote.get('precos', {})
@@ -450,7 +453,10 @@ def lote_detalhes(lote_id):
     predecessor_id = lote.get('lote_predecessor_id')
     predecessor_data = None
     
+    print(f"🔍 DEBUG: predecessor_id encontrado: {predecessor_id}")
+    
     if predecessor_id:
+        print(f"📋 DEBUG: Buscando dados do predecessor {predecessor_id}")
         # Buscar dados do predecessor
         predecessor_lote = None
         for l in lotes:
@@ -462,6 +468,7 @@ def lote_detalhes(lote_id):
                 continue
         
         if predecessor_lote:
+            print(f"✅ DEBUG: Predecessor encontrado: {predecessor_lote.get('nome')}")
             # Converter preços do predecessor para float
             precos_predecessor = predecessor_lote.get('precos', {})
             for tipo_refeicao in precos_predecessor:
@@ -480,8 +487,13 @@ def lote_detalhes(lote_id):
             # Buscar mapas do predecessor
             mapas_predecessor = carregar_mapas_db({'lote_id': predecessor_id})
             
+            print(f"📊 DEBUG: Encontrados {len(mapas_predecessor)} mapas do predecessor")
+            print(f"📊 DEBUG: Total de mapas do lote atual: {len(mapas_lote)}")
+            
             # Adicionar mapas do predecessor à lista (mantendo lote_id original para cálculos)
             mapas_lote.extend(mapas_predecessor)
+            
+            print(f"📊 DEBUG: Total de mapas após agregação: {len(mapas_lote)}")
             
             # Passar dados do predecessor para o template
             predecessor_data = {
@@ -489,6 +501,10 @@ def lote_detalhes(lote_id):
                 'nome': predecessor_lote.get('nome'),
                 'precos': precos_predecessor
             }
+        else:
+            print(f"❌ DEBUG: Predecessor não encontrado na lista de lotes")
+    else:
+        print(f"ℹ️  DEBUG: Lote não tem predecessor definido")
     
     return render_template('lote-detalhes.html', 
                          lote=lote, 
@@ -892,8 +908,9 @@ def exportar_tabela():
 @app.route('/relatorios')
 def relatorios():
     #Página de relatórios e análises gráficas
-    data = carregar_lotes_para_dashboard()
-    lotes_raw = data.get('lotes', [])
+    # Forçar recarregamento direto do banco para evitar cache
+    from functions.lotes import _load_lotes_data
+    lotes_raw = _load_lotes_data()
     
     # Filtrar apenas lotes ATIVOS e adicionar informação de predecessores
     from functions.lotes import Lote
@@ -909,10 +926,14 @@ def relatorios():
             num_predecessores = 0
             predecessor_id = lote_obj.lote_predecessor_id
             
+            print(f"🔍 DEBUG relatorios: Lote {lote_dict['nome']} (ID={lote_id}) - predecessor_id={predecessor_id}")
+            
             while predecessor_id:
                 num_predecessores += 1
                 predecessor = db.session.get(Lote, predecessor_id)
                 predecessor_id = predecessor.lote_predecessor_id if predecessor else None
+            
+            print(f"📊 DEBUG: Total de predecessores na cadeia: {num_predecessores}")
             
             # Adicionar indicação de histórico no nome
             lote_dict_modificado = lote_dict.copy()

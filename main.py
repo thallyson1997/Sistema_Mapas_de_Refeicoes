@@ -32,6 +32,7 @@ from functions.utils import (
     excluir_mapa,
     _load_mapas_partitioned,
     gerar_excel_exportacao,
+    gerar_excel_exportacao_multiplos_lotes,
     calcular_ultima_atividade_lotes
 )
 
@@ -890,6 +891,44 @@ def exportar_tabela():
 
     # Chamar função auxiliar para gerar Excel
     resultado = gerar_excel_exportacao(lote_id, unidades_list, data_inicio, data_fim)
+    
+    if not resultado.get('success'):
+        erro = resultado.get('error', 'Erro desconhecido')
+        print(f"❌ Erro: {erro}")
+        return jsonify({'error': erro}), 500
+    
+    print(f"✅ Arquivo gerado: {resultado['filename']}")
+    
+    return send_file(
+        resultado['output'],
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=resultado['filename']
+    )
+
+@app.route('/exportar-dashboard')
+def exportar_dashboard():
+    """Rota para exportação de todos os lotes de um mês (dashboard)"""
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
+    exportar_todos = request.args.get('exportar_todos_lotes', 'false') == 'true'
+    lote_id = request.args.get('lote_id', type=int)
+
+    print(f"📊 Exportação Dashboard - Exportar todos: {exportar_todos}, Lote: {lote_id}")
+
+    if not data_inicio or not data_fim:
+        print("❌ Erro: data_inicio e data_fim são obrigatórios")
+        return jsonify({'error': 'data_inicio e data_fim são obrigatórios'}), 400
+
+    if exportar_todos:
+        # Exportar todos os lotes do período
+        resultado = gerar_excel_exportacao_multiplos_lotes(data_inicio, data_fim)
+    else:
+        # Exportar apenas um lote específico
+        if lote_id is None:
+            print("❌ Erro: lote_id não fornecido")
+            return jsonify({'error': 'lote_id é obrigatório quando exportar_todos_lotes=false'}), 400
+        resultado = gerar_excel_exportacao(lote_id, [], data_inicio, data_fim)
     
     if not resultado.get('success'):
         erro = resultado.get('error', 'Erro desconhecido')

@@ -9,7 +9,7 @@
 # - helpers.py: Funções auxiliares de integração
 
 # Importar e re-exportar funções principais para compatibilidade
-from .helpers import carregar_lotes_para_dashboard, gerar_excel_exportacao
+from .helpers import carregar_lotes_para_dashboard, gerar_excel_exportacao, gerar_excel_exportacao_multiplos_lotes
 from .lotes import (
     salvar_novo_lote, editar_lote, deletar_lote,
     obter_lote_por_id, listar_lotes, normalizar_precos,
@@ -43,6 +43,7 @@ __all__ = [
     # Helpers
     'carregar_lotes_para_dashboard',
     'gerar_excel_exportacao',
+    'gerar_excel_exportacao_multiplos_lotes',
     # Lotes
     'salvar_novo_lote',
     'editar_lote',

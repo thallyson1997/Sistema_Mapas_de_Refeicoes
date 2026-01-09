@@ -346,7 +346,12 @@
 
             <!-- Filtros Globais -->
             <section class="filters fade-in">
-                <h3 style="margin-bottom: 1rem;">Filtros Globais</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="margin: 0;">Filtros Globais</h3>
+                    <button class="btn btn-sm btn-secondary" id="btn-exportar-dashboard">
+                        📋 Exportar
+                    </button>
+                </div>
                 <div class="filters-row">
                     <div style="flex: 1;">
                         <label for="filtro-mes" class="form-label">Mês</label>
@@ -571,6 +576,54 @@
         // Dados dos mapas e lotes vindos do Flask
         const mapasDados = {{ mapas_dados | tojson }};
         const lotesGlobal = {{ lotes | tojson }};
+
+        // ===== Sistema de Notificações =====
+        function showNotification(type, title, message, autoClose = true) {
+            // Remover notificação existente se houver
+            const existingNotification = document.querySelector('.notification');
+            if (existingNotification) {
+                existingNotification.remove();
+            }
+
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            
+            let icon = '📢';
+            if (type === 'success') icon = '✅';
+            else if (type === 'warning') icon = '⚠️';
+            else if (type === 'error') icon = '❌';
+            
+            notification.innerHTML = `
+                <div class="notification-content">
+                    <div class="notification-icon">${icon}</div>
+                    <div class="notification-text">
+                        <strong>${title}</strong>
+                        ${message ? '<br>' + message : ''}
+                    </div>
+                    <button type="button" class="notification-close" onclick="closeNotification(this)">×</button>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Auto-fechar após tempo determinado
+            if (autoClose) {
+                const duration = 60000; // Todas notificações ficam 1 minuto
+                setTimeout(() => {
+                    closeNotification(notification.querySelector('.notification-close'));
+                }, duration);
+            }
+        }
+
+        function closeNotification(button) {
+            const notification = button.closest('.notification');
+            if (notification) {
+                notification.classList.add('closing');
+                setTimeout(() => {
+                    notification.remove();
+                }, 300);
+            }
+        }
 
         // ===== Sistema de Notificações e Alertas =====
         // Função auxiliar para parsear datas ISO com microsegundos
@@ -1497,6 +1550,72 @@
         document.getElementById('filtro-mes').addEventListener('change', atualizarResumo);
         document.getElementById('filtro-ano').addEventListener('change', atualizarResumo);
         document.getElementById('filtro-lote').addEventListener('change', atualizarResumo);
+
+        // Exportar dados do dashboard
+        document.getElementById('btn-exportar-dashboard').addEventListener('click', function() {
+            const mes = document.getElementById('filtro-mes').value;
+            const ano = document.getElementById('filtro-ano').value;
+            const loteId = document.getElementById('filtro-lote').value;
+
+            // Validar se há mês E ano selecionados
+            if (!mes || !ano) {
+                showNotification('warning', 'Atenção', 'Por favor, selecione um mês e ano para exportar.');
+                return;
+            }
+
+            // Calcular data_inicio e data_fim baseado no mês/ano selecionado
+            const mesInt = parseInt(mes);
+            const anoInt = parseInt(ano);
+            const primeiroDia = new Date(anoInt, mesInt - 1, 1);
+            const ultimoDia = new Date(anoInt, mesInt, 0);
+            
+            const dataInicio = primeiroDia.toISOString().split('T')[0];
+            const dataFim = ultimoDia.toISOString().split('T')[0];
+
+            // Montar nome do arquivo
+            const meses = ['janeiro', 'fevereiro', 'marco', 'abril', 'maio', 'junho',
+                          'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+            let nomeArquivo = `exportacao_todos_lotes_${meses[mesInt - 1]}_${ano}.xlsx`;
+            
+            // Se lote específico foi selecionado, incluir no nome
+            if (loteId) {
+                nomeArquivo = `exportacao_lote_${loteId}_${meses[mesInt - 1]}_${ano}.xlsx`;
+            }
+
+            // Montar URL da exportação
+            const params = new URLSearchParams();
+            params.append('data_inicio', dataInicio);
+            params.append('data_fim', dataFim);
+            params.append('exportar_todos_lotes', loteId ? 'false' : 'true');
+            if (loteId) {
+                params.append('lote_id', loteId);
+            }
+
+            // Mostrar notificação de progresso
+            const mensagem = loteId ? 'Exportando dados do lote. Aguarde...' : 'Exportando dados de todos os lotes. Aguarde...';
+            showNotification('warning', 'Gerando arquivo...', mensagem, false);
+
+            // Chamar rota Flask para exportar Excel
+            fetch(`/exportar-dashboard?${params.toString()}`)
+                .then(response => {
+                    if (!response.ok) throw new Error('Erro ao gerar arquivo');
+                    return response.blob();
+                })
+                .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = nomeArquivo;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                    showNotification('success', 'Download concluído!', `Arquivo ${nomeArquivo} exportado com sucesso.`);
+                })
+                .catch(() => {
+                    showNotification('error', 'Erro ao exportar', 'Não foi possível gerar o arquivo Excel. Tente novamente.');
+                });
+        });
 
         // Animações de fade-in
         const observerOptions = {

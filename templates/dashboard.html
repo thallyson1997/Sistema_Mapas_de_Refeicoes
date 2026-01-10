@@ -173,94 +173,6 @@
                     .modal-container { max-width: 100vw; width: 100vw; border-radius: 0; }
                     .modal-header, .modal-body, .modal-footer { padding: 1rem; }
                 }
-        /* Notificação de sucesso */
-        .success-notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1000;
-            animation: slideInRight 0.5s ease-out;
-        }
-
-        .notification-content {
-            background: #16a34a;
-            color: white;
-            padding: 1rem 1.5rem;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            min-width: 300px;
-            max-width: 400px;
-        }
-
-        .notification-icon {
-            font-size: 1.5rem;
-            flex-shrink: 0;
-        }
-
-        .notification-text {
-            flex: 1;
-            line-height: 1.4;
-        }
-
-        .notification-close {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 1.5rem;
-            cursor: pointer;
-            padding: 0;
-            margin-left: 0.5rem;
-            opacity: 0.8;
-            transition: opacity 0.2s;
-            flex-shrink: 0;
-        }
-
-        .notification-close:hover {
-            opacity: 1;
-        }
-
-        @keyframes slideInRight {
-            from {
-                opacity: 0;
-                transform: translateX(100%);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-
-        @keyframes slideOutRight {
-            from {
-                opacity: 1;
-                transform: translateX(0);
-            }
-            to {
-                opacity: 0;
-                transform: translateX(100%);
-            }
-        }
-
-        .success-notification.closing {
-            animation: slideOutRight 0.3s ease-in forwards;
-        }
-
-        /* Responsividade */
-        @media (max-width: 480px) {
-            .success-notification {
-                top: 10px;
-                right: 10px;
-                left: 10px;
-            }
-            
-            .notification-content {
-                min-width: auto;
-                max-width: none;
-            }
-        }
     </style>
 </head>
 <body>
@@ -283,14 +195,14 @@
 
     <!-- Notificação de Login Bem-sucedido -->
     {% if mostrar_login_sucesso %}
-    <div id="loginSuccessNotification" class="success-notification">
+    <div id="loginSuccessNotification" class="notification notification-success">
         <div class="notification-content">
             <div class="notification-icon">✅</div>
             <div class="notification-text">
                 <strong>Login realizado com sucesso!</strong>
                 <br>Bem-vindo(a), {{ usuario_nome or 'Usuário' }}!
             </div>
-            <button type="button" class="notification-close" onclick="closeNotification()">×</button>
+            <button type="button" class="notification-close" onclick="closeNotification(this)">×</button>
         </div>
     </div>
     {% endif %}
@@ -580,7 +492,7 @@
         // ===== Sistema de Notificações =====
         function showNotification(type, title, message, autoClose = true) {
             // Remover notificação existente se houver
-            const existingNotification = document.querySelector('.notification');
+            const existingNotification = document.querySelector('.notification-success, .notification-error, .notification-warning, .notification-info');
             if (existingNotification) {
                 existingNotification.remove();
             }
@@ -608,7 +520,7 @@
             
             // Auto-fechar após tempo determinado
             if (autoClose) {
-                const duration = 60000; // Todas notificações ficam 1 minuto
+                const duration = type === 'error' ? 8000 : 5000;
                 setTimeout(() => {
                     closeNotification(notification.querySelector('.notification-close'));
                 }, duration);
@@ -616,7 +528,7 @@
         }
 
         function closeNotification(button) {
-            const notification = button.closest('.notification');
+            const notification = button.closest('.notification-success, .notification-error, .notification-warning, .notification-info') || button.closest('.notification');
             if (notification) {
                 notification.classList.add('closing');
                 setTimeout(() => {
@@ -1598,10 +1510,21 @@
             // Chamar rota Flask para exportar Excel
             fetch(`/exportar-dashboard?${params.toString()}`)
                 .then(response => {
+                    // Tratar caso especial: sem dados (status 204)
+                    if (response.status === 204) {
+                        // Fechar notificação anterior e mostrar aviso
+                        const existingNotification = document.querySelector('.notification');
+                        if (existingNotification) existingNotification.remove();
+                        showNotification('warning', 'Sem dados', 'Não há dados para serem exportados no período selecionado.');
+                        return null;
+                    }
+                    
                     if (!response.ok) throw new Error('Erro ao gerar arquivo');
                     return response.blob();
                 })
                 .then(blob => {
+                    if (!blob) return; // Sem dados, já mostrou notificação
+                    
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
@@ -1610,9 +1533,16 @@
                     a.click();
                     a.remove();
                     window.URL.revokeObjectURL(url);
+                    
+                    // Fechar notificação anterior e mostrar sucesso
+                    const existingNotification = document.querySelector('.notification');
+                    if (existingNotification) existingNotification.remove();
                     showNotification('success', 'Download concluído!', `Arquivo ${nomeArquivo} exportado com sucesso.`);
                 })
                 .catch(() => {
+                    // Fechar notificação anterior e mostrar erro
+                    const existingNotification = document.querySelector('.notification');
+                    if (existingNotification) existingNotification.remove();
                     showNotification('error', 'Erro ao exportar', 'Não foi possível gerar o arquivo Excel. Tente novamente.');
                 });
         });
@@ -1664,17 +1594,6 @@
             });
         });
 
-        // Controle da notificação de login bem-sucedido
-        function closeNotification() {
-            const notification = document.getElementById('loginSuccessNotification');
-            if (notification) {
-                notification.classList.add('closing');
-                setTimeout(() => {
-                    notification.remove();
-                }, 300);
-            }
-        }
-
         // Auto-fechar notificação após 5 segundos
         window.addEventListener('load', function() {
             const notification = document.getElementById('loginSuccessNotification');
@@ -1688,7 +1607,8 @@
                 
                 // Auto-fechar após 5 segundos
                 setTimeout(() => {
-                    closeNotification();
+                    const closeButton = notification.querySelector('.notification-close');
+                    if (closeButton) closeNotification(closeButton);
                 }, 5000);
             }
         });

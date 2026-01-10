@@ -933,6 +933,11 @@ def exportar_dashboard():
     if not resultado.get('success'):
         erro = resultado.get('error', 'Erro desconhecido')
         print(f"❌ Erro: {erro}")
+        
+        # Se o erro for por falta de dados, retornar 204 ao invés de 500
+        if 'Nenhum' in erro and ('dados' in erro or 'lote' in erro):
+            return jsonify({'error': erro, 'no_data': True}), 204
+        
         return jsonify({'error': erro}), 500
     
     print(f"✅ Arquivo gerado: {resultado['filename']}")

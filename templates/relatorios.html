@@ -350,9 +350,9 @@
             </section>
 
             <!-- Filtros Avançados -->
-            <section class="fade-in" style="margin-bottom: 2rem; position: relative; z-index: 100;">
-                <div style="background: white; border-radius: 12px; padding: 1rem 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-                    <div style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
+            <section class="fade-in" style="margin-bottom: 2rem; position: relative; z-index: 100; overflow: visible;">
+                <div style="background: white; border-radius: 12px; padding: 1rem 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: visible;">
+                    <div style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; overflow: visible;">
                         <div style="display: flex; align-items: center; gap: 0.5rem;">
                             <span style="font-size: 1.125rem;">🔍</span>
                             <span style="font-weight: 500; color: var(--gray-700); font-size: 0.875rem;">Filtros:</span>
@@ -370,7 +370,7 @@
                         </div>
                         
                         <!-- Filtro Unidades (Multi-Select) -->
-                        <div class="unidades-filter-container" style="display: flex; align-items: center; gap: 0.5rem; position: relative;">
+                        <div class="unidades-filter-container" style="display: flex; align-items: center; gap: 0.5rem; position: relative; overflow: visible;">
                             <label style="font-weight: 500; color: var(--gray-600); font-size: 0.875rem;">Unidades:</label>
                             <div class="unidades-display" id="unidades-display" style="padding: 0.5rem 0.75rem; font-size: 0.875rem; cursor: pointer; border: 1px solid var(--gray-300); border-radius: 6px; background: white; min-width: 180px; display: flex; justify-content: space-between; align-items: center;">
                                 <span class="unidades-text" id="unidades-text">Todas as unidades</span>
@@ -381,19 +381,19 @@
                             <div class="unidades-overlay" id="unidades-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 998;"></div>
                             
                             <!-- Popup de seleção de unidades -->
-                            <div class="unidades-popup" id="unidades-popup" style="display: none; position: absolute; top: 100%; left: 0; margin-top: 0.5rem; background: white; border: 1px solid var(--gray-300); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 350px; z-index: 999;">
+                            <div class="unidades-popup" id="unidades-popup" style="display: none; position: absolute; top: 100%; left: 0; margin-top: 0.5rem; background: white; border: 1px solid var(--gray-300); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 350px; max-width: 400px; max-height: none; overflow: visible; z-index: 999;">
                                 <div class="unidades-header" style="padding: 1rem; border-bottom: 1px solid var(--gray-200);">
                                     <h4 style="margin: 0; color: var(--primary-color); font-size: 1rem;">🏢 Selecionar Unidades</h4>
                                     <p style="margin: 0.5rem 0 0 0; font-size: 0.75rem; color: var(--gray-600);">Escolha as unidades para filtrar os dados</p>
                                 </div>
                                 
-                                <div class="unidades-body" style="padding: 1rem;">
+                                <div class="unidades-body" style="padding: 1rem; max-height: none; overflow: visible;">
                                     <div class="unidades-controls" style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
                                         <button class="control-btn" id="btn-selecionar-todas-unidades" style="flex: 1; padding: 0.5rem; background: var(--primary-color); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem;">✅ Todas</button>
                                         <button class="control-btn" id="btn-limpar-todas-unidades" style="flex: 1; padding: 0.5rem; background: var(--gray-200); color: var(--gray-700); border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem;">❌ Limpar</button>
                                     </div>
                                     
-                                    <div class="unidades-list" id="unidades-list" style="max-height: 250px; overflow-y: auto;">
+                                    <div class="unidades-list" id="unidades-list" style="max-height: 300px; overflow-y: auto;">
                                         {% for unidade in unidades %}
                                         <div class="unidade-item" data-value="{{ unidade }}" style="padding: 0.5rem; display: flex; align-items: center; gap: 0.5rem; border-radius: 4px; transition: background 0.2s;">
                                             <input type="checkbox" class="unidade-checkbox" id="checkbox-unidade{{ loop.index }}" value="{{ unidade }}" checked>
@@ -1542,6 +1542,12 @@
                 
                 console.log('Lotes selecionados:', lotesSelecionados);
                 
+                // Salvar estado atual dos checkboxes antes de atualizar
+                const estadoCheckboxes = {};
+                document.querySelectorAll('.unidade-checkbox').forEach(cb => {
+                    estadoCheckboxes[cb.value] = cb.checked;
+                });
+                
                 // Coletar todas as unidades dos lotes selecionados
                 let unidadesDisponiveis = new Set();
                 
@@ -1567,9 +1573,9 @@
                     const unidadeNome = checkbox.value;
                     
                     if (unidadesDisponiveis.has(unidadeNome)) {
-                        // Mostrar unidade e marcá-la automaticamente
+                        // Mostrar unidade e restaurar estado anterior (ou marcar se for primeira vez)
                         item.style.display = 'flex';
-                        checkbox.checked = true;
+                        checkbox.checked = estadoCheckboxes.hasOwnProperty(unidadeNome) ? estadoCheckboxes[unidadeNome] : true;
                         unidadesVisiveis++;
                     } else {
                         // Ocultar unidade e desmarcar

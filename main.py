@@ -163,7 +163,7 @@ def login():
             session['usuario_logado'] = True
             session['usuario_id'] = user.get('id')
             session['usuario_nome'] = user.get('nome') or user.get('usuario')
-            return redirect(url_for('dashboard', login='1'))
+            return redirect(url_for('home', login='1'))
         else:
             flash(result.get('mensagem', 'Credenciais inválidas'))
             return render_template('login.html', erro=result.get('mensagem'))
@@ -316,9 +316,9 @@ def api_listar_unidades_route(lote_id):
     except Exception as e:
         print(f'Erro na rota listar-unidades: {str(e)}')
         return jsonify({'success': False, 'message': f'Erro interno: {str(e)}'}), 500
-@app.route('/dashboard')
-def dashboard():
-    #Página do dashboard
+@app.route('/home')
+def home():
+    #Página inicial
     mostrar_login_sucesso = request.args.get('login') == '1'
     usuario_nome = session.get('usuario_nome', '')
     dashboard_data = carregar_lotes_para_dashboard()
@@ -949,9 +949,9 @@ def exportar_dashboard():
         download_name=resultado['filename']
     )
 
-@app.route('/relatorios')
-def relatorios():
-    #Página de relatórios e análises gráficas
+@app.route('/dashboard')
+def dashboard():
+    #Página de dashboard e análises gráficas
     # Forçar recarregamento direto do banco para evitar cache
     from functions.lotes import _load_lotes_data
     lotes_raw = _load_lotes_data()

@@ -360,40 +360,14 @@
                                 <span id="lotes-text" style="color: var(--gray-600);">Selecione os lotes</span>
                                 <span style="color: var(--gray-400);">▼</span>
                             </div>
-                            
-                            <!-- Overlay para fechar popup -->
-                            <div id="lotes-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 998;"></div>
-                            
-                            <!-- Popup de seleção de lotes -->
-                            <div id="lotes-popup" style="display: none; position: absolute; top: 100%; left: 0; margin-top: 0.5rem; background: white; border: 2px solid var(--gray-300); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); min-width: 400px; max-width: 500px; z-index: 999;">
-                                <div style="padding: 1.25rem; border-bottom: 1px solid var(--gray-200);">
-                                    <h4 style="margin: 0; color: var(--primary-color); font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;">📦 Selecionar Lotes Ativos</h4>
-                                    <p style="margin: 0.5rem 0 0 0; font-size: 0.813rem; color: var(--gray-600);">Escolha um ou mais lotes para filtrar os dados</p>
-                                </div>
-                                
-                                <div style="padding: 1.25rem;">
-                                    <div style="display: flex; gap: 0.75rem; margin-bottom: 1rem;">
-                                        <button id="btn-selecionar-todos-lotes" style="flex: 1; padding: 0.65rem; background: var(--primary-color); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; transition: all 0.2s;">✅ Selecionar Todos</button>
-                                        <button id="btn-limpar-lotes" style="flex: 1; padding: 0.65rem; background: var(--gray-200); color: var(--gray-700); border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; transition: all 0.2s;">❌ Limpar Todos</button>
-                                    </div>
-                                    
-                                    <div id="lotes-list" style="max-height: 300px; overflow-y: auto; margin-bottom: 1rem;">
-                                        {% for lote in lotes %}
-                                        <label class="lote-checkbox-label" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; border-radius: 6px; cursor: pointer; transition: background 0.2s; margin-bottom: 0.25rem;">
-                                            <input type="checkbox" class="filtro-lote-checkbox" value="{{ lote.id }}" style="width: 18px; height: 18px; cursor: pointer;">
-                                            <span style="color: var(--gray-700); font-size: 0.875rem; flex: 1;">{{ lote.nome }}{% if lote.empresa %} <span style="color: var(--gray-500);">- {{ lote.empresa }}</span>{% endif %}</span>
-                                        </label>
-                                        {% endfor %}
-                                    </div>
-                                    
-                                    <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid var(--gray-200);">
-                                        <span id="lotes-count" style="font-size: 0.875rem; color: var(--gray-600); font-weight: 500;">0 lote(s) selecionado(s)</span>
-                                        <div style="display: flex; gap: 0.75rem;">
-                                            <button id="btn-cancelar-lotes" style="padding: 0.65rem 1.25rem; background: var(--gray-200); color: var(--gray-700); border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500;">Cancelar</button>
-                                            <button id="btn-aplicar-lotes" style="padding: 0.65rem 1.25rem; background: var(--primary-color); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500;">Aplicar</button>
-                                        </div>
-                                    </div>
-                                </div>
+                        </div>
+                        
+                        <!-- Filtro de Unidades (Popup) -->
+                        <div style="position: relative;">
+                            <label style="display: block; font-weight: 500; color: var(--gray-600); font-size: 0.875rem; margin-bottom: 0.5rem;">🏢 Unidades:</label>
+                            <div id="unidades-display" style="padding: 0.75rem 1rem; font-size: 0.875rem; cursor: not-allowed; border: 2px solid var(--gray-300); border-radius: 8px; background: var(--gray-100); min-width: 250px; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s; opacity: 0.6;">
+                                <span id="unidades-text" style="color: var(--gray-500);">Selecione um lote primeiro</span>
+                                <span style="color: var(--gray-400);">▼</span>
                             </div>
                         </div>
                     </div>
@@ -422,7 +396,7 @@
                             </div>
                         </div>
                         
-                        <!-- Seleção Total vs Por Lote -->
+                        <!-- Seleção Total vs Por Lote vs Por Unidade -->
                         <div style="display: flex; align-items: center; gap: 1rem;">
                             <span style="font-weight: 500; color: var(--gray-600); font-size: 0.875rem;">Agrupamento:</span>
                             <div style="display: flex; gap: 0.5rem; background: var(--gray-100); padding: 0.4rem; border-radius: 10px;">
@@ -431,6 +405,9 @@
                                 </button>
                                 <button id="agrupamento-por-lote" class="btn-agrupamento" data-agrupamento="por-lote" style="padding: 0.75rem 1.5rem; font-size: 0.875rem; font-weight: 600; border: none; border-radius: 8px; cursor: pointer; background: transparent; color: var(--gray-600); transition: all 0.3s;">
                                     📦 Por Lote
+                                </button>
+                                <button id="agrupamento-por-unidade" class="btn-agrupamento" data-agrupamento="por-unidade" style="padding: 0.75rem 1.5rem; font-size: 0.875rem; font-weight: 600; border: none; border-radius: 8px; cursor: not-allowed; background: transparent; color: var(--gray-500); transition: all 0.3s; opacity: 0.5;" disabled>
+                                    🏢 Por Unidade
                                 </button>
                             </div>
                         </div>
@@ -445,13 +422,16 @@
                     <h3 style="margin: 0;">📈 Gráfico de Evolução - Refeições por Período</h3>
                 </div>
                 <div class="card-body">
-                    <div class="chart-placeholder">
-                        <div class="chart-content">
-                            <div style="font-size: 4rem; margin-bottom: 1rem;">📊</div>
-                            <h3 style="color: var(--gray-700); margin-bottom: 0.5rem;">Gráfico de Série Temporal</h3>
-                            <p style="color: var(--gray-600); max-width: 500px; margin: 0 auto;">
-                                Visualização da evolução de refeições ao longo do tempo.
-                            </p>
+                    <div id="grafico-refeicoes-container" style="position: relative; height: 600px;">
+                        <canvas id="grafico-refeicoes" style="height: 600px; display: none;"></canvas>
+                        <div class="chart-placeholder" id="placeholder-refeicoes" style="height: 600px;">
+                            <div class="chart-content">
+                                <div style="font-size: 4rem; margin-bottom: 1rem;">📊</div>
+                                <h3 style="color: var(--gray-700); margin-bottom: 0.5rem;">Gráfico de Série Temporal</h3>
+                                <p style="color: var(--gray-600); max-width: 500px; margin: 0 auto;">
+                                    Selecione os lotes e clique em "Aplicar" para visualizar o gráfico.
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -463,13 +443,16 @@
                     <h3 style="margin: 0;">💰 Gráfico de Evolução - Gastos por Período</h3>
                 </div>
                 <div class="card-body">
-                    <div class="chart-placeholder">
-                        <div class="chart-content">
-                            <div style="font-size: 4rem; margin-bottom: 1rem;">💵</div>
-                            <h3 style="color: var(--gray-700); margin-bottom: 0.5rem;">Gráfico de Série Temporal</h3>
-                            <p style="color: var(--gray-600); max-width: 500px; margin: 0 auto;">
-                                Visualização da evolução de gastos ao longo do tempo.
-                            </p>
+                    <div id="grafico-gastos-container" style="position: relative; height: 600px;">
+                        <canvas id="grafico-gastos" style="height: 600px; display: none;"></canvas>
+                        <div class="chart-placeholder" id="placeholder-gastos" style="height: 600px;">
+                            <div class="chart-content">
+                                <div style="font-size: 4rem; margin-bottom: 1rem;">💵</div>
+                                <h3 style="color: var(--gray-700); margin-bottom: 0.5rem;">Gráfico de Série Temporal</h3>
+                                <p style="color: var(--gray-600); max-width: 500px; margin: 0 auto;">
+                                    Selecione os lotes e clique em "Aplicar" para visualizar o gráfico.
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -597,10 +580,296 @@
         let chartInstance = null;
         let modoVisualizacao = 'acumulado'; // 'acumulado', 'unidade', 'lote'
         let tipoVisualizacao = 'normal'; // 'normal', 'acumulada'
+        let tipoAgrupamento = 'total'; // 'total', 'por-lote'
         
         // Variáveis para gráfico de gastos
         let chartInstanceGastos = null;
         let projecaoAtivaGastos = false;
+        
+        // Variável para armazenar instância do gráfico de refeições
+        let chartRefeicoesInstance = null;
+        
+        // Função para carregar o gráfico de refeições
+        async function carregarGraficoRefeicoes() {
+            try {
+                // Obter lotes selecionados
+                const checkboxes = document.querySelectorAll('.filtro-lote-checkbox:checked');
+                const lotesSelecionados = Array.from(checkboxes).map(cb => cb.value);
+                
+                if (lotesSelecionados.length === 0) {
+                    console.log('⚠️ Nenhum lote selecionado');
+                    return;
+                }
+                
+                // Obter tipo de visualização e agrupamento
+                const tipo = tipoVisualizacao;
+                const agrupamento = tipoAgrupamento;
+                
+                // Enviar unidades se houver apenas 1 lote selecionado (aplica filtro em todos os modos)
+                let unidadesSelecionadas = [];
+                if (lotesSelecionados.length === 1) {
+                    const unidadesCheckboxes = document.querySelectorAll('.filtro-unidade-checkbox:checked');
+                    unidadesSelecionadas = Array.from(unidadesCheckboxes).map(cb => parseInt(cb.value));
+                    console.log('🔍 FRONTEND: 1 lote selecionado, unidades encontradas:', unidadesSelecionadas);
+                } else {
+                    console.log('🔍 FRONTEND: Múltiplos lotes, não enviando unidades');
+                }
+                
+                console.log('📊 Carregando gráfico de refeições:', {
+                    lotes: lotesSelecionados,
+                    unidades: unidadesSelecionadas,
+                    tipo: tipo,
+                    agrupamento: agrupamento
+                });
+                
+                // Fazer requisição à API
+                const response = await fetch('/api/dashboard/grafico-refeicoes', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        lotes: lotesSelecionados,
+                        unidades: unidadesSelecionadas,
+                        tipo: tipo,
+                        agrupamento: agrupamento
+                    })
+                });
+                
+                const data = await response.json();
+                
+                // Verificar se houve erro (status HTTP 4xx ou 5xx, ou success: false)
+                if (!response.ok || !data.success) {
+                    console.error('❌ Erro ao carregar dados:', data.error);
+                    mostrarNotificacao('Erro', data.error || 'Erro ao carregar dados do gráfico', 'error');
+                    return;
+                }
+                
+                console.log('✅ Dados recebidos:', data);
+                
+                // Renderizar gráfico
+                renderizarGraficoRefeicoes(data);
+                
+            } catch (error) {
+                console.error('❌ Erro ao carregar gráfico:', error);
+                mostrarNotificacao('Erro', 'Erro ao carregar o gráfico', 'error');
+            }
+        }
+        
+        // Função para renderizar o gráfico de refeições
+        function renderizarGraficoRefeicoes(dados) {
+            const canvas = document.getElementById('grafico-refeicoes');
+            const placeholder = document.getElementById('placeholder-refeicoes');
+            
+            // Ocultar placeholder e mostrar canvas
+            placeholder.style.display = 'none';
+            canvas.style.display = 'block';
+            
+            // Destruir gráfico anterior se existir
+            if (chartRefeicoesInstance) {
+                chartRefeicoesInstance.destroy();
+            }
+            
+            // Formatar labels (YYYY-MM -> Mês/Ano)
+            const labelsFormatados = dados.labels.map(label => {
+                const [ano, mes] = label.split('-');
+                const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+                return `${meses[parseInt(mes) - 1]}/${ano}`;
+            });
+            
+            // Preparar datasets com cores
+            const cores = [
+                { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },
+                { border: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' },
+                { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },
+                { border: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' },
+                { border: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },
+                { border: '#ec4899', bg: 'rgba(236, 72, 153, 0.1)' }
+            ];
+            
+            const datasets = dados.datasets.map((dataset, index) => {
+                const cor = cores[index % cores.length];
+                return {
+                    label: dataset.label,
+                    data: dataset.data,
+                    borderColor: cor.border,
+                    backgroundColor: cor.bg,
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: (dados.agrupamento === 'por-lote' || dados.agrupamento === 'por-unidade') ? false : true,  // Sem sombreamento nos modos "Por Lote" e "Por Unidade"
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                };
+            });
+            
+            // Criar gráfico
+            const ctx = canvas.getContext('2d');
+            chartRefeicoesInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labelsFormatados,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    label += new Intl.NumberFormat('pt-BR').format(context.parsed.y);
+                                    label += ' refeições';
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return new Intl.NumberFormat('pt-BR').format(value);
+                                }
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    }
+                }
+            });
+            
+            console.log('✅ Gráfico renderizado com sucesso');
+        }
+
+        // ===== Gráfico de Gastos =====
+        let chartGastos = null;
+
+        async function carregarGraficoGastos() {
+            try {
+                const checkboxes = document.querySelectorAll('.filtro-lote-checkbox:checked');
+                const lotesSelecionados = Array.from(checkboxes).map(cb => cb.value);
+                if (lotesSelecionados.length === 0) return;
+
+                const tipo = tipoVisualizacao;
+                const agrupamento = tipoAgrupamento;
+
+                let unidadesSelecionadas = [];
+                if (lotesSelecionados.length === 1) {
+                    const unidadesCheckboxes = document.querySelectorAll('.filtro-unidade-checkbox:checked');
+                    unidadesSelecionadas = Array.from(unidadesCheckboxes).map(cb => parseInt(cb.value));
+                }
+
+                const response = await fetch('/api/dashboard/grafico-gastos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        lotes: lotesSelecionados,
+                        unidades: unidadesSelecionadas,
+                        tipo: tipo,
+                        agrupamento: agrupamento
+                    })
+                });
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    console.error('Erro ao carregar gastos:', data.error);
+                    mostrarNotificacao('Erro', data.error || 'Erro ao carregar dados do gráfico de gastos', 'error');
+                    return;
+                }
+                renderizarGraficoGastos(data);
+            } catch (e) {
+                console.error('Erro gráfico gastos:', e);
+                mostrarNotificacao('Erro', 'Erro inesperado ao carregar gráfico de gastos', 'error');
+            }
+        }
+
+        function renderizarGraficoGastos(dados) {
+            const canvas = document.getElementById('grafico-gastos');
+            const placeholder = document.getElementById('placeholder-gastos');
+            if (!canvas) return;
+            canvas.style.display = 'block';
+            if (placeholder) placeholder.style.display = 'none';
+
+            if (chartGastos) chartGastos.destroy();
+
+            const labelsFormatados = (dados.labels || dados.periodos).map(periodo => {
+                const [ano, mes] = periodo.split('-');
+                const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+                return `${meses[parseInt(mes) - 1]}/${ano}`;
+            });
+
+            // Paleta e estilo iguais ao gráfico de refeições
+            const cores = [
+                { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },
+                { border: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' },
+                { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },
+                { border: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' },
+                { border: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },
+                { border: '#ec4899', bg: 'rgba(236, 72, 153, 0.1)' }
+            ];
+
+            const datasets = dados.datasets.map((dataset, index) => {
+                const cor = cores[index % cores.length];
+                return {
+                    label: dataset.label,
+                    data: dataset.data,
+                    borderColor: cor.border,
+                    backgroundColor: cor.bg,
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: (dados.agrupamento === 'por-lote' || dados.agrupamento === 'por-unidade') ? false : true,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                };
+            });
+
+            chartGastos = new Chart(canvas.getContext('2d'), {
+                type: 'line',
+                data: { labels: labelsFormatados, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true, position: 'top' },
+                        tooltip: {
+                            mode: 'index', intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) label += ': ';
+                                    label += new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.parsed.y);
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
+                                }
+                            }
+                        }
+                    },
+                    interaction: { mode: 'nearest', axis: 'x', intersect: false }
+                }
+            });
+        }
         
         // Função para mostrar notificação customizada
         function mostrarNotificacao(titulo, mensagem, tipo = 'info', duracao = 5000) {
@@ -638,9 +907,180 @@
             }, duracao);
         }
 
+        // Função para bloquear botões de tipo e agrupamento
+        function bloquearBotoesGrafico() {
+            // Botões de tipo de visualização
+            document.querySelectorAll('.btn-tipo').forEach(btn => {
+                btn.disabled = true;
+                btn.style.opacity = '0.5';
+                btn.style.cursor = 'not-allowed';
+            });
+            
+            // Botões de agrupamento
+            document.querySelectorAll('.btn-agrupamento').forEach(btn => {
+                btn.disabled = true;
+                btn.style.opacity = '0.5';
+                btn.style.cursor = 'not-allowed';
+            });
+        }
+        
+        // Função para desbloquear botões de tipo e agrupamento
+        function desbloquearBotoesGrafico(lotesCount = 1) {
+            // Botões de tipo de visualização
+            document.querySelectorAll('.btn-tipo').forEach(btn => {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                btn.style.cursor = 'pointer';
+            });
+            
+            // Botões de agrupamento
+            document.querySelectorAll('.btn-agrupamento').forEach(btn => {
+                // "Por Unidade" só funciona com 1 lote
+                // "Por Lote" só funciona com 2+ lotes
+                if (btn.id === 'agrupamento-por-unidade' && lotesCount !== 1) {
+                    btn.disabled = true;
+                    btn.style.opacity = '0.5';
+                    btn.style.cursor = 'not-allowed';
+                } else if (btn.id === 'agrupamento-por-lote' && lotesCount === 1) {
+                    btn.disabled = true;
+                    btn.style.opacity = '0.5';
+                    btn.style.cursor = 'not-allowed';
+                    
+                    // Se estava selecionado "Por Lote", mudar para "Total"
+                    if (tipoAgrupamento === 'por-lote') {
+                        tipoAgrupamento = 'total';
+                        document.querySelectorAll('.btn-agrupamento').forEach(b => b.classList.remove('ativo'));
+                        document.getElementById('agrupamento-total').classList.add('ativo');
+                    }
+                } else {
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                    btn.style.cursor = 'pointer';
+                }
+            });
+        }
+        
+        // Função para bloquear filtro de unidades
+        function bloquearFiltroUnidades() {
+            const unidadesDisplay = document.getElementById('unidades-display');
+            const unidadesText = document.getElementById('unidades-text');
+            const btnPorUnidade = document.getElementById('agrupamento-por-unidade');
+            
+            unidadesDisplay.style.cursor = 'not-allowed';
+            unidadesDisplay.style.background = 'var(--gray-100)';
+            unidadesDisplay.style.opacity = '0.6';
+            unidadesText.textContent = 'Selecione um lote primeiro';
+            unidadesText.style.color = 'var(--gray-500)';
+            
+            // Bloquear botão "Por Unidade"
+            btnPorUnidade.disabled = true;
+            btnPorUnidade.style.opacity = '0.5';
+            btnPorUnidade.style.cursor = 'not-allowed';
+            btnPorUnidade.style.color = 'var(--gray-500)';
+            
+            // Se estava ativo, voltar para "Total"
+            if (btnPorUnidade.classList.contains('active')) {
+                btnPorUnidade.classList.remove('active');
+                btnPorUnidade.style.background = 'transparent';
+                btnPorUnidade.style.boxShadow = 'none';
+                
+                // Ativar "Total"
+                const btnTotal = document.getElementById('agrupamento-total');
+                btnTotal.classList.add('active');
+                btnTotal.style.background = 'var(--primary-color)';
+                btnTotal.style.color = 'white';
+                btnTotal.style.boxShadow = '0 2px 4px rgba(59,130,246,0.3)';
+                tipoAgrupamento = 'total';
+            }
+        }
+        
+        // Função para desbloquear filtro de unidades
+        function desbloquearFiltroUnidades() {
+            const unidadesDisplay = document.getElementById('unidades-display');
+            const unidadesText = document.getElementById('unidades-text');
+            const btnPorUnidade = document.getElementById('agrupamento-por-unidade');
+            
+            unidadesDisplay.style.cursor = 'pointer';
+            unidadesDisplay.style.background = 'white';
+            unidadesDisplay.style.opacity = '1';
+            unidadesText.textContent = 'Selecione as unidades';
+            unidadesText.style.color = 'var(--gray-600)';
+            
+            // Desbloquear botão "Por Unidade"
+            btnPorUnidade.disabled = false;
+            btnPorUnidade.style.opacity = '1';
+            btnPorUnidade.style.cursor = 'pointer';
+            btnPorUnidade.style.color = 'var(--gray-600)';
+        }
+        
+        // Função para carregar unidades do lote
+        async function carregarUnidadesDoLote(loteId) {
+            try {
+                const response = await fetch(`/api/lote/${loteId}/unidades`);
+                const data = await response.json();
+                
+                if (data.success && data.unidades) {
+                    const unidadesList = document.getElementById('unidades-list');
+                    unidadesList.innerHTML = '';
+                    
+                    data.unidades.forEach(unidade => {
+                        const label = document.createElement('label');
+                        label.className = 'unidade-checkbox-label';
+                        label.style.cssText = 'display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; border-radius: 6px; cursor: pointer; transition: background 0.2s; margin-bottom: 0.25rem;';
+                        
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.className = 'filtro-unidade-checkbox';
+                        checkbox.value = unidade.id;
+                        checkbox.checked = true;  // Marcar todas por padrão
+                        checkbox.style.cssText = 'width: 18px; height: 18px; cursor: pointer;';
+                        
+                        const span = document.createElement('span');
+                        span.style.cssText = 'color: var(--gray-700); font-size: 0.875rem; flex: 1;';
+                        
+                        // Adicionar nome e contagem de subunidades se houver
+                        if (unidade.subunidades_count > 0) {
+                            span.innerHTML = `${unidade.nome} <span style="color: var(--gray-500); font-size: 0.75rem; margin-left: 0.5rem;">(+${unidade.subunidades_count} sub)</span>`;
+                        } else {
+                            span.textContent = unidade.nome;
+                        }
+                        
+                        label.appendChild(checkbox);
+                        label.appendChild(span);
+                        unidadesList.appendChild(label);
+                        
+                        // Hover
+                        label.addEventListener('mouseenter', () => label.style.background = 'var(--gray-100)');
+                        label.addEventListener('mouseleave', () => label.style.background = 'transparent');
+                        
+                        // Atualizar contagem
+                        checkbox.addEventListener('change', atualizarContagemUnidades);
+                    });
+                    
+                    // Atualizar texto do display
+                    const unidadesText = document.getElementById('unidades-text');
+                    unidadesText.textContent = `Todas as unidades (${data.unidades.length})`;
+                    unidadesText.style.color = 'var(--gray-900)';
+                    
+                    console.log(`✅ Carregadas ${data.unidades.length} unidades do lote ${loteId}`);
+                }
+            } catch (error) {
+                console.error('❌ Erro ao carregar unidades:', error);
+            }
+        }
+        
+        // Função para atualizar contagem de unidades
+        function atualizarContagemUnidades() {
+            const count = document.querySelectorAll('.filtro-unidade-checkbox:checked').length;
+            document.getElementById('unidades-count').textContent = `${count} unidade(s) selecionada(s)`;
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             // Variável para armazenar seleção temporária
             let lotesSelecionadosTemp = [];
+            
+            // Bloquear botões no carregamento inicial (sem lotes selecionados)
+            bloquearBotoesGrafico();
             
             // Abrir popup de lotes
             document.getElementById('lotes-display').addEventListener('click', function() {
@@ -672,19 +1112,46 @@
                 if (count === 0) {
                     lotesText.textContent = 'Selecione os lotes';
                     lotesText.style.color = 'var(--gray-600)';
+                    
+                    // Mostrar placeholder e ocultar gráfico
+                    document.getElementById('placeholder-refeicoes').style.display = 'flex';
+                    document.getElementById('grafico-refeicoes').style.display = 'none';
+                    
+                    // Bloquear botões de tipo e agrupamento
+                    bloquearBotoesGrafico();
+                    
+                    // Bloquear filtro de unidades
+                    bloquearFiltroUnidades();
                 } else if (count === 1) {
+                    const loteId = lotesSelecionados[0].value;
                     lotesText.textContent = lotesSelecionados[0].nextElementSibling.textContent.trim();
                     lotesText.style.color = 'var(--gray-900)';
+                    
+                    // Desbloquear botões e carregar gráfico (1 lote)
+                    desbloquearBotoesGrafico(1);
+                    carregarGraficoRefeicoes();
+                    carregarGraficoGastos();
+                    
+                    // Desbloquear filtro de unidades e carregar unidades
+                    desbloquearFiltroUnidades();
+                    carregarUnidadesDoLote(loteId);
                 } else {
                     lotesText.textContent = `${count} lotes selecionados`;
                     lotesText.style.color = 'var(--gray-900)';
+                    
+                    // Desbloquear botões e carregar gráfico (múltiplos lotes)
+                    desbloquearBotoesGrafico(count);
+                    carregarGraficoRefeicoes();
+                    carregarGraficoGastos();
+                    
+                    // Bloquear filtro de unidades (múltiplos lotes)
+                    bloquearFiltroUnidades();
                 }
                 
                 // Fechar popup
                 document.getElementById('lotes-popup').style.display = 'none';
                 document.getElementById('lotes-overlay').style.display = 'none';
                 
-                // Aqui você pode adicionar lógica para carregar os gráficos com os lotes selecionados
                 console.log('Lotes selecionados:', Array.from(checkboxes).map(cb => cb.value));
             });
             
@@ -714,6 +1181,78 @@
                 const count = document.querySelectorAll('.filtro-lote-checkbox:checked').length;
                 document.getElementById('lotes-count').textContent = `${count} lote(s) selecionado(s)`;
             }
+            
+            // === EVENT LISTENERS PARA POPUP DE UNIDADES ===
+            
+            // Abrir popup de unidades (só funciona se habilitado)
+            document.getElementById('unidades-display').addEventListener('click', function() {
+                if (this.style.cursor === 'pointer') {
+                    document.getElementById('unidades-popup').style.display = 'block';
+                    document.getElementById('unidades-overlay').style.display = 'block';
+                    atualizarContagemUnidades();
+                }
+            });
+            
+            // Fechar popup - Overlay
+            document.getElementById('unidades-overlay').addEventListener('click', function() {
+                document.getElementById('unidades-popup').style.display = 'none';
+                document.getElementById('unidades-overlay').style.display = 'none';
+            });
+            
+            // Fechar popup - Botão Cancelar
+            document.getElementById('btn-cancelar-unidades').addEventListener('click', function() {
+                document.getElementById('unidades-popup').style.display = 'none';
+                document.getElementById('unidades-overlay').style.display = 'none';
+            });
+            
+            // Aplicar seleção de unidades
+            document.getElementById('btn-aplicar-unidades').addEventListener('click', function() {
+                const checkboxes = document.querySelectorAll('.filtro-unidade-checkbox:checked');
+                const unidadesSelecionadas = Array.from(checkboxes);
+                const count = unidadesSelecionadas.length;
+                
+                // Atualizar texto do display
+                const unidadesText = document.getElementById('unidades-text');
+                if (count === 0) {
+                    unidadesText.textContent = 'Selecione as unidades';
+                    unidadesText.style.color = 'var(--gray-600)';
+                } else if (count === 1) {
+                    unidadesText.textContent = unidadesSelecionadas[0].nextElementSibling.textContent.trim();
+                    unidadesText.style.color = 'var(--gray-900)';
+                } else {
+                    unidadesText.textContent = `${count} unidades selecionadas`;
+                    unidadesText.style.color = 'var(--gray-900)';
+                }
+                
+                // Fechar popup
+                document.getElementById('unidades-popup').style.display = 'none';
+                document.getElementById('unidades-overlay').style.display = 'none';
+                
+                // Recarregar gráfico sempre que unidades são alteradas (se houver 1 lote selecionado)
+                const lotesCheckboxes = document.querySelectorAll('.filtro-lote-checkbox:checked');
+                if (lotesCheckboxes.length === 1) {
+                    carregarGraficoRefeicoes();
+                    carregarGraficoGastos();
+                }
+                
+                console.log('Unidades selecionadas:', Array.from(checkboxes).map(cb => cb.value));
+            });
+            
+            // Selecionar todas as unidades
+            document.getElementById('btn-selecionar-todas-unidades').addEventListener('click', function() {
+                document.querySelectorAll('.filtro-unidade-checkbox').forEach(checkbox => {
+                    checkbox.checked = true;
+                });
+                atualizarContagemUnidades();
+            });
+            
+            // Limpar todas as unidades
+            document.getElementById('btn-limpar-unidades').addEventListener('click', function() {
+                document.querySelectorAll('.filtro-unidade-checkbox').forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+                atualizarContagemUnidades();
+            });
             
             // Hover nos checkboxes de lotes
             document.querySelectorAll('.lote-checkbox-label').forEach(label => {
@@ -762,14 +1301,16 @@
                     tipoVisualizacao = this.dataset.tipo;
                     console.log('📊 Tipo de visualização alterado para:', tipoVisualizacao);
                     
-                    // Aqui você pode adicionar lógica para recarregar os gráficos
-                    // carregarGrafico();
-                    // carregarGraficoGastos();
+                    // Recarregar gráfico se houver lotes selecionados
+                    const checkboxes = document.querySelectorAll('.filtro-lote-checkbox:checked');
+                    if (checkboxes.length > 0) {
+                        carregarGraficoRefeicoes();
+                        carregarGraficoGastos();
+                    }
                 });
             });
             
             // Controlar botões de AGRUPAMENTO (Total vs Por Lote)
-            let tipoAgrupamento = 'total';
             document.querySelectorAll('.btn-agrupamento').forEach(btn => {
                 btn.addEventListener('click', function() {
                     if (this.disabled) return;
@@ -791,1628 +1332,14 @@
                     tipoAgrupamento = this.dataset.agrupamento;
                     console.log('📦 Tipo de agrupamento alterado para:', tipoAgrupamento);
                     
-                    // Aqui você pode adicionar lógica para recarregar os gráficos
-                    // carregarGrafico();
-                    // carregarGraficoGastos();
+                    // Recarregar gráfico se houver lotes selecionados
+                    const checkboxes = document.querySelectorAll('.filtro-lote-checkbox:checked');
+                    if (checkboxes.length > 0) {
+                        carregarGraficoRefeicoes();
+                        carregarGraficoGastos();
+                    }
                 });
             });
-            
-            // Controlar botões de MODO de visualização (Total/Unidade/Lote)
-            document.querySelectorAll('.btn-modo').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    if (this.disabled) return;
-                    
-                    // Remover active de todos
-                    document.querySelectorAll('.btn-modo').forEach(b => {
-                        b.classList.remove('active');
-                        b.style.background = 'transparent';
-                        b.style.color = 'var(--gray-700)';
-                    });
-                    
-                    // Adicionar active ao clicado
-                    this.classList.add('active');
-                    this.style.background = 'var(--primary-color)';
-                    this.style.color = 'white';
-                    
-                    // Atualizar modo
-                    modoVisualizacao = this.dataset.modo;
-                    console.log('🔄 Modo de agrupamento alterado para:', modoVisualizacao);
-                    
-                    // Atualizar estado do botão de projeção
-                    atualizarBotaoProjecao();
-                    
-                    // Recarregar ambos os gráficos
-                    carregarGrafico();
-                    carregarGraficoGastos();
-                });
-            });
-            
-            // Função para atualizar estado do botão de projeção
-            function atualizarBotaoProjecao() {
-                // Projeção habilitada para todos os modos
-                const btnProjecao = document.getElementById('btn-toggle-projecao');
-                btnProjecao.style.opacity = '1';
-                btnProjecao.style.cursor = 'pointer';
-                btnProjecao.title = 'Ativar projeção de 6 meses baseada em dados históricos';
-                
-                // Atualizar também o botão de projeção de gastos
-                const btnProjecaoGastos = document.getElementById('btn-toggle-projecao-gastos');
-                if (btnProjecaoGastos) {
-                    btnProjecaoGastos.style.opacity = '1';
-                    btnProjecaoGastos.style.cursor = 'pointer';
-                    btnProjecaoGastos.title = 'Ativar projeção de 6 meses baseada em dados históricos';
-                }
-            }
-            
-            // Controlar estado dos controles baseado na seleção de lote
-            function atualizarEstadoControles() {
-                const loteSelecionado = document.getElementById('filtro-lote').value;
-                const temLote = loteSelecionado !== '';
-                
-                // Botões de Tipo (Normal/Acumulada)
-                document.querySelectorAll('.btn-tipo').forEach(btn => {
-                    btn.disabled = !temLote;
-                    btn.style.opacity = temLote ? '1' : '0.5';
-                    btn.style.cursor = temLote ? 'pointer' : 'not-allowed';
-                    btn.title = temLote ? '' : 'Selecione um lote primeiro';
-                });
-                
-                // Botões de Agrupamento (Total Geral/Por Unidade)
-                document.querySelectorAll('.btn-modo').forEach(btn => {
-                    btn.disabled = !temLote;
-                    btn.style.opacity = temLote ? '1' : '0.5';
-                    btn.style.cursor = temLote ? 'pointer' : 'not-allowed';
-                    btn.title = temLote ? '' : 'Selecione um lote primeiro';
-                });
-                
-                // Botões de Projeção
-                const btnProjecao = document.getElementById('btn-toggle-projecao');
-                if (btnProjecao) {
-                    btnProjecao.disabled = !temLote;
-                    btnProjecao.style.opacity = temLote ? '1' : '0.5';
-                    btnProjecao.style.cursor = temLote ? 'pointer' : 'not-allowed';
-                    btnProjecao.title = temLote ? 'Ativar projeção de 6 meses baseada em dados históricos' : 'Selecione um lote primeiro';
-                }
-                
-                const btnProjecaoGastos = document.getElementById('btn-toggle-projecao-gastos');
-                if (btnProjecaoGastos) {
-                    btnProjecaoGastos.disabled = !temLote;
-                    btnProjecaoGastos.style.opacity = temLote ? '1' : '0.5';
-                    btnProjecaoGastos.style.cursor = temLote ? 'pointer' : 'not-allowed';
-                    btnProjecaoGastos.title = temLote ? 'Ativar projeção de 6 meses baseada em dados históricos' : 'Selecione um lote primeiro';
-                }
-            }
-            
-
-            
-            // Sistema de abas removido - gráficos agora são exibidos simultaneamente
-
-            // Controle das abas de estatísticas
-            const statTabButtons = document.querySelectorAll('.tab-btn[data-stat-tab]');
-            statTabButtons.forEach(btn => {
-                btn.addEventListener('click', function() {
-                    statTabButtons.forEach(b => b.classList.remove('active'));
-                    this.classList.add('active');
-                    
-                    const statTab = this.dataset.statTab;
-                    document.querySelectorAll('.stat-content').forEach(content => {
-                        content.style.display = 'none';
-                    });
-                    document.getElementById(statTab).style.display = 'block';
-                });
-            });
-
-            // Aplicar filtros automaticamente ao mudar qualquer campo
-            function aplicarFiltrosRelatorios() {
-                console.log('Aplicando filtros e recarregando gráfico...');
-                carregarGrafico();
-            }
-            
-            // Garantir que filtros iniciais estejam atualizados antes de carregar o gráfico
-            setTimeout(() => {
-                atualizarCountUnidades();
-                atualizarDisplayUnidades();
-                atualizarEstadoControles();
-            }, 100);
-            
-            // Função para carregar dados do gráfico
-            async function carregarGrafico() {
-                try {
-                    // Coletar filtros
-                    const loteSelecionado = document.getElementById('filtro-lote').value;
-                    const lotesSelecionados = loteSelecionado ? [loteSelecionado] : [];
-                    
-                    const unidadesSelecionadas = Array.from(document.querySelectorAll('.unidade-checkbox')).filter(cb => {
-                        return cb.checked && cb.closest('.unidade-item').style.display !== 'none';
-                    }).map(cb => cb.value);
-                    const periodo = document.getElementById('filtro-periodo').value;
-                    
-                    // Verificar se há lote selecionado
-                    if (lotesSelecionados.length === 0) {
-                        console.log('⚠️ Nenhum lote selecionado - exibindo placeholder');
-                        document.getElementById('chart-placeholder').style.display = 'flex';
-                        document.getElementById('chart-loading').style.display = 'none';
-                        if (chartInstance) {
-                            chartInstance.destroy();
-                            chartInstance = null;
-                        }
-                        return;
-                    }
-                    
-                    console.log('📊 Carregando gráfico:', { lotesSelecionados, unidadesSelecionadas, periodo });
-                    
-                    // Mostrar loading
-                    document.getElementById('chart-loading').style.display = 'block';
-                    document.getElementById('chart-placeholder').style.display = 'none';
-                    
-                    // Fazer requisição
-                    const payload = {
-                        lotes: lotesSelecionados,
-                        unidades: unidadesSelecionadas,
-                        periodo: periodo,
-                        modo: modoVisualizacao,
-                        projecao: projecaoAtiva
-                    };
-                    
-                    console.log('📤 Enviando requisição:', payload);
-                    
-                    const response = await fetch('/api/relatorios/dados-grafico', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(payload)
-                    });
-                    
-                    const resultado = await response.json();
-                    console.log('📥 Resposta recebida:', resultado);
-                    
-                    document.getElementById('chart-loading').style.display = 'none';
-                    
-                    if (resultado.success) {
-                        console.log('✅ Dados recebidos:', resultado);
-                        
-                        // Verificar se há dados para exibir
-                        const temDados = resultado.total_registros > 0 && 
-                                        resultado.dados.labels && 
-                                        resultado.dados.labels.length > 0;
-                        
-                        const temGrupos = resultado.dados.grupos && resultado.dados.grupos.length > 0;
-                        
-                        if (!temDados && !temGrupos) {
-                            console.log('⚠️ Nenhum dado para exibir');
-                            if (chartInstance) {
-                                chartInstance.destroy();
-                                chartInstance = null;
-                            }
-                            document.getElementById('chart-placeholder').style.display = 'flex';
-                            document.getElementById('grafico-principal').style.display = 'none';
-                        } else {
-                            console.log('✅ Exibindo gráfico - Dados válidos encontrados');
-                            document.getElementById('chart-placeholder').style.display = 'none';
-                            document.getElementById('grafico-principal').style.display = 'block';
-                            renderizarGrafico(resultado.dados);
-                        }
-                    } else {
-                        console.error('❌ Erro ao buscar dados:', resultado.error);
-                        alert('Erro ao carregar dados do gráfico: ' + resultado.error);
-                    }
-                    
-                } catch (error) {
-                    console.error('❌ Erro na requisição:', error);
-                    document.getElementById('chart-loading').style.display = 'none';
-                    document.getElementById('chart-placeholder').style.display = 'block';
-                }
-            }
-            
-            // Função para acumular valores
-            function acumularDados(valores) {
-                if (!valores || valores.length === 0) return [];
-                
-                const acumulados = [];
-                let soma = 0;
-                let iniciado = false; // Flag para saber se já encontrou primeiro valor não-null
-                
-                for (let i = 0; i < valores.length; i++) {
-                    if (valores[i] === null || valores[i] === undefined) {
-                        // Se ainda não iniciou, manter null
-                        // Se já iniciou, manter o último valor acumulado
-                        acumulados.push(iniciado ? soma : null);
-                    } else {
-                        iniciado = true;
-                        soma += valores[i];
-                        acumulados.push(soma);
-                    }
-                }
-                return acumulados;
-            }
-            
-            // Função para renderizar o gráfico com Chart.js
-            function renderizarGrafico(dados) {
-                const ctx = document.getElementById('grafico-principal').getContext('2d');
-                
-                console.log('🎨 Renderizar gráfico - Dados recebidos:', dados);
-                console.log('📊 Modo:', dados.modo, '| Tipo:', tipoVisualizacao);
-                console.log('🔮 Projeção?', dados.projecao ? 'SIM' : 'NÃO');
-                if (dados.projecao) {
-                    console.log('📈 Dados de projeção:', dados.projecao);
-                }
-                
-                // Destruir gráfico anterior se existir
-                if (chartInstance) {
-                    chartInstance.destroy();
-                }
-                
-                // Preparar datasets baseado no modo
-                let datasets = [];
-                const cores = [
-                    { border: 'rgb(75, 192, 192)', bg: 'rgba(75, 192, 192, 0.1)' },
-                    { border: 'rgb(255, 99, 132)', bg: 'rgba(255, 99, 132, 0.1)' },
-                    { border: 'rgb(54, 162, 235)', bg: 'rgba(54, 162, 235, 0.1)' },
-                    { border: 'rgb(255, 206, 86)', bg: 'rgba(255, 206, 86, 0.1)' },
-                    { border: 'rgb(153, 102, 255)', bg: 'rgba(153, 102, 255, 0.1)' },
-                    { border: 'rgb(255, 159, 64)', bg: 'rgba(255, 159, 64, 0.1)' },
-                    { border: 'rgb(201, 203, 207)', bg: 'rgba(201, 203, 207, 0.1)' },
-                    { border: 'rgb(83, 211, 87)', bg: 'rgba(83, 211, 87, 0.1)' },
-                    { border: 'rgb(237, 100, 127)', bg: 'rgba(237, 100, 127, 0.1)' },
-                    { border: 'rgb(155, 89, 182)', bg: 'rgba(155, 89, 182, 0.1)' }
-                ];
-                
-                // Preparar labels combinando histórico + projeção
-                let allLabels = dados.labels_formatados || dados.labels;
-                
-                if (dados.projecao && dados.projecao.labels_formatados) {
-                    allLabels = [...allLabels, ...dados.projecao.labels_formatados];
-                }
-                
-                if (dados.modo === 'acumulado') {
-                    // Modo acumulado - uma única linha com total
-                    let dataHistorico = dados.datasets.total_refeicoes;
-                    console.log('🔍 Dados históricos originais:', dataHistorico);
-                    let dataProjecao = [];
-                    
-                    // Aplicar acumulação se tipo for 'acumulada'
-                    if (tipoVisualizacao === 'acumulada') {
-                        dataHistorico = acumularDados(dataHistorico);
-                        console.log('📊 Dados históricos ACUMULADOS:', dataHistorico);
-                    }
-                    
-                    // Se tem projeção, adicionar valores
-                    if (dados.projecao && dados.projecao.valores) {
-                        dataProjecao = dados.projecao.valores;
-                        // Se acumulada, continuar acumulando na projeção
-                        if (tipoVisualizacao === 'acumulada' && dataHistorico.length > 0) {
-                            let ultimoValorHistorico = dataHistorico[dataHistorico.length - 1];
-                            dataProjecao = dataProjecao.map(v => {
-                                ultimoValorHistorico += v;
-                                return ultimoValorHistorico;
-                            });
-                        }
-                    }
-                    
-                    // Dataset de dados históricos
-                    datasets.push({
-                        label: 'Total de Refeições (Real)',
-                        data: [...dataHistorico, ...Array(dataProjecao.length).fill(null)],
-                        borderColor: cores[0].border,
-                        backgroundColor: cores[0].bg,
-                        borderWidth: 3,
-                        fill: true,
-                        tension: 0.4,
-                        segment: {
-                            borderDash: ctx => ctx.p0DataIndex >= dataHistorico.length ? [5, 5] : undefined
-                        }
-                    });
-                    
-                    // Dataset de projeção (se disponível)
-                    if (dataProjecao.length > 0) {
-                        // Pegar último valor real para conectar com a projeção
-                        const ultimoValorReal = dataHistorico[dataHistorico.length - 1];
-                        
-                        // Criar array com ponto de conexão: último real + valores projetados
-                        const dataProjecaoComConexao = [ultimoValorReal, ...dataProjecao];
-                        
-                        datasets.push({
-                            label: 'Projeção (IA)',
-                            data: [...Array(dataHistorico.length - 1).fill(null), ...dataProjecaoComConexao],
-                            borderColor: 'rgb(139, 92, 246)',
-                            backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                            borderWidth: 3,
-                            borderDash: [10, 5],
-                            fill: true,
-                            tension: 0.4,
-                            pointStyle: 'triangle',
-                            pointRadius: 6
-                        });
-                        
-                        // Atualizar métricas de projeção
-                        if (dados.projecao.media_historica) {
-                            const mediaPeriodo = document.getElementById('media-periodo');
-                            if (mediaPeriodo) {
-                                mediaPeriodo.textContent = dados.projecao.media_historica.toLocaleString('pt-BR');
-                            }
-                        }
-                        if (dados.projecao.tendencia) {
-                            const tendenciaTexto = dados.projecao.tendencia === 'crescimento' ? '📈 Crescimento' : 
-                                                   dados.projecao.tendencia === 'decrescimento' ? '📉 Decrescimento' : '➡️ Estável';
-                            const tendenciaDados = document.getElementById('tendencia-dados');
-                            if (tendenciaDados) {
-                                tendenciaDados.textContent = tendenciaTexto;
-                            }
-                        }
-                        // Atualizar data fim da projeção
-                        if (dados.projecao.labels_formatados && dados.projecao.labels_formatados.length > 0) {
-                            const ultimoMes = dados.projecao.labels_formatados[dados.projecao.labels_formatados.length - 1];
-                            const dataFimContrato = document.getElementById('data-fim-contrato');
-                            const projecaoDataFimLegenda = document.getElementById('projecao-data-fim-legenda');
-                            if (dataFimContrato) {
-                                dataFimContrato.textContent = ultimoMes;
-                            }
-                            if (projecaoDataFimLegenda) {
-                                projecaoDataFimLegenda.textContent = ultimoMes;
-                            }
-                        }
-                    }
-                } else if (dados.modo === 'unidade' || dados.modo === 'lote') {
-                    // Modo por unidade ou lote - múltiplas linhas
-                    const grupos = dados.grupos || [];
-                    
-                    // Função para escurecer cor
-                    function escurecerCor(rgbString) {
-                        const match = rgbString.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
-                        if (match) {
-                            const r = Math.max(0, parseInt(match[1]) - 40);
-                            const g = Math.max(0, parseInt(match[2]) - 40);
-                            const b = Math.max(0, parseInt(match[3]) - 40);
-                            return `rgb(${r}, ${g}, ${b})`;
-                        }
-                        return rgbString;
-                    }
-                    
-                    // Determinar quantos períodos de projeção
-                    const numPeriodosProjecao = dados.projecao && dados.projecao.labels ? dados.projecao.labels.length : 0;
-                    
-                    // Adicionar linhas dos grupos históricos
-                    grupos.forEach((grupo, index) => {
-                        const corIndex = index % cores.length;
-                        let valoresGrupo = grupo.valores;
-                        
-                        // Aplicar acumulação se tipo for 'acumulada'
-                        if (tipoVisualizacao === 'acumulada') {
-                            valoresGrupo = acumularDados(valoresGrupo);
-                        }
-                        
-                        datasets.push({
-                            label: grupo.nome,
-                            data: valoresGrupo,
-                            borderColor: cores[corIndex].border,
-                            backgroundColor: cores[corIndex].bg,
-                            borderWidth: 2,
-                            fill: false,
-                            tension: 0.4
-                        });
-                    });
-                    
-                    // Se tem projeção por grupo, adicionar linha de projeção para cada grupo
-                    if (dados.projecao && dados.projecao.grupos_projetados && dados.projecao.grupos_projetados.length > 0) {
-                        dados.projecao.grupos_projetados.forEach((grupoProj, index) => {
-                            const corIndex = index % cores.length;
-                            const corEscura = escurecerCor(cores[corIndex].border);
-                            const numPeriodosHistoricos = grupos[0] ? grupos[0].valores.length : 0;
-                            
-                            // Pegar valores já processados (acumulados ou não) do dataset correspondente
-                            // O dataset foi criado no loop anterior com os valores corretos
-                            const datasetHistorico = datasets.find(ds => ds.label === grupoProj.nome);
-                            const valoresGrupoHistorico = datasetHistorico ? datasetHistorico.data : [];
-                            
-                            const ultimoValorRealGrupo = valoresGrupoHistorico.length > 0 ? valoresGrupoHistorico[valoresGrupoHistorico.length - 1] : 0;
-                            
-                            // Criar array de projeção
-                            let valoresProjecaoGrupo = grupoProj.valores;
-                            
-                            // Se acumulada, acumular também a projeção
-                            if (tipoVisualizacao === 'acumulada' && ultimoValorRealGrupo > 0) {
-                                let acumulado = ultimoValorRealGrupo;
-                                valoresProjecaoGrupo = valoresProjecaoGrupo.map(v => {
-                                    acumulado += v;
-                                    return acumulado;
-                                });
-                            }
-                            
-                            // Criar array com ponto de conexão
-                            const dataProjecaoGrupo = [ultimoValorRealGrupo, ...valoresProjecaoGrupo];
-                            
-                            datasets.push({
-                                label: `${grupoProj.nome} (Projeção)`,
-                                data: [...Array(numPeriodosHistoricos - 1).fill(null), ...dataProjecaoGrupo],
-                                borderColor: corEscura,
-                                backgroundColor: cores[corIndex].bg,
-                                borderWidth: 2,
-                                borderDash: [10, 5],
-                                fill: false,
-                                tension: 0.4,
-                                pointStyle: 'triangle',
-                                pointRadius: 4
-                            });
-                        });
-                    }
-                    
-                    // Atualizar métricas de projeção (se houver projeção)
-                    if (dados.projecao) {
-                        if (dados.projecao.media_historica) {
-                            const mediaPeriodo = document.getElementById('media-periodo');
-                            if (mediaPeriodo) {
-                                mediaPeriodo.textContent = dados.projecao.media_historica.toLocaleString('pt-BR');
-                            }
-                        }
-                        if (dados.projecao.tendencia) {
-                            const tendenciaTexto = dados.projecao.tendencia === 'crescimento' ? '📈 Crescimento' : 
-                                                   dados.projecao.tendencia === 'decrescimento' ? '📉 Decrescimento' : '➡️ Estável';
-                            const tendenciaDados = document.getElementById('tendencia-dados');
-                            if (tendenciaDados) {
-                                tendenciaDados.textContent = tendenciaTexto;
-                            }
-                        }
-                        // Atualizar data fim da projeção
-                        if (dados.projecao.labels_formatados && dados.projecao.labels_formatados.length > 0) {
-                            const ultimoMes = dados.projecao.labels_formatados[dados.projecao.labels_formatados.length - 1];
-                            const dataFimContrato = document.getElementById('data-fim-contrato');
-                            const projecaoDataFimLegenda = document.getElementById('projecao-data-fim-legenda');
-                            if (dataFimContrato) {
-                                dataFimContrato.textContent = ultimoMes;
-                            }
-                            if (projecaoDataFimLegenda) {
-                                projecaoDataFimLegenda.textContent = ultimoMes;
-                            }
-                        }
-                    }
-                }
-                
-                // Criar novo gráfico
-                chartInstance = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: allLabels,
-                        datasets: datasets
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: true,
-                        interaction: {
-                            mode: 'nearest',
-                            intersect: true
-                        },
-                        plugins: {
-                            legend: {
-                                display: true,
-                                position: 'top',
-                                labels: {
-                                    usePointStyle: true,
-                                    padding: 15
-                                }
-                            },
-                            title: {
-                                display: true,
-                                text: 'Evolução de Refeições ao Longo do Tempo',
-                                font: {
-                                    size: 16,
-                                    weight: 'bold'
-                                }
-                            },
-                            tooltip: {
-                                mode: 'nearest',
-                                intersect: true,
-                                callbacks: {
-                                    label: function(context) {
-                                        let label = context.dataset.label || '';
-                                        if (label) {
-                                            label += ': ';
-                                        }
-                                        label += context.parsed.y.toLocaleString('pt-BR');
-                                        return label;
-                                    }
-                                }
-                            }
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                ticks: {
-                                    callback: function(value) {
-                                        return value.toLocaleString('pt-BR');
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-                
-                console.log('✅ Gráfico renderizado com sucesso! Modo:', dados.modo);
-            }
-            
-            // Adicionar listener para período
-            document.getElementById('filtro-periodo').addEventListener('change', function() {
-                carregarGrafico();
-                carregarGraficoGastos();
-            });
-            
-            // Controle do filtro de Lotes (select dropdown)
-            const filtroLote = document.getElementById('filtro-lote');
-            
-            // Atualizar quando lote for selecionado
-            filtroLote.addEventListener('change', function() {
-                atualizarUnidadesDisponiveis();
-                atualizarEstadoControles();
-                
-                // Carregar ambos os gráficos
-                carregarGrafico();
-                carregarGraficoGastos();
-            });
-            
-            // Controle do filtro de Unidades multi-select
-            const unidadesDisplay = document.getElementById('unidades-display');
-            const unidadesPopup = document.getElementById('unidades-popup');
-            const unidadesOverlay = document.getElementById('unidades-overlay');
-            const btnSelecionarTodasUnidades = document.getElementById('btn-selecionar-todas-unidades');
-            const btnLimparTodasUnidades = document.getElementById('btn-limpar-todas-unidades');
-            const btnAplicarUnidades = document.getElementById('btn-aplicar-unidades');
-            const btnCancelarUnidades = document.getElementById('btn-cancelar-unidades');
-            
-            console.log('Elementos de unidades:', { unidadesDisplay, unidadesPopup, unidadesOverlay });
-            
-            // Abrir popup de unidades
-            if (unidadesDisplay) {
-                unidadesDisplay.addEventListener('click', function(e) {
-                    console.log('Clique no filtro de unidades detectado!');
-                    e.stopPropagation();
-                    atualizarUnidadesDisponiveis();
-                    unidadesPopup.style.display = 'block';
-                    unidadesOverlay.style.display = 'block';
-                });
-            } else {
-                console.error('Elemento unidades-display não encontrado!');
-            }
-            
-            // Fechar popup de unidades
-            function fecharPopupUnidades() {
-                unidadesPopup.style.display = 'none';
-                unidadesOverlay.style.display = 'none';
-            }
-            
-            unidadesOverlay.addEventListener('click', fecharPopupUnidades);
-            btnCancelarUnidades.addEventListener('click', fecharPopupUnidades);
-            
-            // Selecionar todas as unidades (apenas as visíveis)
-            btnSelecionarTodasUnidades.addEventListener('click', function() {
-                document.querySelectorAll('.unidade-checkbox').forEach(cb => {
-                    if (cb.closest('.unidade-item').style.display !== 'none') {
-                        cb.checked = true;
-                    }
-                });
-                atualizarCountUnidades();
-            });
-            
-            // Limpar todas as unidades (apenas as visíveis)
-            btnLimparTodasUnidades.addEventListener('click', function() {
-                document.querySelectorAll('.unidade-checkbox').forEach(cb => {
-                    if (cb.closest('.unidade-item').style.display !== 'none') {
-                        cb.checked = false;
-                    }
-                });
-                atualizarCountUnidades();
-            });
-            
-            // Atualizar contagem de unidades (apenas as visíveis)
-            function atualizarCountUnidades() {
-                const checkboxes = document.querySelectorAll('.unidade-checkbox');
-                let count = 0;
-                checkboxes.forEach(cb => {
-                    if (cb.closest('.unidade-item').style.display !== 'none' && cb.checked) {
-                        count++;
-                    }
-                });
-                document.getElementById('unidades-selecionadas-count').textContent = `${count} unidade${count !== 1 ? 's' : ''} selecionada${count !== 1 ? 's' : ''}`;
-            }
-            
-            // Atualizar display de unidades (considera apenas as visíveis)
-            function atualizarDisplayUnidades() {
-                const checkboxes = document.querySelectorAll('.unidade-checkbox');
-                const unidadesText = document.getElementById('unidades-text');
-                
-                // Contar visíveis
-                let totalVisiveis = 0;
-                let selecionados = [];
-                
-                checkboxes.forEach(cb => {
-                    if (cb.closest('.unidade-item').style.display !== 'none') {
-                        totalVisiveis++;
-                        if (cb.checked) {
-                            selecionados.push(cb);
-                        }
-                    }
-                });
-                
-                if (totalVisiveis === 0) {
-                    unidadesText.textContent = 'Nenhuma unidade disponível';
-                } else if (selecionados.length === 0) {
-                    unidadesText.textContent = 'Nenhuma unidade';
-                } else if (selecionados.length === totalVisiveis) {
-                    unidadesText.textContent = 'Todas as unidades';
-                } else if (selecionados.length === 1) {
-                    unidadesText.textContent = selecionados[0].nextElementSibling.textContent;
-                } else {
-                    unidadesText.textContent = `${selecionados.length} unidades`;
-                }
-            }
-            
-            // Aplicar filtro de unidades
-            btnAplicarUnidades.addEventListener('click', function() {
-                atualizarDisplayUnidades();
-                fecharPopupUnidades();
-                carregarGrafico();
-                carregarGraficoGastos();
-            });
-            
-            // Atualizar contagem ao mudar checkboxes
-            document.querySelectorAll('.unidade-checkbox').forEach(cb => {
-                cb.addEventListener('change', atualizarCountUnidades);
-            });
-            
-            // Função para atualizar unidades disponíveis baseado nos lotes selecionados
-            function atualizarUnidadesDisponiveis() {
-                const loteSelecionado = document.getElementById('filtro-lote').value;
-                const lotesSelecionados = loteSelecionado ? [loteSelecionado] : [];
-                
-                console.log('Lotes selecionados:', lotesSelecionados);
-                
-                // Salvar estado atual dos checkboxes antes de atualizar
-                const estadoCheckboxes = {};
-                document.querySelectorAll('.unidade-checkbox').forEach(cb => {
-                    estadoCheckboxes[cb.value] = cb.checked;
-                });
-                
-                // Coletar todas as unidades dos lotes selecionados
-                let unidadesDisponiveis = new Set();
-                
-                if (lotesSelecionados.length === 0) {
-                    // Nenhum lote selecionado = nenhuma unidade disponível
-                    unidadesDisponiveis = new Set();
-                } else {
-                    // Coletar unidades dos lotes selecionados
-                    lotesSelecionados.forEach(loteId => {
-                        const unidadesDoLote = lotesUnidadesMap[loteId] || [];
-                        unidadesDoLote.forEach(unidade => unidadesDisponiveis.add(unidade));
-                    });
-                }
-                
-                console.log('Unidades disponíveis:', Array.from(unidadesDisponiveis));
-                
-                // Atualizar checkboxes de unidades
-                const unidadeItems = document.querySelectorAll('.unidade-item');
-                let unidadesVisiveis = 0;
-                
-                unidadeItems.forEach(item => {
-                    const checkbox = item.querySelector('.unidade-checkbox');
-                    const unidadeNome = checkbox.value;
-                    
-                    if (unidadesDisponiveis.has(unidadeNome)) {
-                        // Mostrar unidade e restaurar estado anterior (ou marcar se for primeira vez)
-                        item.style.display = 'flex';
-                        checkbox.checked = estadoCheckboxes.hasOwnProperty(unidadeNome) ? estadoCheckboxes[unidadeNome] : true;
-                        unidadesVisiveis++;
-                    } else {
-                        // Ocultar unidade e desmarcar
-                        item.style.display = 'none';
-                        checkbox.checked = false;
-                    }
-                });
-                
-                // Atualizar contagem
-                atualizarCountUnidades();
-                
-                // Atualizar display no filtro principal
-                atualizarDisplayUnidades();
-                
-                // Mensagem se nenhuma unidade disponível
-                const unidadesList = document.getElementById('unidades-list');
-                let mensagemVazia = unidadesList.querySelector('.mensagem-vazia');
-                
-                if (unidadesVisiveis === 0) {
-                    if (!mensagemVazia) {
-                        mensagemVazia = document.createElement('div');
-                        mensagemVazia.className = 'mensagem-vazia';
-                        mensagemVazia.style.cssText = 'padding: 2rem; text-align: center; color: var(--gray-500); font-size: 0.875rem;';
-                        mensagemVazia.innerHTML = '📋 Nenhuma unidade disponível<br><small style="font-size: 0.75rem;">Selecione pelo menos um lote</small>';
-                        unidadesList.appendChild(mensagemVazia);
-                    }
-                } else {
-                    if (mensagemVazia) {
-                        mensagemVazia.remove();
-                    }
-                }
-            }
-
-            // Função para carregar gráfico de GASTOS
-            async function carregarGraficoGastos() {
-                try {
-                    const loteSelecionado = document.getElementById('filtro-lote').value;
-                    const lotesSelecionados = loteSelecionado ? [loteSelecionado] : [];
-                    
-                    const unidadesSelecionadas = Array.from(document.querySelectorAll('.unidade-checkbox:checked')).map(cb => cb.value);
-                    const periodo = document.getElementById('filtro-periodo').value;
-                    
-                    // Verificar se há lote selecionado
-                    if (lotesSelecionados.length === 0) {
-                        console.log('⚠️ Nenhum lote selecionado - exibindo placeholder de gastos');
-                        document.getElementById('placeholder-grafico-gastos').style.display = 'flex';
-                        document.getElementById('grafico-gastos').style.display = 'none';
-                        if (chartInstanceGastos) {
-                            chartInstanceGastos.destroy();
-                            chartInstanceGastos = null;
-                        }
-                        return;
-                    }
-                    
-                    console.log('💰 Carregando gráfico gastos:', { lotesSelecionados, unidadesSelecionadas, periodo, modo: modoVisualizacao, projecao: projecaoAtivaGastos });
-                    
-                    const response = await fetch('/api/relatorios/dados-gastos', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            lotes: lotesSelecionados,
-                            unidades: unidadesSelecionadas,
-                            periodo: periodo,
-                            modo: modoVisualizacao,
-                            projecao: projecaoAtivaGastos
-                        })
-                    });
-                    
-                    const resultado = await response.json();
-                    
-                    if (resultado.success) {
-                        const dados = resultado.dados;
-                        const temDados = resultado.total_registros > 0 && dados.labels && dados.labels.length > 0;
-                        const temGrupos = dados.grupos && dados.grupos.length > 0;
-                        
-                        if (!temDados && !temGrupos) {
-                            document.getElementById('chart-container-gastos').style.display = 'none';
-                            document.getElementById('placeholder-grafico-gastos').style.display = 'flex';
-                        } else {
-                            document.getElementById('chart-container-gastos').style.display = 'block';
-                            document.getElementById('placeholder-grafico-gastos').style.display = 'none';
-                            renderizarGraficoGastos(dados);
-                            
-                            // Atualizar informações de projeção se ativa
-                            if (projecaoAtivaGastos && dados.projecao) {
-                                document.getElementById('projecao-info-gastos').style.display = 'block';
-                                document.getElementById('legenda-projecao-gastos').style.display = 'block';
-                                document.getElementById('legenda-linha-divisoria-gastos').style.display = 'block';
-                                // document.getElementById('metricas-projecao-gastos').style.display = 'block'; // Seção oculta permanentemente
-                                
-                                const ultimoMes = dados.projecao.labels_formatados[dados.projecao.labels_formatados.length - 1];
-                                const dataFimContrato = document.getElementById('data-fim-contrato-gastos');
-                                const dataFimLegenda = document.getElementById('projecao-data-fim-legenda-gastos');
-                                if (dataFimContrato && ultimoMes) dataFimContrato.textContent = ultimoMes;
-                                if (dataFimLegenda && ultimoMes) dataFimLegenda.textContent = ultimoMes;
-                                
-                                // Métricas
-                                const mediaPeriodo = document.getElementById('media-periodo-gastos');
-                                if (mediaPeriodo) mediaPeriodo.textContent = dados.projecao.media_historica.toLocaleString('pt-BR');
-                                
-                                const tendencia = document.getElementById('tendencia-gastos');
-                                if (tendencia) {
-                                    const tendenciaTexto = dados.projecao.tendencia === 'crescimento' ? '📈 Crescimento' :
-                                                          dados.projecao.tendencia === 'decrescimento' ? '📉 Decrescimento' : '➡️ Estável';
-                                    tendencia.textContent = tendenciaTexto;
-                                    tendencia.style.color = dados.projecao.tendencia === 'crescimento' ? '#10b981' :
-                                                           dados.projecao.tendencia === 'decrescimento' ? '#ef4444' : '#6b7280';
-                                }
-                            } else {
-                                document.getElementById('projecao-info-gastos').style.display = 'none';
-                                document.getElementById('legenda-projecao-gastos').style.display = 'none';
-                                document.getElementById('legenda-linha-divisoria-gastos').style.display = 'none';
-                                // document.getElementById('metricas-projecao-gastos').style.display = 'none'; // Já está permanentemente oculta
-                            }
-                        }
-                    }
-                } catch (error) {
-                    console.error('❌ Erro ao carregar gráfico gastos:', error);
-                    mostrarNotificacao('Erro', 'Falha ao carregar gráfico de gastos', 'error');
-                }
-            }
-            
-            // Função para renderizar gráfico de GASTOS
-            function renderizarGraficoGastos(dados) {
-                const ctx = document.getElementById('grafico-gastos').getContext('2d');
-                
-                if (chartInstanceGastos) {
-                    chartInstanceGastos.destroy();
-                }
-                
-                let datasets = [];
-                const cores = [
-                    'rgb(59, 130, 246)', 'rgb(16, 185, 129)', 'rgb(245, 158, 11)', 
-                    'rgb(239, 68, 68)', 'rgb(139, 92, 246)', 'rgb(236, 72, 153)',
-                    'rgb(20, 184, 166)', 'rgb(251, 146, 60)', 'rgb(168, 85, 247)',
-                    'rgb(34, 197, 94)'
-                ];
-                
-                let allLabels = dados.labels_formatados || dados.labels;
-                
-                if (dados.projecao && dados.projecao.labels_formatados) {
-                    allLabels = [...allLabels, ...dados.projecao.labels_formatados];
-                }
-                
-                if (dados.modo === 'acumulado') {
-                    let dataHistorico = dados.datasets.total_gastos || [];
-                    
-                    // Aplicar acumulação se tipo for 'acumulada'
-                    if (tipoVisualizacao === 'acumulada') {
-                        dataHistorico = acumularDados(dataHistorico);
-                    }
-                    
-                    datasets.push({
-                        label: 'Total de Gastos (R$)',
-                        data: dataHistorico,
-                        borderColor: 'rgb(59, 130, 246)',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        borderWidth: 3,
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 5,
-                        pointHoverRadius: 7
-                    });
-                    
-                    if (dados.projecao && dados.projecao.valores && dados.projecao.valores.length > 0) {
-                        let dataProjecao = dados.projecao.valores;
-                        
-                        // Se acumulada, continuar acumulando na projeção
-                        if (tipoVisualizacao === 'acumulada' && dataHistorico.length > 0) {
-                            let ultimoValorHistorico = dataHistorico[dataHistorico.length - 1];
-                            dataProjecao = dataProjecao.map(v => {
-                                ultimoValorHistorico += v;
-                                return ultimoValorHistorico;
-                            });
-                        }
-                        
-                        const ultimoValorReal = dataHistorico[dataHistorico.length - 1];
-                        const dataProjecaoComConexao = [ultimoValorReal, ...dataProjecao];
-                        
-                        datasets.push({
-                            label: 'Projeção de Gastos (R$)',
-                            data: [...Array(dataHistorico.length - 1).fill(null), ...dataProjecaoComConexao],
-                            borderColor: 'rgb(139, 92, 246)',
-                            backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                            borderWidth: 3,
-                            borderDash: [10, 5],
-                            fill: true,
-                            tension: 0.4,
-                            pointRadius: 6,
-                            pointStyle: 'triangle'
-                        });
-                    }
-                } else if (dados.modo === 'unidade' || dados.modo === 'lote') {
-                    dados.grupos.forEach((grupo, index) => {
-                        let valoresGrupo = grupo.valores;
-                        
-                        // Aplicar acumulação se tipo for 'acumulada'
-                        if (tipoVisualizacao === 'acumulada') {
-                            valoresGrupo = acumularDados(valoresGrupo);
-                        }
-                        
-                        datasets.push({
-                            label: grupo.nome,
-                            data: valoresGrupo,
-                            borderColor: cores[index % cores.length],
-                            backgroundColor: cores[index % cores.length].replace('rgb', 'rgba').replace(')', ', 0.1)'),
-                            borderWidth: 3,
-                            fill: false,
-                            tension: 0.4,
-                            pointRadius: 4,
-                            pointHoverRadius: 6
-                        });
-                        
-                        if (dados.projecao && dados.projecao.grupos_projetados) {
-                            const grupoProj = dados.projecao.grupos_projetados.find(g => g.nome === grupo.nome);
-                            if (grupoProj && grupoProj.valores.length > 0) {
-                                // Buscar o dataset correspondente já com valores acumulados (se aplicável)
-                                const datasetHistorico = datasets.find(ds => ds.label === grupoProj.nome);
-                                const valoresHistoricosGrupo = datasetHistorico ? datasetHistorico.data : [];
-                                
-                                const ultimoValorRealGrupo = valoresHistoricosGrupo[valoresHistoricosGrupo.length - 1];
-                                
-                                // Preparar valores de projeção
-                                let valoresProjecaoGrupo = grupoProj.valores;
-                                
-                                // Se acumulada, acumular também a projeção
-                                if (tipoVisualizacao === 'acumulada' && ultimoValorRealGrupo > 0) {
-                                    let acumulado = ultimoValorRealGrupo;
-                                    valoresProjecaoGrupo = valoresProjecaoGrupo.map(v => {
-                                        acumulado += v;
-                                        return acumulado;
-                                    });
-                                }
-                                
-                                const dataProjecaoGrupo = [ultimoValorRealGrupo, ...valoresProjecaoGrupo];
-                                
-                                const corBase = cores[index % cores.length];
-                                const corEscura = corBase.replace('rgb(', '').replace(')', '').split(',')
-                                    .map(c => Math.max(0, parseInt(c.trim()) - 40))
-                                    .join(',');
-                                
-                                datasets.push({
-                                    label: `${grupoProj.nome} (Projeção)`,
-                                    data: [...Array(valoresHistoricosGrupo.length - 1).fill(null), ...dataProjecaoGrupo],
-                                    borderColor: `rgb(${corEscura})`,
-                                    backgroundColor: 'transparent',
-                                    borderWidth: 2.5,
-                                    borderDash: [10, 5],
-                                    fill: false,
-                                    tension: 0.4,
-                                    pointRadius: 4,
-                                    pointHoverRadius: 6,
-                                    pointStyle: 'triangle'
-                                });
-                            }
-                        }
-                    });
-                }
-                
-                // Adicionar linhas de valor contratual APENAS em modo acumulada
-                if (tipoVisualizacao === 'acumulada') {
-                    const coresContratuais = [
-                        'rgb(220, 38, 38)',   // vermelho
-                        'rgb(234, 88, 12)',   // laranja
-                        'rgb(202, 138, 4)',   // amarelo escuro
-                        'rgb(22, 163, 74)',   // verde
-                        'rgb(6, 182, 212)',   // ciano
-                    ];
-                    
-                    // Se modo for 'unidade', usar valores contratuais das unidades
-                    if (dados.modo === 'unidade' && dados.valores_contratuais_unidades) {
-                        console.log('💰 Adicionando valores contratuais por unidade:', dados.valores_contratuais_unidades);
-                        let idx = 0;
-                        for (const [nomeUnidade, valorContratual] of Object.entries(dados.valores_contratuais_unidades)) {
-                            const linhaValorContratual = Array(allLabels.length).fill(valorContratual);
-                            const cor = coresContratuais[idx % coresContratuais.length];
-                            
-                            datasets.push({
-                                label: `Valor Contratual - ${nomeUnidade}`,
-                                data: linhaValorContratual,
-                                borderColor: cor,
-                                backgroundColor: 'transparent',
-                                borderWidth: 2,
-                                borderDash: [8, 4],
-                                fill: false,
-                                pointRadius: 0,
-                                pointHoverRadius: 6,
-                                hitRadius: 20,
-                                tension: 0
-                            });
-                            idx++;
-                        }
-                    }
-                    // Caso contrário, usar valor contratual do lote (modo acumulado)
-                    else if (dados.valores_contratuais && dados.valores_contratuais.length > 0) {
-                        console.log('💰 Adicionando valores contratuais do lote:', dados.valores_contratuais);
-                        dados.valores_contratuais.forEach((contrato, idx) => {
-                            const linhaValorContratual = Array(allLabels.length).fill(contrato.valor_contratual);
-                            const cor = coresContratuais[idx % coresContratuais.length];
-                            
-                            datasets.push({
-                                label: `Valor Contratual - ${contrato.lote_nome}`,
-                                data: linhaValorContratual,
-                                borderColor: cor,
-                                backgroundColor: 'transparent',
-                                borderWidth: 2,
-                                borderDash: [8, 4],
-                                fill: false,
-                                pointRadius: 0,
-                                pointHoverRadius: 6,
-                                hitRadius: 20,
-                                tension: 0
-                            });
-                        });
-                    }
-                }
-                
-                chartInstanceGastos = new Chart(ctx, {
-                    type: 'line',
-                    data: { labels: allLabels, datasets: datasets },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: true,
-                        interaction: { mode: 'nearest', intersect: true },
-                        plugins: {
-                            legend: {
-                                display: true,
-                                position: 'top',
-                                labels: {
-                                    usePointStyle: true,
-                                    padding: 15
-                                }
-                            },
-                            title: {
-                                display: true,
-                                text: 'Evolução de Gastos ao Longo do Tempo',
-                                font: {
-                                    size: 16,
-                                    weight: 'bold'
-                                }
-                            },
-                            tooltip: {
-                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                                padding: 12,
-                                titleFont: { size: 14, weight: 'bold' },
-                                bodyFont: { size: 13 },
-                                callbacks: {
-                                    label: function(context) {
-                                        let label = context.dataset.label || '';
-                                        if (label) label += ': ';
-                                        label += 'R$ ' + (context.parsed.y || 0).toLocaleString('pt-BR', {
-                                            minimumFractionDigits: 2,
-                                            maximumFractionDigits: 2
-                                        });
-                                        return label;
-                                    }
-                                }
-                            }
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                ticks: {
-                                    callback: function(value) {
-                                        return 'R$ ' + value.toLocaleString('pt-BR', {
-                                            minimumFractionDigits: 0,
-                                            maximumFractionDigits: 0
-                                        });
-                                    }
-                                },
-                                grid: { color: 'rgba(0, 0, 0, 0.05)' }
-                            },
-                            x: { grid: { display: false } }
-                        }
-                    }
-                });
-                
-                console.log('✅ Gráfico gastos renderizado! Modo:', dados.modo);
-            }
-            
-            // Toggle de Projeção GASTOS
-            document.getElementById('btn-toggle-projecao-gastos').addEventListener('click', function() {
-                if (this.disabled) return;
-                
-                projecaoAtivaGastos = !projecaoAtivaGastos;
-                
-                const btnProjecao = this;
-                
-                if (projecaoAtivaGastos) {
-                    btnProjecao.textContent = '✖️ Desativar Projeção';
-                    btnProjecao.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
-                } else {
-                    btnProjecao.textContent = '🔮 Ativar Projeção';
-                    btnProjecao.style.background = '';
-                }
-                
-                carregarGraficoGastos();
-            });
-
-            // Toggle de Projeção (integrado no gráfico)
-            let projecaoAtiva = false;
-            document.getElementById('btn-toggle-projecao').addEventListener('click', function() {
-                if (this.disabled) return;
-                
-                projecaoAtiva = !projecaoAtiva;
-                
-                const btnProjecao = this;
-                const projecaoInfo = document.getElementById('projecao-info');
-                const metricasProjecao = document.getElementById('metricas-projecao');
-                const legendaProjecao = document.getElementById('legenda-projecao');
-                const legendaLinhaDivisoria = document.getElementById('legenda-linha-divisoria');
-                
-                if (projecaoAtiva) {
-                    // Ativar projeção
-                    btnProjecao.textContent = '✖️ Desativar Projeção';
-                    btnProjecao.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
-                    btnProjecao.style.color = 'white';
-                    projecaoInfo.style.display = 'flex';
-                    // metricasProjecao.style.display = 'block'; // Seção oculta permanentemente
-                    legendaProjecao.style.display = 'block';
-                    legendaLinhaDivisoria.style.display = 'block';
-                    
-                    // Animação suave - comentada pois métricas estão ocultas
-                    // metricasProjecao.style.opacity = '0';
-                    // metricasProjecao.style.transform = 'translateY(20px)';
-                    // setTimeout(() => {
-                    //     metricasProjecao.style.transition = 'all 0.5s ease';
-                    //     metricasProjecao.style.opacity = '1';
-                    //     metricasProjecao.style.transform = 'translateY(0)';
-                    // }, 10);
-                    
-                    // Scroll suave até as métricas - comentado pois métricas estão ocultas
-                    // setTimeout(() => {
-                    //     metricasProjecao.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                    // }, 300);
-                    
-                    console.log('🔮 Projeção ativada - Recarregando gráfico com dados projetados');
-                    carregarGrafico();
-                } else {
-                    // Desativar projeção
-                    btnProjecao.textContent = '🔮 Ativar Projeção';
-                    btnProjecao.style.background = '';
-                    btnProjecao.style.color = '';
-                    projecaoInfo.style.display = 'none';
-                    // metricasProjecao.style.display = 'none'; // Já está permanentemente oculta
-                    legendaProjecao.style.display = 'none';
-                    legendaLinhaDivisoria.style.display = 'none';
-                    
-                    console.log('❌ Projeção desativada - Recarregando apenas dados reais');
-                    carregarGrafico();
-                }
-            });
-
-            // Exportar relatório - Modal
-            var modalExportacao = document.getElementById('modal-exportacao');
-            var btnCancelarExportacao = document.getElementById('btn-cancelar-exportacao');
-            var btnConfirmarExportacao = document.getElementById('btn-confirmar-exportacao');
-            
-            document.getElementById('btn-exportar-relatorio').addEventListener('click', function() {
-                const loteId = document.getElementById('filtro-lote').value;
-                
-                if (!loteId) {
-                    mostrarNotificacao(
-                        'Atenção',
-                        'Selecione um lote antes de exportar relatórios.',
-                        'warning',
-                        3000
-                    );
-                    return;
-                }
-                
-                modalExportacao.style.display = 'block';
-            });
-            
-            btnCancelarExportacao.addEventListener('click', function() {
-                modalExportacao.style.display = 'none';
-            });
-            
-            btnConfirmarExportacao.addEventListener('click', async function() {
-                // Coletar checkboxes selecionados
-                const graficos = [];
-                if (document.getElementById('export-refeicoes-total').checked) graficos.push('refeicoes-total');
-                if (document.getElementById('export-refeicoes-unidade').checked) graficos.push('refeicoes-unidade');
-                if (document.getElementById('export-gastos-total').checked) graficos.push('gastos-total');
-                if (document.getElementById('export-gastos-unidade').checked) graficos.push('gastos-unidade');
-                
-                if (graficos.length === 0) {
-                    mostrarNotificacao(
-                        'Atenção',
-                        'Selecione pelo menos um gráfico para exportar.',
-                        'warning',
-                        3000
-                    );
-                    return;
-                }
-                
-                // Coletar tipo de visualização
-                const tipo = document.querySelector('input[name="export-tipo"]:checked').value;
-                
-                // Coletar formato
-                const formato = document.querySelector('input[name="export-formato"]:checked').value;
-                
-                // Fechar modal
-                modalExportacao.style.display = 'none';
-                
-                // Mostrar notificação de processamento
-                mostrarNotificacao(
-                    'Gerando Relatório',
-                    `Exportando ${graficos.length} gráfico(s) em formato ${formato.toUpperCase()}...`,
-                    'info',
-                    2000
-                );
-                
-                // Aguardar um pouco antes de gerar
-                await new Promise(resolve => setTimeout(resolve, 500));
-                
-                try {
-                    console.log('Iniciando exportação:', { formato, tipo, graficos });
-                    
-                    if (formato === 'imagens') {
-                        await exportarComoImagens(graficos, tipo);
-                    } else {
-                        await exportarComoPDF(graficos, tipo);
-                    }
-                } catch (error) {
-                    console.error('Erro detalhado ao exportar:', error);
-                    console.error('Stack trace:', error.stack);
-                    mostrarNotificacao(
-                        'Erro',
-                        `Erro ao gerar relatório: ${error.message}`,
-                        'error',
-                        4000
-                    );
-                }
-            });
-            
-            // Função para exportar como imagens (ZIP)
-            async function exportarComoImagens(graficos, tipo) {
-                console.log('🖼️ Iniciando exportação de imagens');
-                
-                const JSZip = window.JSZip;
-                if (!JSZip) {
-                    console.error('JSZip não disponível');
-                    mostrarNotificacao('Erro', 'Biblioteca de ZIP não carregada.', 'error', 3000);
-                    return;
-                }
-                
-                const zip = new JSZip();
-                
-                // Salvar estado atual dos botões
-                const btnTipo = document.getElementById('tipo-normal');
-                const btnAcumulada = document.getElementById('tipo-acumulada');
-                const btnTotal = document.getElementById('modo-acumulado');
-                const btnSeparado = document.getElementById('modo-unidade');
-                
-                const estadoAtual = {
-                    tipoNormal: btnTipo.classList.contains('active'),
-                    agrupamentoTotal: btnTotal.classList.contains('active')
-                };
-                
-                console.log('Estado atual salvo:', estadoAtual);
-                
-                for (const grafico of graficos) {
-                    console.log(`Gerando gráfico: ${grafico}`);
-                    
-                    // Configurar estado para o gráfico
-                    const [categoria, agrup] = grafico.split('-');
-                    
-                    // Simular cliques nos botões corretos
-                    if (tipo === 'normal') {
-                        btnTipo.classList.add('active');
-                        btnAcumulada.classList.remove('active');
-                    } else {
-                        btnTipo.classList.remove('active');
-                        btnAcumulada.classList.add('active');
-                    }
-                    
-                    if (agrup === 'total') {
-                        btnTotal.classList.add('active');
-                        btnSeparado.classList.remove('active');
-                    } else {
-                        btnTotal.classList.remove('active');
-                        btnSeparado.classList.add('active');
-                    }
-                    
-                    // Atualizar variáveis globais
-                    tipoGrafico = tipo;
-                    agrupamento = agrup === 'total' ? 'total' : 'separado';
-                    
-                    console.log(`Configurado: tipo=${tipoGrafico}, agrupamento=${agrupamento}`);
-                    
-                    // Recarregar o gráfico apropriado
-                    if (categoria === 'refeicoes') {
-                        await carregarGrafico();
-                        
-                        // Garantir que o placeholder está oculto e o canvas está visível
-                        const placeholder = document.getElementById('chart-placeholder');
-                        if (placeholder) placeholder.style.display = 'none';
-                        
-                        // Aguardar renderização
-                        await new Promise(resolve => setTimeout(resolve, 2000));
-                        
-                        // Capturar imagem do gráfico
-                        const canvas = document.getElementById('grafico-principal');
-                        console.log('Canvas encontrado:', canvas);
-                        console.log('Canvas width:', canvas?.width, 'height:', canvas?.height);
-                        
-                        if (canvas && canvas.width > 0 && canvas.height > 0) {
-                            console.log('Canvas de refeições encontrado, capturando...');
-                            const imgData = canvas.toDataURL('image/png');
-                            const base64Data = imgData.split(',')[1];
-                            const nomeArquivo = `refeicoes_${tipo}_${agrup}.png`;
-                            zip.file(nomeArquivo, base64Data, {base64: true});
-                            console.log(`✅ Imagem salva: ${nomeArquivo}`);
-                        } else {
-                            console.error('Canvas de refeições não encontrado ou vazio!', {canvas, width: canvas?.width, height: canvas?.height});
-                        }
-                    } else {
-                        await carregarGraficoGastos();
-                        
-                        // Garantir que o placeholder está oculto e o canvas está visível
-                        const placeholderGastos = document.getElementById('chart-placeholder-gastos');
-                        if (placeholderGastos) placeholderGastos.style.display = 'none';
-                        
-                        // Aguardar renderização
-                        await new Promise(resolve => setTimeout(resolve, 2000));
-                        
-                        // Capturar imagem do gráfico
-                        const canvas = document.getElementById('grafico-gastos');
-                        console.log('Canvas gastos encontrado:', canvas);
-                        console.log('Canvas width:', canvas?.width, 'height:', canvas?.height);
-                        
-                        if (canvas && canvas.width > 0 && canvas.height > 0) {
-                            console.log('Canvas de gastos encontrado, capturando...');
-                            const imgData = canvas.toDataURL('image/png');
-                            const base64Data = imgData.split(',')[1];
-                            const nomeArquivo = `gastos_${tipo}_${agrup}.png`;
-                            zip.file(nomeArquivo, base64Data, {base64: true});
-                            console.log(`✅ Imagem salva: ${nomeArquivo}`);
-                        } else {
-                            console.error('Canvas de gastos não encontrado ou vazio!', {canvas, width: canvas?.width, height: canvas?.height});
-                        }
-                    }
-                }
-                
-                console.log('Restaurando estado original...');
-                
-                // Restaurar estado original dos botões
-                if (estadoAtual.tipoNormal) {
-                    btnTipo.classList.add('active');
-                    btnAcumulada.classList.remove('active');
-                    tipoGrafico = 'normal';
-                } else {
-                    btnTipo.classList.remove('active');
-                    btnAcumulada.classList.add('active');
-                    tipoGrafico = 'acumulada';
-                }
-                
-                if (estadoAtual.agrupamentoTotal) {
-                    btnTotal.classList.add('active');
-                    btnSeparado.classList.remove('active');
-                    agrupamento = 'total';
-                } else {
-                    btnTotal.classList.remove('active');
-                    btnSeparado.classList.add('active');
-                    agrupamento = 'separado';
-                }
-                
-                await carregarGrafico();
-                await carregarGraficoGastos();
-                
-                console.log('Gerando arquivo ZIP...');
-                
-                // Gerar e baixar ZIP
-                const content = await zip.generateAsync({type: 'blob'});
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(content);
-                link.download = `relatorios_${new Date().toISOString().split('T')[0]}.zip`;
-                link.click();
-                
-                mostrarNotificacao(
-                    'Sucesso',
-                    'Relatórios exportados com sucesso!',
-                    'success',
-                    3000
-                );
-            }
-            
-            // Função para exportar como PDF
-            async function exportarComoPDF(graficos, tipo) {
-                console.log('📄 Iniciando exportação de PDF');
-                
-                const { jsPDF } = window.jspdf;
-                if (!jsPDF) {
-                    console.error('jsPDF não disponível');
-                    mostrarNotificacao('Erro', 'Biblioteca de PDF não carregada.', 'error', 3000);
-                    return;
-                }
-                
-                const pdf = new jsPDF({
-                    orientation: 'landscape',
-                    unit: 'mm',
-                    format: 'a4'
-                });
-                
-                // Salvar estado atual dos botões
-                const btnTipo = document.getElementById('tipo-normal');
-                const btnAcumulada = document.getElementById('tipo-acumulada');
-                const btnTotal = document.getElementById('modo-acumulado');
-                const btnSeparado = document.getElementById('modo-unidade');
-                
-                const estadoAtual = {
-                    tipoNormal: btnTipo.classList.contains('active'),
-                    agrupamentoTotal: btnTotal.classList.contains('active')
-                };
-                
-                console.log('Estado atual salvo:', estadoAtual);
-                
-                let primeiraPagina = true;
-                
-                for (const grafico of graficos) {
-                    console.log(`Gerando página PDF: ${grafico}`);
-                    
-                    if (!primeiraPagina) {
-                        pdf.addPage();
-                    }
-                    primeiraPagina = false;
-                    
-                    // Configurar estado para o gráfico
-                    const [categoria, agrup] = grafico.split('-');
-                    
-                    // Simular cliques nos botões corretos
-                    if (tipo === 'normal') {
-                        btnTipo.classList.add('active');
-                        btnAcumulada.classList.remove('active');
-                    } else {
-                        btnTipo.classList.remove('active');
-                        btnAcumulada.classList.add('active');
-                    }
-                    
-                    if (agrup === 'total') {
-                        btnTotal.classList.add('active');
-                        btnSeparado.classList.remove('active');
-                    } else {
-                        btnTotal.classList.remove('active');
-                        btnSeparado.classList.add('active');
-                    }
-                    
-                    // Atualizar variáveis globais
-                    tipoGrafico = tipo;
-                    agrupamento = agrup === 'total' ? 'total' : 'separado';
-                    
-                    console.log(`Configurado: tipo=${tipoGrafico}, agrupamento=${agrupamento}`);
-                    
-                    // Recarregar o gráfico apropriado
-                    if (categoria === 'refeicoes') {
-                        await carregarGrafico();
-                        
-                        // Garantir que o placeholder está oculto
-                        const placeholder = document.getElementById('chart-placeholder');
-                        if (placeholder) placeholder.style.display = 'none';
-                        
-                        // Aguardar renderização
-                        await new Promise(resolve => setTimeout(resolve, 2000));
-                        
-                        const canvas = document.getElementById('grafico-principal');
-                        console.log('Canvas encontrado:', canvas);
-                        console.log('Canvas width:', canvas?.width, 'height:', canvas?.height);
-                        
-                        if (canvas && canvas.width > 0 && canvas.height > 0) {
-                            console.log('Canvas de refeições encontrado, adicionando ao PDF...');
-                            const imgData = canvas.toDataURL('image/png');
-                            
-                            // Adicionar título
-                            pdf.setFontSize(16);
-                            pdf.text(`Evolução de Refeições - ${agrup === 'total' ? 'Total Geral' : 'Por Unidade'}`, 148, 15, { align: 'center' });
-                            pdf.setFontSize(12);
-                            pdf.text(`Tipo: ${tipo === 'normal' ? 'Normal' : 'Acumulada'}`, 148, 22, { align: 'center' });
-                            
-                            // Adicionar gráfico (paisagem A4: 297x210mm, margem 10mm)
-                            pdf.addImage(imgData, 'PNG', 10, 30, 277, 155);
-                            
-                            // Adicionar rodapé
-                            pdf.setFontSize(8);
-                            pdf.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 148, 200, { align: 'center' });
-                            console.log('✅ Página de refeições adicionada');
-                        } else {
-                            console.error('Canvas de refeições não encontrado!');
-                        }
-                    } else {
-                        await carregarGraficoGastos();
-                        
-                        // Garantir que o placeholder está oculto
-                        const placeholderGastos = document.getElementById('chart-placeholder-gastos');
-                        if (placeholderGastos) placeholderGastos.style.display = 'none';
-                        
-                        // Aguardar renderização
-                        await new Promise(resolve => setTimeout(resolve, 2000));
-                        
-                        const canvas = document.getElementById('grafico-gastos');
-                        console.log('Canvas gastos encontrado:', canvas);
-                        console.log('Canvas width:', canvas?.width, 'height:', canvas?.height);
-                        
-                        if (canvas && canvas.width > 0 && canvas.height > 0) {
-                            console.log('Canvas de gastos encontrado, adicionando ao PDF...');
-                            const imgData = canvas.toDataURL('image/png');
-                            
-                            // Adicionar título
-                            pdf.setFontSize(16);
-                            pdf.text(`Evolução de Gastos - ${agrup === 'total' ? 'Total Geral' : 'Por Unidade'}`, 148, 15, { align: 'center' });
-                            pdf.setFontSize(12);
-                            pdf.text(`Tipo: ${tipo === 'normal' ? 'Normal' : 'Acumulada'}`, 148, 22, { align: 'center' });
-                            
-                            // Adicionar gráfico
-                            pdf.addImage(imgData, 'PNG', 10, 30, 277, 155);
-                            
-                            // Adicionar rodapé
-                            pdf.setFontSize(8);
-                            pdf.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 148, 200, { align: 'center' });
-                            console.log('✅ Página de gastos adicionada');
-                        } else {
-                            console.error('Canvas de gastos não encontrado!');
-                        }
-                    }
-                }
-                
-                console.log('Restaurando estado original...');
-                
-                // Restaurar estado original dos botões
-                if (estadoAtual.tipoNormal) {
-                    btnTipo.classList.add('active');
-                    btnAcumulada.classList.remove('active');
-                    tipoGrafico = 'normal';
-                } else {
-                    btnTipo.classList.remove('active');
-                    btnAcumulada.classList.add('active');
-                    tipoGrafico = 'acumulada';
-                }
-                
-                if (estadoAtual.agrupamentoTotal) {
-                    btnTotal.classList.add('active');
-                    btnSeparado.classList.remove('active');
-                    agrupamento = 'total';
-                } else {
-                    btnTotal.classList.remove('active');
-                    btnSeparado.classList.add('active');
-                    agrupamento = 'separado';
-                }
-                
-                await carregarGrafico();
-                await carregarGraficoGastos();
-                
-                console.log('Gerando arquivo PDF...');
-                
-                // Baixar PDF
-                pdf.save(`relatorios_${new Date().toISOString().split('T')[0]}.pdf`);
-                
-                mostrarNotificacao(
-                    'Sucesso',
-                    'Relatórios exportados com sucesso!',
-                    'success',
-                    3000
-                );
-            }
-
-            // Fechar modais ao clicar fora
-            modalExportacao.addEventListener('click', function(e) {
-                if (e.target === modalExportacao) {
-                    modalExportacao.style.display = 'none';
-                }
-            });
-
-            // Logout - Modal customizado
-            var modalLogout = document.getElementById('modal-confirmacao-logout');
-            var btnCancelarLogout = document.getElementById('btn-cancelar-logout');
-            var btnConfirmarLogout = document.getElementById('btn-confirmar-logout');
-            
-            document.getElementById('logoutLink').addEventListener('click', function(e) {
-                e.preventDefault();
-                modalLogout.style.display = 'block';
-            });
-            
-            if (btnCancelarLogout) {
-                btnCancelarLogout.addEventListener('click', function() {
-                    modalLogout.style.display = 'none';
-                });
-            }
-            
-            if (btnConfirmarLogout) {
-                btnConfirmarLogout.addEventListener('click', function() {
-                    fetch('/logout', {
-                        method: 'GET',
-                        headers: { 'Accept': 'application/json' }
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.ok) {
-                            window.location.href = '/login';
-                        }
-                    })
-                    .catch(() => {
-                        window.location.href = '/logout';
-                    });
-                });
-            }
-            
-            // Fechar modal ao clicar fora
-            if (modalLogout) {
-                modalLogout.addEventListener('click', function(e) {
-                    if (e.target === modalLogout) {
-                        modalLogout.style.display = 'none';
-                    }
-                });
-            }
 
             // Animações
             const observer = new IntersectionObserver((entries) => {
@@ -2437,9 +1364,71 @@
             // Não carregar gráfico automaticamente - aguardar seleção de lote
             console.log('🚀 Página carregada - aguardando seleção de lote...');
             // Exibir placeholder inicial
-            document.getElementById('chart-placeholder').style.display = 'flex';
-            document.getElementById('placeholder-grafico-gastos').style.display = 'flex';
+            document.getElementById('placeholder-refeicoes').style.display = 'flex';
         });
     </script>
+    
+    <!-- Overlay e Popup de Lotes (fora do contexto de empilhamento) -->
+    <div id="lotes-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); z-index: 9998;"></div>
+    
+    <div id="lotes-popup" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border: 2px solid var(--gray-300); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); min-width: 400px; max-width: 500px; z-index: 9999;">
+        <div style="padding: 1.25rem; border-bottom: 1px solid var(--gray-200);">
+            <h4 style="margin: 0; color: var(--primary-color); font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;">📦 Selecionar Lotes Ativos</h4>
+            <p style="margin: 0.5rem 0 0 0; font-size: 0.813rem; color: var(--gray-600);">Escolha um ou mais lotes para filtrar os dados</p>
+        </div>
+        
+        <div style="padding: 1.25rem;">
+            <div style="display: flex; gap: 0.75rem; margin-bottom: 1rem;">
+                <button id="btn-selecionar-todos-lotes" style="flex: 1; padding: 0.65rem; background: var(--primary-color); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; transition: all 0.2s;">✅ Selecionar Todos</button>
+                <button id="btn-limpar-lotes" style="flex: 1; padding: 0.65rem; background: var(--gray-200); color: var(--gray-700); border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; transition: all 0.2s;">❌ Limpar Todos</button>
+            </div>
+            
+            <div id="lotes-list" style="max-height: 300px; overflow-y: auto; margin-bottom: 1rem;">
+                {% for lote in lotes %}
+                <label class="lote-checkbox-label" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; border-radius: 6px; cursor: pointer; transition: background 0.2s; margin-bottom: 0.25rem;">
+                    <input type="checkbox" class="filtro-lote-checkbox" value="{{ lote.id }}" style="width: 18px; height: 18px; cursor: pointer;">
+                    <span style="color: var(--gray-700); font-size: 0.875rem; flex: 1;">{{ lote.nome }}{% if lote.empresa %} <span style="color: var(--gray-500);">- {{ lote.empresa }}</span>{% endif %}</span>
+                </label>
+                {% endfor %}
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid var(--gray-200);">
+                <span id="lotes-count" style="font-size: 0.875rem; color: var(--gray-600); font-weight: 500;">0 lote(s) selecionado(s)</span>
+                <div style="display: flex; gap: 0.75rem;">
+                    <button id="btn-cancelar-lotes" style="padding: 0.65rem 1.25rem; background: var(--gray-200); color: var(--gray-700); border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500;">Cancelar</button>
+                    <button id="btn-aplicar-lotes" style="padding: 0.65rem 1.25rem; background: var(--primary-color); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500;">Aplicar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Overlay e Popup de Unidades -->
+    <div id="unidades-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); z-index: 9998;"></div>
+    
+    <div id="unidades-popup" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border: 2px solid var(--gray-300); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); min-width: 400px; max-width: 500px; z-index: 9999;">
+        <div style="padding: 1.25rem; border-bottom: 1px solid var(--gray-200);">
+            <h4 style="margin: 0; color: var(--primary-color); font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;">🏢 Selecionar Unidades</h4>
+            <p style="margin: 0.5rem 0 0 0; font-size: 0.813rem; color: var(--gray-600);">Escolha uma ou mais unidades para filtrar os dados</p>
+        </div>
+        
+        <div style="padding: 1.25rem;">
+            <div style="display: flex; gap: 0.75rem; margin-bottom: 1rem;">
+                <button id="btn-selecionar-todas-unidades" style="flex: 1; padding: 0.65rem; background: var(--primary-color); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; transition: all 0.2s;">✅ Selecionar Todas</button>
+                <button id="btn-limpar-unidades" style="flex: 1; padding: 0.65rem; background: var(--gray-200); color: var(--gray-700); border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; transition: all 0.2s;">❌ Limpar Todas</button>
+            </div>
+            
+            <div id="unidades-list" style="max-height: 300px; overflow-y: auto; margin-bottom: 1rem;">
+                <!-- Unidades serão carregadas dinamicamente -->
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid var(--gray-200);">
+                <span id="unidades-count" style="font-size: 0.875rem; color: var(--gray-600); font-weight: 500;">0 unidade(s) selecionada(s)</span>
+                <div style="display: flex; gap: 0.75rem;">
+                    <button id="btn-cancelar-unidades" style="padding: 0.65rem 1.25rem; background: var(--gray-200); color: var(--gray-700); border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500;">Cancelar</button>
+                    <button id="btn-aplicar-unidades" style="padding: 0.65rem 1.25rem; background: var(--primary-color); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500;">Aplicar</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

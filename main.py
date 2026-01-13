@@ -1024,6 +1024,650 @@ def dashboard():
     
     return render_template('relatorios.html', lotes=lotes, unidades=unidades, lotes_unidades=lotes_unidades)
 
+@app.route('/api/dashboard/grafico-refeicoes', methods=['POST'])
+def api_dashboard_grafico_refeicoes():
+    """Endpoint para buscar dados do gráfico de refeições"""
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        
+        lotes_ids = data.get('lotes', [])  # Lista de IDs dos lotes selecionados
+        unidades_ids = data.get('unidades', [])  # Lista de IDs das unidades selecionadas
+        tipo_visualizacao = data.get('tipo', 'normal')  # 'normal' ou 'acumulada'
+        tipo_agrupamento = data.get('agrupamento', 'total')  # 'total', 'por-lote' ou 'por-unidade'
+        
+        print(f"\n{'='*80}")
+        print(f"📊 API GRÁFICO REFEIÇÕES")
+        print(f"{'='*80}")
+        print(f"Lotes recebidos: {lotes_ids}")
+        print(f"Unidades recebidas (RAW): {unidades_ids}")
+        print(f"Tipo visualização: {tipo_visualizacao}")
+        print(f"Tipo agrupamento: {tipo_agrupamento}")
+        print(f"{'='*80}\n")
+        
+        # Validar entrada
+        if not lotes_ids or len(lotes_ids) == 0:
+            return jsonify({'success': False, 'error': 'Nenhum lote selecionado'}), 400
+        
+        # Converter IDs para inteiros
+        lotes_ids = [int(lid) for lid in lotes_ids if lid]
+        unidades_ids = [int(uid) for uid in unidades_ids if uid] if unidades_ids else []
+        
+        print(f"🔍 Unidades recebidas: {unidades_ids}")
+        print(f"🔍 Tipo de agrupamento: {tipo_agrupamento}")
+        
+        # Buscar mapas dos lotes selecionados + predecessores
+        from functions.mapas import carregar_mapas_db
+        from functions.lotes import Lote
+        from functions.unidades import Unidade
+        
+        mapas_dados = []
+        lotes_info = {}
+        
+        # Mapear cada lote selecionado para seus predecessores
+        lote_para_grupo = {}  # {lote_id_qualquer: lote_principal_id}
+        
+        # Função recursiva para buscar predecessores
+        def buscar_predecessores_recursivo(lote_id, lote_principal_id):
+            """Busca recursivamente todos os predecessores de um lote e mapeia para o lote principal"""
+            lote = db.session.get(Lote, lote_id)
+            if lote:
+                lote_para_grupo[lote_id] = lote_principal_id
+                
+                # Buscar info do lote
+                lotes_info[lote_id] = {
+                    'id': lote_id,
+                    'nome': lote.nome,
+                    'empresa': lote.empresa
+                }
+                
+                # Se tem predecessor, continuar recursão
+                if lote.lote_predecessor_id and lote.lote_predecessor_id not in lote_para_grupo:
+                    print(f"  📦 Lote {lote_id} -> Predecessor: Lote {lote.lote_predecessor_id} (grupo: {lote_principal_id})")
+                    buscar_predecessores_recursivo(lote.lote_predecessor_id, lote_principal_id)
+        
+        # Para cada lote selecionado, buscar seus predecessores
+        for lote_id in lotes_ids:
+            print(f"📦 Processando Lote {lote_id} e seus predecessores...")
+            buscar_predecessores_recursivo(lote_id, lote_id)  # O lote é seu próprio grupo
+        
+        print(f"📊 Mapeamento lote->grupo: {lote_para_grupo}")
+        
+        # Buscar mapas de todos os lotes (principais + predecessores)
+        for lote_id in lote_para_grupo.keys():
+            mapas = carregar_mapas_db({'lote_id': lote_id})
+            for mapa in mapas:
+                mapa['lote_info'] = lotes_info[lote_id]
+                mapa['lote_grupo'] = lote_para_grupo[lote_id]  # Adicionar grupo
+                mapas_dados.append(mapa)
+        
+        if not mapas_dados:
+            return jsonify({'success': False, 'error': 'Nenhum dado encontrado para os lotes selecionados'}), 404
+        
+        # Organizar dados por período (ano-mês)
+        # Estrutura depende do tipo de agrupamento
+        if tipo_agrupamento == 'por-unidade':
+            periodos_dados = {}  # {periodo: {unidade_id: total_refeicoes}}
+        else:
+            periodos_dados = {}  # {periodo: {lote_grupo_id: total_refeicoes}}
+        
+        # Criar mapeamento de unidade_id -> nome para o agrupamento por unidade
+        unidades_info = {}
+        # Criar mapeamento de nome -> id para converter os nomes dos mapas em IDs
+        # (Necessário para filtrar por unidades em todos os modos)
+        unidade_nome_para_id = {}
+        # Criar mapeamento de subunidade -> unidade principal
+        subunidade_para_principal = {}
+        
+        todas_unidades = Unidade.query.all()
+        for u in todas_unidades:
+            unidade_nome_para_id[u.nome] = u.id
+            
+            # Se é subunidade, mapear para a unidade principal
+            if u.unidade_principal_id:
+                subunidade_para_principal[u.id] = u.unidade_principal_id
+            
+            if tipo_agrupamento == 'por-unidade':
+                if not unidades_ids or u.id in unidades_ids:
+                    unidades_info[u.id] = {
+                        'id': u.id,
+                        'nome': u.nome,
+                        'lote_id': u.lote_id
+                    }
+        
+        campos_refeicoes = [
+            'cafe_interno', 'cafe_funcionario',
+            'almoco_interno', 'almoco_funcionario',
+            'lanche_interno', 'lanche_funcionario',
+            'jantar_interno', 'jantar_funcionario'
+        ]
+        
+        print(f"🔍 Total de mapas a processar: {len(mapas_dados)}")
+        mapas_com_unidade = sum(1 for m in mapas_dados if m.get('unidade'))
+        unidades_unicas = set(m.get('unidade') for m in mapas_dados if m.get('unidade'))
+        print(f"🔍 Mapas com unidade definida: {mapas_com_unidade}")
+        print(f"🔍 Nomes de unidades encontrados nos mapas: {sorted(unidades_unicas) if unidades_unicas else 'Nenhum'}")
+        if len(mapas_dados) > 0:
+            exemplos = mapas_dados[:3]
+            for i, ex in enumerate(exemplos, 1):
+                print(f"🔍 Exemplo mapa {i}: lote_id={ex.get('lote_id')}, unidade={ex.get('unidade')}, ano={ex.get('ano')}, mes={ex.get('mes')}")
+        
+        mapas_processados = 0
+        mapas_filtrados = 0
+        
+        for mapa in mapas_dados:
+            ano = mapa.get('ano')
+            mes = mapa.get('mes')
+            lote_grupo = mapa.get('lote_grupo')
+            unidade_nome = mapa.get('unidade')
+            # Converter nome da unidade para ID (necessário para filtrar por unidades)
+            unidade_id = unidade_nome_para_id.get(unidade_nome) if unidade_nome else None
+            
+            # Se é subunidade, agregar na unidade principal
+            if unidade_id and unidade_id in subunidade_para_principal:
+                unidade_id = subunidade_para_principal[unidade_id]
+            
+            if not ano or not mes:
+                continue
+            
+            # Se há unidades selecionadas, filtrar apenas essas unidades (aplica em todos os modos)
+            if unidades_ids and unidade_id and unidade_id not in unidades_ids:
+                mapas_filtrados += 1
+                continue
+            
+            mapas_processados += 1
+            
+            periodo = f"{ano}-{mes:02d}"
+            
+            if periodo not in periodos_dados:
+                periodos_dados[periodo] = {}
+            
+            # Determinar a chave de agrupamento
+            if tipo_agrupamento == 'por-unidade':
+                if not unidade_id:
+                    print(f"⚠️ Mapa sem unidade válida (nome: '{unidade_nome}') - Lote: {mapa.get('lote_id')}, Ano/Mês: {ano}/{mes}")
+                    continue
+                grupo_key = unidade_id
+            else:
+                if not lote_grupo:
+                    continue
+                grupo_key = lote_grupo
+            
+            if grupo_key not in periodos_dados[periodo]:
+                periodos_dados[periodo][grupo_key] = 0
+            
+            # Calcular total de refeições no mapa
+            total_mapa = 0
+            for campo in campos_refeicoes:
+                valores = mapa.get(campo, [])
+                if isinstance(valores, list):
+                    total_mapa += sum(int(v) if v is not None else 0 for v in valores)
+            
+            periodos_dados[periodo][grupo_key] += total_mapa
+        
+        print(f"🔍 Mapas processados: {mapas_processados}, Mapas filtrados por unidade: {mapas_filtrados}")
+        
+        # Ordenar períodos
+        periodos_ordenados = sorted(periodos_dados.keys())
+        
+        # Preparar resposta baseada no tipo de agrupamento
+        if tipo_agrupamento == 'total':
+            # Somar todos os lotes/unidades
+            valores = []
+            for periodo in periodos_ordenados:
+                total_periodo = sum(periodos_dados[periodo].values())
+                valores.append(total_periodo)
+            
+            # Acumular se necessário
+            if tipo_visualizacao == 'acumulada':
+                valores_acumulados = []
+                acumulado = 0
+                for v in valores:
+                    acumulado += v
+                    valores_acumulados.append(acumulado)
+                valores = valores_acumulados
+            
+            resultado = {
+                'success': True,
+                'labels': periodos_ordenados,
+                'datasets': [{
+                    'label': 'Total de Refeições',
+                    'data': valores
+                }],
+                'tipo': tipo_visualizacao,
+                'agrupamento': tipo_agrupamento
+            }
+        
+        elif tipo_agrupamento == 'por-lote':
+            # Separar por lote (cada lote inclui seus predecessores)
+            datasets = []
+            
+            for lote_id in lotes_ids:
+                lote_nome = lotes_info.get(lote_id, {}).get('nome', f'Lote {lote_id}')
+                valores = []
+                
+                for periodo in periodos_ordenados:
+                    # Buscar dados do grupo (lote + predecessores)
+                    valor = periodos_dados[periodo].get(lote_id, 0)
+                    valores.append(valor)
+                
+                # Acumular se necessário
+                if tipo_visualizacao == 'acumulada':
+                    valores_acumulados = []
+                    acumulado = 0
+                    for v in valores:
+                        acumulado += v
+                        valores_acumulados.append(acumulado)
+                    valores = valores_acumulados
+                
+                datasets.append({
+                    'label': lote_nome,
+                    'data': valores,
+                    'lote_id': lote_id
+                })
+            
+            resultado = {
+                'success': True,
+                'labels': periodos_ordenados,
+                'datasets': datasets,
+                'tipo': tipo_visualizacao,
+                'agrupamento': tipo_agrupamento
+            }
+        
+        else:  # por-unidade
+            # Separar por unidade
+            datasets = []
+            
+            print(f"🔍 Modo por-unidade - unidades_ids recebidas: {unidades_ids}")
+            print(f"🔍 Períodos dados keys (primeiros 3): {list(periodos_dados.keys())[:3]}")
+            if periodos_dados:
+                primeiro_periodo = list(periodos_dados.keys())[0]
+                print(f"🔍 Exemplo - período {primeiro_periodo}: {periodos_dados[primeiro_periodo]}")
+            
+            # Verificar se há mapas com unidade válida
+            if mapas_com_unidade == 0:
+                return jsonify({
+                    'success': False, 
+                    'error': 'Os mapas deste lote não possuem unidades associadas. Para usar o agrupamento "Por Unidade", os mapas precisam ter a informação de unidade preenchida.'
+                }), 400
+            
+            # Se unidades_ids está vazio, usar todas as unidades que aparecem nos dados
+            if not unidades_ids:
+                unidades_ids_processadas = set()
+                for periodo_data in periodos_dados.values():
+                    unidades_ids_processadas.update(periodo_data.keys())
+                unidades_ids = sorted(unidades_ids_processadas)
+                
+                print(f"🔍 Nenhuma unidade selecionada - usando todas: {unidades_ids}")
+                
+                # Carregar info das unidades
+                for uid in unidades_ids:
+                    if uid not in unidades_info:
+                        unidade = db.session.get(Unidade, uid)
+                        if unidade:
+                            unidades_info[uid] = {
+                                'id': uid,
+                                'nome': unidade.nome,
+                                'lote_id': unidade.lote_id
+                            }
+            
+            print(f"🔍 Total de unidades a processar: {len(unidades_ids)}")
+            
+            for unidade_id in unidades_ids:
+                unidade_nome = unidades_info.get(unidade_id, {}).get('nome', f'Unidade {unidade_id}')
+                valores = []
+                
+                for periodo in periodos_ordenados:
+                    valor = periodos_dados[periodo].get(unidade_id, 0)
+                    valores.append(valor)
+                
+                print(f"🔍 Unidade {unidade_id} ({unidade_nome}): {len(valores)} valores, soma={sum(valores)}")
+                
+                # Acumular se necessário
+                if tipo_visualizacao == 'acumulada':
+                    valores_acumulados = []
+                    acumulado = 0
+                    for v in valores:
+                        acumulado += v
+                        valores_acumulados.append(acumulado)
+                    valores = valores_acumulados
+                
+                datasets.append({
+                    'label': unidade_nome,
+                    'data': valores,
+                    'unidade_id': unidade_id
+                })
+            
+            resultado = {
+                'success': True,
+                'labels': periodos_ordenados,
+                'datasets': datasets,
+                'tipo': tipo_visualizacao,
+                'agrupamento': tipo_agrupamento
+            }
+        
+        print(f"✅ Retornando dados: {len(periodos_ordenados)} períodos, {len(resultado['datasets'])} dataset(s)")
+        return jsonify(resultado), 200
+    
+    except Exception as e:
+        print(f"❌ Erro na API gráfico refeições: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/dashboard/grafico-gastos', methods=['POST'])
+def api_dashboard_grafico_gastos():
+    """Endpoint para buscar dados do gráfico de gastos (R$)"""
+    try:
+        import json
+        data = request.get_json(force=True, silent=True) or {}
+
+        lotes_ids = data.get('lotes', [])
+        unidades_ids = data.get('unidades', [])
+        tipo_visualizacao = data.get('tipo', 'normal')
+        tipo_agrupamento = data.get('agrupamento', 'total')
+
+        # Validar entrada
+        if not lotes_ids or len(lotes_ids) == 0:
+            return jsonify({'success': False, 'error': 'Nenhum lote selecionado'}), 400
+
+        # Converter IDs para inteiros
+        lotes_ids = [int(lid) for lid in lotes_ids if lid]
+        unidades_ids = [int(uid) for uid in unidades_ids if uid] if unidades_ids else []
+
+        # Buscar mapas dos lotes selecionados + predecessores
+        from functions.mapas import carregar_mapas_db
+        from functions.lotes import Lote
+        from functions.unidades import Unidade
+
+        mapas_dados = []
+        lotes_info = {}
+
+        # Mapear cada lote selecionado para seus predecessores
+        lote_para_grupo = {}  # {lote_id_qualquer: lote_principal_id}
+
+        def buscar_predecessores_recursivo(lote_id, lote_principal_id):
+            lote = db.session.get(Lote, lote_id)
+            if not lote:
+                return
+            lote_para_grupo[lote_id] = lote_principal_id
+            # Guardar preços do lote (podem diferir dos predecessores)
+            try:
+                precos = json.loads(lote.precos) if lote.precos else {}
+            except Exception:
+                precos = {}
+            lotes_info[lote_id] = {
+                'id': lote_id,
+                'nome': lote.nome,
+                'precos': precos
+            }
+
+            # Mapas do lote (não do grupo), mas agregaremos no grupo
+            mapas = carregar_mapas_db({'lote_id': lote_id})
+            for mapa in mapas:
+                mapa['lote_grupo'] = lote_principal_id
+                mapa['lote_id'] = lote_id  # para pegar o preço correto
+                mapas_dados.append(mapa)
+
+            if lote.lote_predecessor_id and lote.lote_predecessor_id not in lote_para_grupo:
+                buscar_predecessores_recursivo(lote.lote_predecessor_id, lote_principal_id)
+
+        for lote_id in lotes_ids:
+            buscar_predecessores_recursivo(lote_id, lote_id)
+
+        if not mapas_dados:
+            return jsonify({'success': False, 'error': 'Nenhum dado encontrado para os lotes selecionados'}), 404
+
+        # Estruturas por período
+        if tipo_agrupamento == 'por-unidade':
+            periodos_dados = {}  # {periodo: {unidade_id: total_gastos}}
+        else:
+            periodos_dados = {}  # {periodo: {lote_grupo_id: total_gastos}}
+
+        # Mapear nomes de unidade para IDs e subunidades -> principal
+        unidades_info = {}
+        unidade_nome_para_id = {}
+        subunidade_para_principal = {}
+        todas_unidades = Unidade.query.all()
+        for u in todas_unidades:
+            unidade_nome_para_id[u.nome] = u.id
+            if u.unidade_principal_id:
+                subunidade_para_principal[u.id] = u.unidade_principal_id
+            if tipo_agrupamento == 'por-unidade':
+                if not unidades_ids or u.id in unidades_ids:
+                    unidades_info[u.id] = {
+                        'id': u.id,
+                        'nome': u.nome,
+                        'lote_id': u.lote_id
+                    }
+
+        # Campos de refeições e respectivos preços no lote
+        campos_refeicoes = [
+            'cafe_interno', 'cafe_funcionario',
+            'almoco_interno', 'almoco_funcionario',
+            'lanche_interno', 'lanche_funcionario',
+            'jantar_interno', 'jantar_funcionario'
+        ]
+
+        # Helper para obter preço considerando estrutura de preços aninhada ou chaves planas
+        def get_preco(precos, campo):
+            try:
+                if not isinstance(precos, dict):
+                    return 0.0
+                # campo ex: 'cafe_interno' -> refeicao='cafe', tipo='interno'
+                parts = campo.split('_', 1)
+                refeicao = parts[0] if len(parts) > 0 else ''
+                tipo = parts[1] if len(parts) > 1 else ''
+                valor = 0
+                if refeicao and tipo and isinstance(precos.get(refeicao), dict):
+                    valor = precos.get(refeicao, {}).get(tipo, 0)
+                else:
+                    valor = precos.get(campo, 0)
+                # Converter para float, aceitando strings com vírgula/ponto
+                try:
+                    return float(str(valor).replace(',', '.'))
+                except (ValueError, TypeError):
+                    return 0.0
+            except Exception:
+                return 0.0
+
+        # Processar mapas
+        for mapa in mapas_dados:
+            ano = mapa.get('ano')
+            mes = mapa.get('mes')
+            lote_grupo = mapa.get('lote_grupo')
+            lote_id_origem = mapa.get('lote_id')
+            unidade_nome = mapa.get('unidade')
+            unidade_id = unidade_nome_para_id.get(unidade_nome) if unidade_nome else None
+            if unidade_id and unidade_id in subunidade_para_principal:
+                unidade_id = subunidade_para_principal[unidade_id]
+
+            if not ano or not mes:
+                continue
+
+            # Filtrar por unidades, se houver
+            if unidades_ids and unidade_id and unidade_id not in unidades_ids:
+                continue
+
+            periodo = f"{ano}-{mes:02d}"
+            if periodo not in periodos_dados:
+                periodos_dados[periodo] = {}
+
+            # Determinar agrupamento
+            if tipo_agrupamento == 'por-unidade':
+                if not unidade_id:
+                    continue
+                grupo_key = unidade_id
+            else:
+                if not lote_grupo:
+                    continue
+                grupo_key = lote_grupo
+
+            if grupo_key not in periodos_dados[periodo]:
+                periodos_dados[periodo][grupo_key] = 0.0
+
+            # Calcular gasto do mapa usando preços do lote de origem
+            precos_lote = lotes_info.get(lote_id_origem, {}).get('precos', {})
+            gasto_mapa = 0.0
+            for campo in campos_refeicoes:
+                valores = mapa.get(campo, [])
+                preco = get_preco(precos_lote, campo)
+                if isinstance(valores, list) and preco:
+                    try:
+                        quantidade = sum(int(v) if v is not None else 0 for v in valores)
+                    except Exception:
+                        quantidade = 0
+                    try:
+                        gasto_mapa += quantidade * preco
+                    except Exception:
+                        pass
+
+            periodos_dados[periodo][grupo_key] += gasto_mapa
+
+        # Ordenar períodos
+        periodos_ordenados = sorted(periodos_dados.keys())
+
+        # Montar resposta
+        if tipo_agrupamento == 'total':
+            valores = []
+            for periodo in periodos_ordenados:
+                total_periodo = sum(periodos_dados[periodo].values())
+                valores.append(total_periodo)
+            if tipo_visualizacao == 'acumulada':
+                acumulado = 0
+                valores_acumulados = []
+                for v in valores:
+                    acumulado += v
+                    valores_acumulados.append(acumulado)
+                valores = valores_acumulados
+            resultado = {
+                'success': True,
+                'labels': periodos_ordenados,
+                'datasets': [{
+                    'label': 'Total de Gastos (R$)',
+                    'data': valores
+                }],
+                'tipo': tipo_visualizacao,
+                'agrupamento': tipo_agrupamento
+            }
+
+        elif tipo_agrupamento == 'por-lote':
+            datasets = []
+            # Mostrar apenas lotes principais selecionados
+            lotes_principais = sorted(set(lote_para_grupo[l] for l in lotes_ids))
+            for lote_id in lotes_principais:
+                lote_nome = lotes_info.get(lote_id, {}).get('nome', f'Lote {lote_id}')
+                valores = []
+                for periodo in periodos_ordenados:
+                    valores.append(periodos_dados[periodo].get(lote_id, 0))
+                if tipo_visualizacao == 'acumulada':
+                    acumulado = 0
+                    valores_acumulados = []
+                    for v in valores:
+                        acumulado += v
+                        valores_acumulados.append(acumulado)
+                    valores = valores_acumulados
+                datasets.append({
+                    'label': lote_nome,
+                    'data': valores,
+                    'lote_id': lote_id
+                })
+            resultado = {
+                'success': True,
+                'labels': periodos_ordenados,
+                'datasets': datasets,
+                'tipo': tipo_visualizacao,
+                'agrupamento': tipo_agrupamento
+            }
+
+        else:  # por-unidade
+            datasets = []
+            # Se nenhuma unidade foi enviada, derivar das chaves presentes
+            if not unidades_ids:
+                unidades_ids_processadas = set()
+                for periodo_data in periodos_dados.values():
+                    unidades_ids_processadas.update(periodo_data.keys())
+                unidades_ids = sorted(unidades_ids_processadas)
+                for uid in unidades_ids:
+                    if uid not in unidades_info:
+                        unidade = db.session.get(Unidade, uid)
+                        if unidade:
+                            unidades_info[uid] = {
+                                'id': uid,
+                                'nome': unidade.nome,
+                                'lote_id': unidade.lote_id
+                            }
+            for unidade_id in unidades_ids:
+                unidade_nome = unidades_info.get(unidade_id, {}).get('nome', f'Unidade {unidade_id}')
+                valores = []
+                for periodo in periodos_ordenados:
+                    valores.append(periodos_dados[periodo].get(unidade_id, 0))
+                if tipo_visualizacao == 'acumulada':
+                    acumulado = 0
+                    valores_acumulados = []
+                    for v in valores:
+                        acumulado += v
+                        valores_acumulados.append(acumulado)
+                    valores = valores_acumulados
+                datasets.append({
+                    'label': unidade_nome,
+                    'data': valores,
+                    'unidade_id': unidade_id
+                })
+            resultado = {
+                'success': True,
+                'labels': periodos_ordenados,
+                'datasets': datasets,
+                'tipo': tipo_visualizacao,
+                'agrupamento': tipo_agrupamento
+            }
+
+        return jsonify(resultado), 200
+
+    except Exception as e:
+        print(f"❌ Erro na API gráfico gastos: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/lote/<int:lote_id>/unidades', methods=['GET'])
+def api_get_unidades_lote(lote_id):
+    """Endpoint para buscar unidades de um lote"""
+    try:
+        from functions.unidades import Unidade
+        
+        # Buscar unidades do lote (apenas principais, sem subunidades)
+        unidades = Unidade.query.filter_by(
+            lote_id=lote_id,
+            unidade_principal_id=None
+        ).order_by(Unidade.nome).all()
+        
+        unidades_list = []
+        for u in unidades:
+            # Contar subunidades
+            subunidades_count = Unidade.query.filter_by(
+                unidade_principal_id=u.id
+            ).count()
+            
+            unidades_list.append({
+                'id': u.id,
+                'nome': u.nome,
+                'lote_id': u.lote_id,
+                'subunidades_count': subunidades_count
+            })
+        
+        print(f"✅ Retornando {len(unidades_list)} unidades do lote {lote_id}")
+        return jsonify({'success': True, 'unidades': unidades_list}), 200
+    
+    except Exception as e:
+        print(f"❌ Erro ao buscar unidades do lote {lote_id}: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/relatorios/dados-grafico', methods=['POST'])
 def api_dados_grafico():
     """Endpoint para buscar dados do gráfico de relatórios"""

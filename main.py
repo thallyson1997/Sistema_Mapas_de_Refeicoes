@@ -243,7 +243,8 @@ def api_adicionar_unidade_route():
             nome=data['nome'],
             quantitativos_unidade=data.get('quantitativos_unidade', '{}'),
             valor_contratual_unidade=data.get('valor_contratual_unidade', 0.0),
-            unidade_principal_id=data.get('unidade_principal_id')
+            unidade_principal_id=data.get('unidade_principal_id'),
+            sub_empresa=data.get('sub_empresa', False)
         )
         
         if resultado['success']:
@@ -269,7 +270,8 @@ def api_editar_unidade_route(unidade_id):
             quantitativos_unidade=data.get('quantitativos_unidade'),
             valor_contratual_unidade=data.get('valor_contratual_unidade'),
             ativo=data.get('ativo'),
-            unidade_principal_id=data.get('unidade_principal_id')
+            unidade_principal_id=data.get('unidade_principal_id'),
+            sub_empresa=data.get('sub_empresa')
         )
         
         if resultado['success']:
@@ -354,7 +356,7 @@ def home():
     # Ordenar lotes: ativos primeiro, depois inativos
     lotes.sort(key=lambda x: (not x.get('ativo', True), x.get('id', 0)))
     
-    return render_template('dashboard.html', lotes=lotes, mapas_dados=mapas_dados,
+    return render_template('home.html', lotes=lotes, mapas_dados=mapas_dados,
                            mostrar_login_sucesso=mostrar_login_sucesso,
                            usuario_nome=usuario_nome)
 
@@ -366,8 +368,8 @@ def lotes():
     from functions.mapas import carregar_mapas_db
     mapas = carregar_mapas_db()
     # Nota: calcular_metricas_lotes já foi chamada dentro de carregar_lotes_para_dashboard()
+    # Nota: calcular_ultima_atividade_lotes já foi chamada dentro de _load_lotes_data() via lote_to_dict()
     # Não precisamos chamar novamente, pois isso sobrescreveria os valores
-    calcular_ultima_atividade_lotes(lotes, mapas)
 
     # Debug: Mostrar cálculo de refeições por mês
     for lote in lotes:
@@ -1022,7 +1024,7 @@ def dashboard():
     
     unidades = sorted(list(unidades_set))
     
-    return render_template('relatorios.html', lotes=lotes, unidades=unidades, lotes_unidades=lotes_unidades)
+    return render_template('dashboard.html', lotes=lotes, unidades=unidades, lotes_unidades=lotes_unidades)
 
 @app.route('/api/dashboard/grafico-refeicoes', methods=['POST'])
 def api_dashboard_grafico_refeicoes():

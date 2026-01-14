@@ -213,8 +213,8 @@
                                           <button class="btn btn-secondary btn-sm" onclick="editarUnidade({{ lote.id }})">
                                               ✏️ Editar Unidade
                                           </button>
-                                          <button class="btn btn-secondary btn-sm" onclick="alert('Funcionalidade de relatório para {{ lote.nome }} será implementada em versões futuras.')">
-                                              📊 Relatório
+                                          <button class="btn btn-secondary btn-sm" onclick="irParaDashboard({{ lote.id }})">
+                                              📊 Dashboard
                                           </button>
                                           <button class="btn btn-danger btn-sm" onclick="excluirUnidade({{ lote.id }})">
                                               🗑️ Excluir Unidade
@@ -252,6 +252,10 @@
                         <div>
                             <label for="novo-lote-empresa" class="form-label" style="font-weight: 500;">Nome da Empresa</label>
                             <input type="text" id="novo-lote-empresa" name="nome_empresa" class="form-input" placeholder="Digite o nome da empresa" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                        </div>
+                        <div>
+                            <label for="novo-lote-sub-empresa" class="form-label" style="font-weight: 500;">Sub-contratada</label>
+                            <input type="text" id="novo-lote-sub-empresa" name="sub_empresa" class="form-input" placeholder="Digite o nome da sub-empresa (opcional)" style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
                         </div>
                         <div>
                             <label for="novo-lote-contrato" class="form-label" style="font-weight: 500;">Número do Contrato</label>
@@ -387,6 +391,10 @@
                         <div>
                             <label for="editar-lote-empresa" class="form-label" style="font-weight: 500;">Nome da Empresa</label>
                             <input type="text" id="editar-lote-empresa" name="nome_empresa" class="form-input" placeholder="Digite o nome da empresa" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
+                        </div>
+                        <div>
+                            <label for="editar-lote-sub-empresa" class="form-label" style="font-weight: 500;">Sub-contratada</label>
+                            <input type="text" id="editar-lote-sub-empresa" name="sub_empresa" class="form-input" placeholder="Digite o nome da sub-empresa (opcional)" style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--gray-300);">
                         </div>
                         <div>
                             <label for="editar-lote-contrato" class="form-label" style="font-weight: 500;">Número do Contrato</label>
@@ -601,6 +609,15 @@
                     <small style="color: var(--gray-500); font-size: 0.85em;">⚠️ Se esta unidade for subunidade de outra, selecione a unidade principal. Os quantitativos serão herdados.</small>
                 </div>
 
+                <!-- Alimentada por Sub-contratada -->
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: flex; align-items: center; gap: 0.75rem; font-weight: 500; cursor: pointer;">
+                        <input type="checkbox" id="add-unidade-sub-empresa" name="sub_empresa" style="width: 18px; height: 18px; cursor: pointer;">
+                        <span>🏭 Alimentada por Sub-contratada</span>
+                    </label>
+                    <small style="color: var(--gray-500); font-size: 0.85em; display: block; margin-top: 0.5rem;">Marque se essa unidade recebe alimento de empresa sub-contratada, não da empresa principal.</small>
+                </div>
+
                 <!-- Quantitativos de Refeições -->
                 <div style="margin-bottom: 1.5rem;">
                     <label class="form-label" style="font-weight: 500; display: block; margin-bottom: 1rem;">Quantitativo de Refeições (Anual)</label>
@@ -684,6 +701,15 @@
                         <option value="">Unidade Independente</option>
                     </select>
                     <small style="color: var(--gray-500); font-size: 0.85em;">⚠️ Se esta unidade for subunidade de outra, selecione a unidade principal. Os quantitativos serão herdados.</small>
+                </div>
+
+                <!-- Alimentada por Sub-contratada -->
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: flex; align-items: center; gap: 0.75rem; font-weight: 500; cursor: pointer;">
+                        <input type="checkbox" id="edit-unidade-sub-empresa" name="sub_empresa" style="width: 18px; height: 18px; cursor: pointer;">
+                        <span>🏭 Alimentada por Sub-contratada</span>
+                    </label>
+                    <small style="color: var(--gray-500); font-size: 0.85em; display: block; margin-top: 0.5rem;">Marque se essa unidade recebe alimento de empresa sub-contratada, não da empresa principal.</small>
                 </div>
 
                 <!-- Quantitativos de Refeições -->
@@ -841,6 +867,7 @@
             // Preencher campos básicos
             document.getElementById('editar-lote-nome').value = lote.nome || '';
             document.getElementById('editar-lote-empresa').value = lote.empresa || '';
+            document.getElementById('editar-lote-sub-empresa').value = lote.sub_empresa || '';
             document.getElementById('editar-lote-contrato').value = lote.numero_contrato || lote.contrato || '';
             document.getElementById('editar-lote-inicio').value = lote.data_inicio || lote.inicio_contrato || '';
             // Formatar data_fim para YYYY-MM-DD se necessário
@@ -1184,6 +1211,9 @@
                     const unidadePrincipalSelect = document.getElementById('add-unidade-principal');
                     const unidade_principal_id = unidadePrincipalSelect.value ? parseInt(unidadePrincipalSelect.value) : null;
                     
+                    // Capturar sub_empresa (checkbox)
+                    const sub_empresa = document.getElementById('add-unidade-sub-empresa').checked;
+                    
                     if (!nome) {
                         showNotification('warning', 'Atenção', 'Digite o nome da unidade.');
                         return;
@@ -1247,7 +1277,8 @@
                                 nome: nome,
                                 quantitativos_unidade: JSON.stringify(quantitativos),
                                 valor_contratual_unidade: valor_contratual_unidade,
-                                unidade_principal_id: unidade_principal_id
+                                unidade_principal_id: unidade_principal_id,
+                                sub_empresa: sub_empresa
                             }),
                             credentials: 'same-origin'
                         });
@@ -1316,6 +1347,9 @@
                     const unidadePrincipalSelect = document.getElementById('edit-unidade-principal');
                     const unidade_principal_id = unidadePrincipalSelect.value ? parseInt(unidadePrincipalSelect.value) : null;
                     
+                    // Capturar sub_empresa (checkbox)
+                    const sub_empresa = document.getElementById('edit-unidade-sub-empresa').checked;
+                    
                     if (!unidadeId) {
                         showNotification('warning', 'Atenção', 'Selecione uma unidade.');
                         return;
@@ -1383,7 +1417,8 @@
                                 nome: nome,
                                 quantitativos_unidade: JSON.stringify(quantitativos),
                                 valor_contratual_unidade: valor_contratual_unidade,
-                                unidade_principal_id: unidade_principal_id
+                                unidade_principal_id: unidade_principal_id,
+                                sub_empresa: sub_empresa
                             }),
                             credentials: 'same-origin'
                         });
@@ -1611,6 +1646,7 @@
                     const nome_lote = document.getElementById('editar-lote-nome').value.trim();
                     const nome_empresa = document.getElementById('editar-lote-empresa').value.trim();
                     const numero_contrato = document.getElementById('editar-lote-contrato').value.trim();
+                    const sub_empresa = document.getElementById('editar-lote-sub-empresa').value.trim();
                     const data_inicio = document.getElementById('editar-lote-inicio').value;
                     const data_fim = document.getElementById('editar-lote-fim').value;
                     const ativo = document.getElementById('editar-lote-ativo-sim').checked ? 'true' : 'false';
@@ -1686,7 +1722,8 @@
                             body: JSON.stringify({ 
                                 nome: nome_lote,
                                 nome_empresa, 
-                                numero_contrato, 
+                                numero_contrato,
+                                sub_empresa,
                                 data_inicio,
                                 data_fim,
                                 valor_contratual,
@@ -1720,6 +1757,7 @@
                         // Coletar dados do formulário
                         const nome_lote = document.getElementById('novo-lote-nome').value.trim();
                         const nome_empresa = document.getElementById('novo-lote-empresa').value.trim();
+                        const sub_empresa = document.getElementById('novo-lote-sub-empresa').value.trim();
                         const numero_contrato = document.getElementById('novo-lote-contrato').value.trim();
                         const data_inicio = document.getElementById('novo-lote-inicio').value;
                         const data_fim = document.getElementById('novo-lote-fim').value;
@@ -1802,7 +1840,7 @@
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 credentials: 'same-origin',
-                                body: JSON.stringify({ nome_lote, nome_empresa, numero_contrato, data_inicio, data_fim, valor_contratual, precos, quantitativos, unidades, lote_predecessor_id })
+                                body: JSON.stringify({ nome_lote, nome_empresa, sub_empresa, numero_contrato, data_inicio, data_fim, valor_contratual, precos, quantitativos, unidades, lote_predecessor_id })
                             });
                             const data = await resp.json();
                             if (resp.ok && data.success) {
@@ -2134,6 +2172,13 @@
             alert(`Funcionalidade de relatório para Lote ${loteId} será implementada em versões futuras.`);
         }
 
+        function irParaDashboard(loteId) {
+            // Armazenar o ID do lote selecionado em localStorage
+            localStorage.setItem('lote_id_selecionado', loteId);
+            // Redirecionar para a página dashboard
+            window.location.href = "{{ url_for('dashboard') }}";
+        }
+
         // Sistema de Notificações (igual ao lote-detalhes.html)
 function showNotification(type, title, message, autoClose = true) {
     // Remover notificação existente se houver
@@ -2203,6 +2248,14 @@ async function adicionarUnidade(loteId) {
     
     // Habilitar campos por padrão (unidade independente)
     toggleQuantitativosAdicionar('');
+    
+    // Mostrar/ocultar campo de sub_empresa baseado se o lote tem sub_empresa
+    const subEmpresaDiv = document.getElementById('add-unidade-sub-empresa').parentElement.parentElement;
+    if (lote.sub_empresa && lote.sub_empresa.trim() !== '') {
+        subEmpresaDiv.style.display = 'block';
+    } else {
+        subEmpresaDiv.style.display = 'none';
+    }
     
     // Abrir modal
     document.getElementById('modal-adicionar-unidade').style.display = 'block';
@@ -2343,6 +2396,14 @@ async function editarUnidade(loteId) {
                 toggleQuantitativosEditar(this.value);
             });
             
+            // Mostrar/ocultar campo de sub_empresa baseado se o lote tem sub_empresa
+            const subEmpresaDiv = document.getElementById('edit-unidade-sub-empresa').parentElement.parentElement;
+            if (lote.sub_empresa && lote.sub_empresa.trim() !== '') {
+                subEmpresaDiv.style.display = 'block';
+            } else {
+                subEmpresaDiv.style.display = 'none';
+            }
+            
             // Abrir modal
             document.getElementById('modal-editar-unidade').style.display = 'block';
         } else {
@@ -2365,6 +2426,17 @@ async function carregarDadosUnidade() {
         const unidade = JSON.parse(selectedOption.dataset.unidade);
         const loteId = document.getElementById('edit-unidade-lote-id').value;
         
+        // Buscar dados do lote para verificar se tem sub_empresa
+        const lote = lotesData.find(l => l.id === parseInt(loteId));
+        
+        // Mostrar/ocultar campo de sub_empresa baseado se o lote tem sub_empresa
+        const subEmpresaDiv = document.getElementById('edit-unidade-sub-empresa').parentElement.parentElement;
+        if (lote && lote.sub_empresa && lote.sub_empresa.trim() !== '') {
+            subEmpresaDiv.style.display = 'block';
+        } else {
+            subEmpresaDiv.style.display = 'none';
+        }
+        
         // Armazenar ID da unidade
         document.getElementById('edit-unidade-id').value = unidade.id;
         
@@ -2377,6 +2449,10 @@ async function carregarDadosUnidade() {
         // Preencher unidade principal se existir
         const selectPrincipal = document.getElementById('edit-unidade-principal');
         selectPrincipal.value = unidade.unidade_principal_id || '';
+        
+        // Preencher sub_empresa (checkbox)
+        const checkboxSubEmpresa = document.getElementById('edit-unidade-sub-empresa');
+        checkboxSubEmpresa.checked = unidade.sub_empresa || false;
         
         // Preencher quantitativos
         const quantitativos = unidade.quantitativos_unidade || {};

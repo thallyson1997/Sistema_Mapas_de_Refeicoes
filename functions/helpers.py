@@ -156,7 +156,9 @@ def carregar_lotes_para_dashboard():
 			'id': l.get('id'),
 			'nome': l.get('nome') or l.get('nome_lote') or '',
 			'empresa': l.get('empresa') or '',
+			'numero_contrato': l.get('numero_contrato') or l.get('contrato') or '',
 			'contrato': l.get('numero_contrato') or l.get('contrato') or '',
+			'sub_empresa': l.get('sub_empresa') or '',
 			'data_inicio': data_inicio,
 			'data_fim': l.get('data_fim') or '',
 			'valor_contratual': valor_contratual,
@@ -176,7 +178,8 @@ def carregar_lotes_para_dashboard():
 			'atualizado_em': l.get('atualizado_em'),  # Adicionar data de atualização
 			'percentual_executado': l.get('percentual_executado', 0.0),  # Adicionar percentual calculado
 			'refeicoes_por_mes': l.get('refeicoes_por_mes', {}),  # Adicionar refeições por mês
-			'lote_predecessor_id': l.get('lote_predecessor_id')  # Adicionar predecessor
+			'lote_predecessor_id': l.get('lote_predecessor_id'),  # Adicionar predecessor
+			'ultima_atualizacao': l.get('ultima_atualizacao', 'Sem registro')  # Adicionar última atividade
 		}
 		lotes.append(lote_obj)
 

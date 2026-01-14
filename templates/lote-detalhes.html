@@ -314,12 +314,16 @@
                                 </div>
                                 <div>
                                     <strong>Contrato:</strong><br>
-                                    <span>{{ lote.contrato }}</span>
+                                    <span>{{ lote.numero_contrato }}</span>
                                 </div>
                                 <div>
-                                    <strong>Início do Contrato:</strong><br>
-                                    {% if lote.data_inicio %}
-                                        <span>{{ lote.data_inicio.split('-')[2] }}/{{ lote.data_inicio.split('-')[1] }}/{{ lote.data_inicio.split('-')[0] }}</span>
+                                    <strong>Data do Contrato:</strong><br>
+                                    {% if lote.data_inicio and lote.data_fim %}
+                                        <span>{{ lote.data_inicio.split('-')[2] }}/{{ lote.data_inicio.split('-')[1] }}/{{ lote.data_inicio.split('-')[0] }} - {{ lote.data_fim.split('-')[2] }}/{{ lote.data_fim.split('-')[1] }}/{{ lote.data_fim.split('-')[0] }}</span>
+                                    {% elif lote.data_inicio %}
+                                        <span>{{ lote.data_inicio.split('-')[2] }}/{{ lote.data_inicio.split('-')[1] }}/{{ lote.data_inicio.split('-')[0] }} - Não informado</span>
+                                    {% elif lote.data_fim %}
+                                        <span>Não informado - {{ lote.data_fim.split('-')[2] }}/{{ lote.data_fim.split('-')[1] }}/{{ lote.data_fim.split('-')[0] }}</span>
                                     {% else %}
                                         <span style="color: #aaa;">Não informado</span>
                                     {% endif %}

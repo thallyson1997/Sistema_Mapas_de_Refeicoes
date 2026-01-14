@@ -134,6 +134,72 @@ def copiar_unidades_de_predecessor(lote_predecessor_id, novo_lote_id):
 	
 	return novos_ids
 
+def _obter_ultima_atualizacao_lote(lote_id):
+	"""
+	Obtém a data da última atividade de um lote.
+	Busca a data mais recente entre:
+	- criado_em do lote
+	- atualizado_em dos mapas associados
+	Retorna a data formatada ou None.
+	"""
+	from .models import Mapa
+	
+	try:
+		# Buscar data de criação do lote
+		lote = Lote.query.get(lote_id)
+		if not lote:
+			return None
+		
+		datas = []
+		
+		# Adicionar data de criação do lote
+		if lote.criado_em:
+			datas.append(lote.criado_em)
+		
+		# Buscar última atualização dos mapas
+		mapa_mais_recente = Mapa.query.filter_by(lote_id=lote_id).order_by(Mapa.atualizado_em.desc()).first()
+		if mapa_mais_recente and mapa_mais_recente.atualizado_em:
+			datas.append(mapa_mais_recente.atualizado_em)
+		
+		if datas:
+			# Retornar a data mais recente
+			resultado = max(datas)
+			return resultado
+		
+		return None
+	except Exception as e:
+		print(f"[ERROR] Erro ao obter última atividade do lote {lote_id}: {e}")
+		import traceback
+		traceback.print_exc()
+		return None
+
+def _formatar_data_ultima_atividade(data_str):
+	"""
+	Formata a data da última atividade para exibição legível.
+	Converte de formato ISO para formato legível (ex: "14 de jan de 2026, 10:30")
+	"""
+	if not data_str:
+		return "Sem registro"
+	
+	try:
+		from datetime import datetime
+		# Tentar diferentes formatos de data
+		for fmt in ["%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%d/%m/%Y %H:%M:%S"]:
+			try:
+				dt = datetime.strptime(data_str[:19], fmt.replace("T", "T")[:19])
+				# Nomes dos meses em português
+				meses = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+				mes_nome = meses[dt.month - 1]
+				return dt.strftime(f"%d de {mes_nome} de %Y, %H:%M")
+			except ValueError:
+				continue
+		
+		# Se não conseguir formatar, retornar a data original
+		return data_str[:19] if len(data_str) > 19 else data_str
+	except Exception as e:
+		print(f"Erro ao formatar data: {e}")
+		return data_str if data_str else "Sem registro"
+
 def lote_to_dict(lote):
 	# Garantir que quantitativos seja carregado mesmo se houver problema de cache do SQLAlchemy
 	quantitativos_value = None
@@ -156,8 +222,10 @@ def lote_to_dict(lote):
 	
 	# Debug: verificar predecessor_id
 	predecessor_id_value = lote.lote_predecessor_id if hasattr(lote, 'lote_predecessor_id') else None
-	if predecessor_id_value:
-		print(f"[DEBUG lote_to_dict] Lote {lote.id}: lote_predecessor_id = {predecessor_id_value}")
+	
+	# Obter última atividade do lote
+	ultima_atualizacao = _obter_ultima_atualizacao_lote(lote.id)
+	ultima_atualizacao_formatada = _formatar_data_ultima_atividade(ultima_atualizacao)
 	
 	return {
 		'id': lote.id,
@@ -165,6 +233,7 @@ def lote_to_dict(lote):
 		'empresa': lote.empresa,
 		'numero_contrato': lote.numero_contrato,
 		'numero': lote.numero,
+		'sub_empresa': lote.sub_empresa if hasattr(lote, 'sub_empresa') else '',
 		'data_inicio': lote.data_inicio,
 		'data_fim': lote.data_fim,
 		'valor_contratual': lote.valor_contratual,
@@ -178,6 +247,7 @@ def lote_to_dict(lote):
 		'status': lote.status,
 		'descricao': lote.descricao,
 		'lote_predecessor_id': predecessor_id_value,
+		'ultima_atualizacao': ultima_atualizacao_formatada,
 	}
 
 def listar_lotes():
@@ -247,6 +317,7 @@ def salvar_novo_lote(payload: dict):
     empresa = payload.get('empresa') or payload.get('nome_empresa', '')
     numero_contrato = payload.get('numero_contrato') or payload.get('contrato') or ''
     numero = payload.get('numero') or numero_contrato or ''
+    sub_empresa = payload.get('sub_empresa', '')
     data_inicio = payload.get('data_inicio', '')
     data_fim = payload.get('data_fim', '')
     # Normalizar data_fim para YYYY-MM-DD
@@ -312,6 +383,7 @@ def salvar_novo_lote(payload: dict):
         empresa=empresa,
         numero_contrato=numero_contrato,
         numero=numero,
+        sub_empresa=sub_empresa,
         data_inicio=data_inicio,
         data_fim=data_fim,
         valor_contratual=valor_contratual,
@@ -470,7 +542,7 @@ def editar_lote(lote_id, payload: dict):
 			payload['valor_contratual'] = valor_contratual
 		
 		for campo in [
-			'nome', 'empresa', 'numero_contrato', 'numero', 'data_inicio', 'data_fim',
+			'nome', 'empresa', 'numero_contrato', 'numero', 'sub_empresa', 'data_inicio', 'data_fim',
 			'valor_contratual', 'unidades', 'precos', 'quantitativos', 'ativo', 'criado_em',
 			'data_criacao', 'data_contrato', 'status', 'descricao', 'lote_predecessor_id'
 		]:

@@ -238,7 +238,7 @@ def desassociar_unidade_do_lote(unidade_id):
 
 
 # ----- API Functions for Flask Routes -----
-def api_adicionar_unidade(lote_id, nome, quantitativos_unidade, valor_contratual_unidade, unidade_principal_id=None):
+def api_adicionar_unidade(lote_id, nome, quantitativos_unidade, valor_contratual_unidade, unidade_principal_id=None, sub_empresa=False):
 	"""
 	API para adicionar uma nova unidade
 	"""
@@ -298,8 +298,7 @@ def api_adicionar_unidade(lote_id, nome, quantitativos_unidade, valor_contratual
 			lote_id=lote_id,
 			unidade_principal_id=unidade_principal_id,
 			quantitativos_unidade=quantitativos_unidade,
-			valor_contratual_unidade=valor_contratual_unidade,
-			criado_em=criado_em,
+			valor_contratual_unidade=valor_contratual_unidade,			sub_empresa=sub_empresa,			criado_em=criado_em,
 			ativo=True
 		)
 		
@@ -341,7 +340,7 @@ def api_adicionar_unidade(lote_id, nome, quantitativos_unidade, valor_contratual
 		}
 
 
-def api_editar_unidade(unidade_id, nome=None, quantitativos_unidade=None, valor_contratual_unidade=None, ativo=None, unidade_principal_id=None):
+def api_editar_unidade(unidade_id, nome=None, quantitativos_unidade=None, valor_contratual_unidade=None, ativo=None, unidade_principal_id=None, sub_empresa=None):
 	"""
 	API para editar uma unidade existente
 	"""
@@ -431,6 +430,9 @@ def api_editar_unidade(unidade_id, nome=None, quantitativos_unidade=None, valor_
 			unidade.ativo = ativo
 		
 		db.session.commit()
+		if sub_empresa is not None:
+			unidade.sub_empresa = sub_empresa
+		
 		
 		return {
 			'success': True,
@@ -545,7 +547,8 @@ def api_listar_unidades(lote_id):
 				'valor_contratual_unidade': u.valor_contratual_unidade,
 				'criado_em': u.criado_em,
 				'ativo': u.ativo,
-				'unidade_principal_id': u.unidade_principal_id
+				'unidade_principal_id': u.unidade_principal_id,
+				'sub_empresa': u.sub_empresa
 			})
 		
 		return {

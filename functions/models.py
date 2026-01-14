@@ -31,6 +31,7 @@ class Lote(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(128), nullable=False)
     empresa = db.Column(db.String(128), nullable=True)
+    sub_empresa = db.Column(db.String(128), nullable=True)
     numero_contrato = db.Column(db.String(32), nullable=True)
     numero = db.Column(db.String(32), nullable=True)
     data_inicio = db.Column(db.String(32), nullable=True)
@@ -59,6 +60,7 @@ class Unidade(db.Model):
     nome = db.Column(db.String(128), nullable=False)
     lote_id = db.Column(db.Integer, nullable=True)
     unidade_principal_id = db.Column(db.Integer, nullable=True)  # ID da unidade principal (NULL se independente)
+    sub_empresa = db.Column(db.Boolean, default=False)
     quantitativos_unidade = db.Column(db.Text, nullable=True)  # JSON/texto
     valor_contratual_unidade = db.Column(db.Float, nullable=True)
     criado_em = db.Column(db.String(32), nullable=True)

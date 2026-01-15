@@ -244,7 +244,8 @@ def api_adicionar_unidade_route():
             quantitativos_unidade=data.get('quantitativos_unidade', '{}'),
             valor_contratual_unidade=data.get('valor_contratual_unidade', 0.0),
             unidade_principal_id=data.get('unidade_principal_id'),
-            sub_empresa=data.get('sub_empresa', False)
+            sub_empresa=data.get('sub_empresa', False),
+            delegacia=data.get('delegacia', False)
         )
         
         if resultado['success']:
@@ -271,7 +272,8 @@ def api_editar_unidade_route(unidade_id):
             valor_contratual_unidade=data.get('valor_contratual_unidade'),
             ativo=data.get('ativo'),
             unidade_principal_id=data.get('unidade_principal_id'),
-            sub_empresa=data.get('sub_empresa')
+            sub_empresa=data.get('sub_empresa'),
+            delegacia=data.get('delegacia')
         )
         
         if resultado['success']:

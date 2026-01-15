@@ -238,12 +238,29 @@ def desassociar_unidade_do_lote(unidade_id):
 
 
 # ----- API Functions for Flask Routes -----
-def api_adicionar_unidade(lote_id, nome, quantitativos_unidade, valor_contratual_unidade, unidade_principal_id=None, sub_empresa=False):
+def api_adicionar_unidade(lote_id, nome, quantitativos_unidade, valor_contratual_unidade, unidade_principal_id=None, sub_empresa=False, delegacia=False):
 	"""
 	API para adicionar uma nova unidade
 	"""
 	try:
 		from .models import Lote
+		
+		# DEBUG: Log do valor recebido
+		print(f"DEBUG - Valor recebido para sub_empresa: {sub_empresa}, tipo: {type(sub_empresa)}")
+		
+		# Garantir que sub_empresa é boolean
+		if isinstance(sub_empresa, str):
+			sub_empresa = sub_empresa.lower() in ['true', '1', 'sim']
+		else:
+			sub_empresa = bool(sub_empresa)
+		
+		print(f"DEBUG - Valor após conversão: {sub_empresa}, tipo: {type(sub_empresa)}")
+		
+		# Garantir que delegacia é boolean
+		if isinstance(delegacia, str):
+			delegacia = delegacia.lower() in ['true', '1', 'sim']
+		else:
+			delegacia = bool(delegacia)
 		
 		# Buscar o lote para validação
 		lote = Lote.query.get(lote_id)
@@ -291,6 +308,9 @@ def api_adicionar_unidade(lote_id, nome, quantitativos_unidade, valor_contratual
 		# Criar data/hora atual no formato ISO com microsegundos
 		criado_em = datetime.now().isoformat()
 		
+		# DEBUG: Valor final antes de salvar
+		print(f"DEBUG - Sobre salvar com sub_empresa: {sub_empresa}, tipo: {type(sub_empresa)}, is bool: {isinstance(sub_empresa, bool)}")
+		
 		# Criar nova unidade
 		nova_unidade = Unidade(
 			id=novo_id,
@@ -298,7 +318,10 @@ def api_adicionar_unidade(lote_id, nome, quantitativos_unidade, valor_contratual
 			lote_id=lote_id,
 			unidade_principal_id=unidade_principal_id,
 			quantitativos_unidade=quantitativos_unidade,
-			valor_contratual_unidade=valor_contratual_unidade,			sub_empresa=sub_empresa,			criado_em=criado_em,
+			valor_contratual_unidade=valor_contratual_unidade,
+			sub_empresa=sub_empresa,
+			delegacia=delegacia,
+			criado_em=criado_em,
 			ativo=True
 		)
 		
@@ -325,6 +348,10 @@ def api_adicionar_unidade(lote_id, nome, quantitativos_unidade, valor_contratual
 		
 		db.session.commit()
 		
+		# DEBUG: Verificar se foi salvo
+		unidade_salva = Unidade.query.get(novo_id)
+		print(f"DEBUG - Após commit: sub_empresa = {unidade_salva.sub_empresa if unidade_salva else 'NOT FOUND'}, tipo: {type(unidade_salva.sub_empresa) if unidade_salva else 'N/A'}")
+		
 		return {
 			'success': True,
 			'message': f'Unidade "{nome}" adicionada com sucesso!',
@@ -340,12 +367,31 @@ def api_adicionar_unidade(lote_id, nome, quantitativos_unidade, valor_contratual
 		}
 
 
-def api_editar_unidade(unidade_id, nome=None, quantitativos_unidade=None, valor_contratual_unidade=None, ativo=None, unidade_principal_id=None, sub_empresa=None):
+def api_editar_unidade(unidade_id, nome=None, quantitativos_unidade=None, valor_contratual_unidade=None, ativo=None, unidade_principal_id=None, sub_empresa=None, delegacia=None):
 	"""
 	API para editar uma unidade existente
 	"""
 	try:
 		from .models import Lote
+		
+		# DEBUG: Log do valor recebido
+		print(f"DEBUG EDIT - Valor recebido para sub_empresa: {sub_empresa}, tipo: {type(sub_empresa)}")
+		
+		# Garantir que sub_empresa é boolean se fornecido
+		if sub_empresa is not None:
+			if isinstance(sub_empresa, str):
+				sub_empresa = sub_empresa.lower() in ['true', '1', 'sim']
+			else:
+				sub_empresa = bool(sub_empresa)
+		
+		print(f"DEBUG EDIT - Valor após conversão: {sub_empresa}, tipo: {type(sub_empresa)}")
+		
+		# Garantir que delegacia é boolean se fornecido
+		if delegacia is not None:
+			if isinstance(delegacia, str):
+				delegacia = delegacia.lower() in ['true', '1', 'sim']
+			else:
+				delegacia = bool(delegacia)
 		
 		# Buscar unidade
 		unidade = Unidade.query.get(unidade_id)
@@ -429,10 +475,21 @@ def api_editar_unidade(unidade_id, nome=None, quantitativos_unidade=None, valor_
 		if ativo is not None:
 			unidade.ativo = ativo
 		
-		db.session.commit()
+		# Atualizar sub_empresa se fornecido
 		if sub_empresa is not None:
 			unidade.sub_empresa = sub_empresa
+			print(f"DEBUG EDIT - Atualizando sub_empresa para: {sub_empresa}")
 		
+		# Atualizar delegacia se fornecido
+		if delegacia is not None:
+			unidade.delegacia = delegacia
+			print(f"DEBUG EDIT - Atualizando delegacia para: {delegacia}")
+		
+		db.session.commit()
+		
+		# DEBUG: Verificar se foi salvo
+		unidade_atualizada = Unidade.query.get(unidade_id)
+		print(f"DEBUG EDIT - Após commit: sub_empresa = {unidade_atualizada.sub_empresa if unidade_atualizada else 'NOT FOUND'}")
 		
 		return {
 			'success': True,
@@ -548,7 +605,8 @@ def api_listar_unidades(lote_id):
 				'criado_em': u.criado_em,
 				'ativo': u.ativo,
 				'unidade_principal_id': u.unidade_principal_id,
-				'sub_empresa': u.sub_empresa
+				'sub_empresa': u.sub_empresa,
+				'delegacia': u.delegacia
 			})
 		
 		return {

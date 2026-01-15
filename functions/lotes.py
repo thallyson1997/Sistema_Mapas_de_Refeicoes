@@ -79,6 +79,8 @@ def copiar_unidades_de_predecessor(lote_predecessor_id, novo_lote_id):
 			unidade_principal_id=None,
 			quantitativos_unidade=unidade.quantitativos_unidade,
 			valor_contratual_unidade=novo_valor_contratual,  # NOVO VALOR CALCULADO
+			sub_empresa=unidade.sub_empresa,  # COPIAR CAMPO sub_empresa
+			delegacia=unidade.delegacia,  # COPIAR CAMPO delegacia
 			criado_em=datetime.now().isoformat(),
 			ativo=unidade.ativo
 		)
@@ -120,6 +122,8 @@ def copiar_unidades_de_predecessor(lote_predecessor_id, novo_lote_id):
 				unidade_principal_id=nova_principal_id,
 				quantitativos_unidade=subunidade.quantitativos_unidade,
 				valor_contratual_unidade=novo_valor_contratual,  # NOVO VALOR CALCULADO
+				sub_empresa=subunidade.sub_empresa,  # COPIAR CAMPO sub_empresa
+				delegacia=subunidade.delegacia,  # COPIAR CAMPO delegacia
 				criado_em=datetime.now().isoformat(),
 				ativo=subunidade.ativo
 			)

@@ -59,6 +59,38 @@ def calcular_saldo_consumido(custo_acumulado, valor_contratual, data_inicio_str)
 		return (custo_acumulado / valor_contratual) * 100
 
 
+def categorizar_mapas_por_unidade_flags(mapas, unit_flags):
+	"""
+	Categoriza mapas em três categorias baseado nos flags da unidade (delegacia, sub_empresa)
+	
+	Args:
+		mapas: Lista de mapas para categorizar
+		unit_flags: Dict com flags de cada unidade {nome_unidade: {delegacia: bool, sub_empresa: bool}}
+	
+	Returns:
+		Tupla: (mapas_default, mapas_delegacia, mapas_sub_empresa)
+	"""
+	mapas_default = []
+	mapas_delegacia = []
+	mapas_sub_empresa = []
+	
+	for mapa in mapas:
+		unidade_nome = (mapa.get('unidade') or '').strip()
+		flags = unit_flags.get(unidade_nome, {})
+		
+		delegacia = flags.get('delegacia', False)
+		sub_empresa = flags.get('sub_empresa', False)
+		
+		if delegacia:
+			mapas_delegacia.append(mapa)
+		elif sub_empresa:
+			mapas_sub_empresa.append(mapa)
+		else:
+			mapas_default.append(mapa)
+	
+	return mapas_default, mapas_delegacia, mapas_sub_empresa
+
+
 def carregar_lotes_para_dashboard():
 	"""
 	Carrega dados de lotes e mapas formatados para o dashboard
@@ -479,6 +511,20 @@ def gerar_excel_exportacao(lote_id, unidades_list, data_inicio=None, data_fim=No
 				mapas_db.extend(mapas_predecessor)
 				print(f"📊 Total de mapas após incluir predecessor: {len(mapas_db)}")
 		
+		# Carregar flags das unidades (delegacia, sub_empresa)
+		unit_flags = {}
+		try:
+			from functions.unidades import api_listar_unidades
+			resultado_unidades = api_listar_unidades(lote_id)
+			if resultado_unidades.get('success'):
+				for u in resultado_unidades.get('unidades', []):
+					unit_flags[u.get('nome', '')] = {
+						'delegacia': u.get('delegacia', False),
+						'sub_empresa': u.get('sub_empresa', False)
+					}
+		except Exception as e:
+			print(f"⚠️ Erro ao carregar flags das unidades: {e}")
+
 		mapas_filtrados = []
 		for m in mapas_db:
 			# Filtrar por unidade
@@ -590,6 +636,12 @@ def gerar_excel_exportacao(lote_id, unidades_list, data_inicio=None, data_fim=No
 		if 'RESUMO' in wb.sheetnames:
 			ws_resumo_modelo = wb['RESUMO']
 		
+		# Renomear as planilhas modelo para temporário (evitar conflito quando copiar)
+		if ws1_modelo:
+			ws1_modelo.title = '_TEMP_COMPARATIVO'
+		if ws_resumo_modelo:
+			ws_resumo_modelo.title = '_TEMP_RESUMO'
+		
 		# Nomes dos meses em português
 		meses_pt = [
 			'', 'JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO',
@@ -606,102 +658,125 @@ def gerar_excel_exportacao(lote_id, unidades_list, data_inicio=None, data_fim=No
 			ws1 = wb.copy_worksheet(ws1_modelo)
 			ws1.title = f'COMPARATIVO{sufixo}'
 			
-			# Copiar planilha RESUMO para este mês se existir
-			if ws_resumo_modelo:
-				ws_resumo = wb.copy_worksheet(ws_resumo_modelo)
-				ws_resumo.title = f'RESUMO{sufixo}'
-			else:
-				ws_resumo = None
-
-			precos_ordem = [
-				('cafe', 'interno'),
-				('cafe', 'funcionario'),
-				('almoco', 'interno'),
-				('almoco', 'funcionario'),
-				('lanche', 'interno'),
-				('lanche', 'funcionario'),
-				('jantar', 'interno'),
-				('jantar', 'funcionario')
-			]
+			# Categorizar mapas por flags da unidade
+			mapas_default, mapas_delegacia, mapas_sub = categorizar_mapas_por_unidade_flags(mapas_do_mes, unit_flags)
 			
-			# Variáveis compartilhadas entre RESUMO e COMPARATIVO
-			empresa_nome = lote.get('empresa', '')
-			lote_nome = lote.get('nome', f"LOTE {lote_id}")
-
-			if ws_resumo:
-				contrato_numero = lote.get('contrato', '')
-				ws_resumo['B8'] = f"CONTRATO : {contrato_numero}"
-				
-				# Determinar qual tabela de preços usar para este mês (mesmo critério do COMPARATIVO)
-				todos_predecessor = all(m.get('_is_predecessor', False) for m in mapas_do_mes)
-				precos_para_resumo = precos_predecessor if todos_predecessor else precos
-				
-				# Determinar o formato da data baseado nos dados deste mês
-				periodo_texto = ''
-				if mapas_do_mes:
-					# Coletar todas as datas de todos os mapas deste mês
-					todas_datas = []
-					for mapa in mapas_do_mes:
-						datas_mapa = mapa.get('datas', [])
-						for data_str in datas_mapa:
-							try:
-								# Tentar converter a data
-								data_dt = None
-								for formato in ['%d/%m/%Y', '%Y-%m-%d']:
-									try:
-										data_dt = datetime.strptime(data_str, formato)
-										break
-									except:
-										continue
-								if data_dt:
-									todas_datas.append(data_dt)
-							except:
-								continue
+			# Dicionário com as três categorias a processar
+			categorias_resumo = []
+			if mapas_default:
+				categorias_resumo.append({
+					'nome': f'RESUMO{sufixo}',
+					'titulo': 'RESUMO FINAL',
+					'mapas': mapas_default,
+					'tipo': 'default'
+				})
+			if mapas_delegacia:
+				categorias_resumo.append({
+					'nome': f'RESUMO DELEGACIA{sufixo}',
+					'titulo': 'RESUMO FINAL DELEGACIA',
+					'mapas': mapas_delegacia,
+					'tipo': 'delegacia'
+				})
+			if mapas_sub:
+				# Obter nome da subempresa do lote
+				sub_empresa_nome = lote.get('sub_empresa', 'SUBEMPRESA')
+				categorias_resumo.append({
+					'nome': f'RESUMO ({sub_empresa_nome}){sufixo}',
+					'titulo': f'RESUMO FINAL {sub_empresa_nome}',
+					'mapas': mapas_sub,
+					'tipo': 'sub_empresa'
+				})
+			
+			# Criar e preencher cada planilha RESUMO
+			for categoria in categorias_resumo:
+				if ws_resumo_modelo:
+					ws_resumo = wb.copy_worksheet(ws_resumo_modelo)
+					ws_resumo.title = categoria['nome']
 					
-					if todas_datas:
-						todas_datas.sort()
-						primeira_data = todas_datas[0]
-						ultima_data = todas_datas[-1]
+					precos_ordem = [
+						('cafe', 'interno'),
+						('cafe', 'funcionario'),
+						('almoco', 'interno'),
+						('almoco', 'funcionario'),
+						('lanche', 'interno'),
+						('lanche', 'funcionario'),
+						('jantar', 'interno'),
+						('jantar', 'funcionario')
+					]
+					
+					# Variáveis compartilhadas entre RESUMO e COMPARATIVO
+					empresa_nome = lote.get('empresa', '')
+					lote_nome = lote.get('nome', f"LOTE {lote_id}")
+					
+					# Preencher informações de contrato
+					contrato_numero = lote.get('contrato', '')
+					ws_resumo['B8'] = f"CONTRATO : {contrato_numero}"
+					
+					# Determinar qual tabela de preços usar para este mês
+					mapas_categoria = categoria['mapas']
+					todos_predecessor = all(m.get('_is_predecessor', False) for m in mapas_categoria)
+					precos_para_resumo = precos_predecessor if todos_predecessor else precos
+					
+					# Determinar o formato da data baseado nos dados desta categoria
+					periodo_texto = ''
+					if mapas_categoria:
+						todas_datas = []
+						for mapa in mapas_categoria:
+							datas_mapa = mapa.get('datas', [])
+							for data_str in datas_mapa:
+								try:
+									data_dt = None
+									for formato in ['%d/%m/%Y', '%Y-%m-%d']:
+										try:
+											data_dt = datetime.strptime(data_str, formato)
+											break
+										except:
+											continue
+									if data_dt:
+										todas_datas.append(data_dt)
+								except:
+									continue
 						
-						# Para cada mês individual, usar apenas o nome do mês
-						mes_nome_periodo = meses_pt[mes]
-						periodo_texto = f"{mes_nome_periodo} - {ano}"
+						if todas_datas:
+							todas_datas.sort()
+							mes_nome_periodo = meses_pt[mes]
+							periodo_texto = f"{mes_nome_periodo} - {ano}"
+					
+					texto_resumo = f"{categoria['titulo']} {lote_nome} - EMPRESA {empresa_nome} - {periodo_texto}".upper()
+					ws_resumo['B7'] = texto_resumo
+					
+					for merged_range in list(ws_resumo.merged_cells.ranges):
+						min_col = merged_range.min_col
+						max_col = merged_range.max_col
+						min_row = merged_range.min_row
+						max_row = merged_range.max_row
+						if max_row >= 13 and min_col >= 2 and max_col <= 11:
+							ws_resumo.unmerge_cells(str(merged_range))
+					
+					if unidades_list:
+						nomes_unidades = [u for u in unidades_list if any(m.get('unidade') == u for m in mapas_categoria)]
+					else:
+						nomes_unidades = list(set(m.get('unidade', '') for m in mapas_categoria if m.get('unidade')))
+						nomes_unidades.sort()
+					
+					quantidade_unidades = len(nomes_unidades)
+					
+					# Pegar o estilo da célula B11 como referência
+					estilo_b11 = ws_resumo['B11']
+					
+					# Pegar o estilo da célula C11 como referência para os nomes das unidades
+					estilo_c11 = ws_resumo['C11']
 				
-				texto_resumo = f"RESUMO FINAL {lote_nome} - EMPRESA {empresa_nome} - {periodo_texto}".upper()
-				ws_resumo['B7'] = texto_resumo
-				
-				for merged_range in list(ws_resumo.merged_cells.ranges):
-					min_col = merged_range.min_col
-					max_col = merged_range.max_col
-					min_row = merged_range.min_row
-					max_row = merged_range.max_row
-					if max_row >= 13 and min_col >= 2 and max_col <= 11:
-						ws_resumo.unmerge_cells(str(merged_range))
-				
-				if unidades_list:
-					nomes_unidades = unidades_list
-				else:
-					nomes_unidades = list(set(m.get('unidade', '') for m in mapas_do_mes if m.get('unidade')))
-					nomes_unidades.sort()
-				
-				quantidade_unidades = len(nomes_unidades)
-				
-				# Pegar o estilo da célula B11 como referência
-				estilo_b11 = ws_resumo['B11']
-				
-				# Pegar o estilo da célula C11 como referência para os nomes das unidades
-				estilo_c11 = ws_resumo['C11']
-			
-				# Pegar o estilo da célula D11 como referência para os totais
-				estilo_d11 = ws_resumo['D11']
-				
-				# Pegar estilos das células E11-K11 para os totais
-				estilo_e11 = ws_resumo['E11']
-				estilo_f11 = ws_resumo['F11']
-				estilo_g11 = ws_resumo['G11']
-				estilo_h11 = ws_resumo['H11']
-				estilo_i11 = ws_resumo['I11']
-				estilo_j11 = ws_resumo['J11']
+					# Pegar o estilo da célula D11 como referência para os totais
+					estilo_d11 = ws_resumo['D11']
+					
+					# Pegar estilos das células E11-K11 para os totais
+					estilo_e11 = ws_resumo['E11']
+					estilo_f11 = ws_resumo['F11']
+					estilo_g11 = ws_resumo['G11']
+					estilo_h11 = ws_resumo['H11']
+					estilo_i11 = ws_resumo['I11']
+					estilo_j11 = ws_resumo['J11']
 				estilo_k11 = ws_resumo['K11']
 				
 				# Pegar estilos das células D13-K13 para os valores unitários
@@ -1173,20 +1248,10 @@ def gerar_excel_exportacao(lote_id, unidades_list, data_inicio=None, data_fim=No
 					cell_k_total.protection = copy(estilo_k14.protection)
 					cell_k_total.alignment = copy(estilo_k14.alignment)
 				
-				# Calcular valores parciais totais (somando valores de todas as unidades)
-				valor_total_cafe_interno = sum(totais_valor_cafe_interno.values())
-				valor_total_cafe_funcionario = sum(totais_valor_cafe_funcionario.values())
-				valor_total_almoco_interno = sum(totais_valor_almoco_interno.values())
-				valor_total_almoco_funcionario = sum(totais_valor_almoco_funcionario.values())
-				valor_total_lanche_interno = sum(totais_valor_lanche_interno.values())
-				valor_total_lanche_funcionario = sum(totais_valor_lanche_funcionario.values())
-				valor_total_jantar_interno = sum(totais_valor_jantar_interno.values())
-				valor_total_jantar_funcionario = sum(totais_valor_jantar_funcionario.values())
-				
-				# Adicionar valores parciais (valores diretos, não fórmulas)
-				# Coluna D: Valor parcial café interno
+				# Adicionar valores parciais usando FÓRMULAS (preço unitário × quantidade total)
+				# Coluna D: Valor parcial café interno = D{linha_precos} * D{linha_totais}
 				cell_d_parcial = ws_resumo.cell(row=linha_valores_parciais, column=4)
-				cell_d_parcial.value = valor_total_cafe_interno
+				cell_d_parcial.value = f'=D{linha_precos}*D{linha_totais}'
 				if estilo_d15.has_style:
 					cell_d_parcial.font = copy(estilo_d15.font)
 					cell_d_parcial.border = copy(estilo_d15.border)
@@ -1195,9 +1260,9 @@ def gerar_excel_exportacao(lote_id, unidades_list, data_inicio=None, data_fim=No
 					cell_d_parcial.protection = copy(estilo_d15.protection)
 					cell_d_parcial.alignment = copy(estilo_d15.alignment)
 				
-				# Coluna E: Valor parcial café funcionário
+				# Coluna E: Valor parcial café funcionário = E{linha_precos} * E{linha_totais}
 				cell_e_parcial = ws_resumo.cell(row=linha_valores_parciais, column=5)
-				cell_e_parcial.value = valor_total_cafe_funcionario
+				cell_e_parcial.value = f'=E{linha_precos}*E{linha_totais}'
 				if estilo_e15.has_style:
 					cell_e_parcial.font = copy(estilo_e15.font)
 					cell_e_parcial.border = copy(estilo_e15.border)
@@ -1206,9 +1271,9 @@ def gerar_excel_exportacao(lote_id, unidades_list, data_inicio=None, data_fim=No
 					cell_e_parcial.protection = copy(estilo_e15.protection)
 					cell_e_parcial.alignment = copy(estilo_e15.alignment)
 				
-				# Coluna F: Valor parcial almoço interno
+				# Coluna F: Valor parcial almoço interno = F{linha_precos} * F{linha_totais}
 				cell_f_parcial = ws_resumo.cell(row=linha_valores_parciais, column=6)
-				cell_f_parcial.value = valor_total_almoco_interno
+				cell_f_parcial.value = f'=F{linha_precos}*F{linha_totais}'
 				if estilo_f15.has_style:
 					cell_f_parcial.font = copy(estilo_f15.font)
 					cell_f_parcial.border = copy(estilo_f15.border)
@@ -1217,9 +1282,9 @@ def gerar_excel_exportacao(lote_id, unidades_list, data_inicio=None, data_fim=No
 					cell_f_parcial.protection = copy(estilo_f15.protection)
 					cell_f_parcial.alignment = copy(estilo_f15.alignment)
 				
-				# Coluna G: Valor parcial almoço funcionário
+				# Coluna G: Valor parcial almoço funcionário = G{linha_precos} * G{linha_totais}
 				cell_g_parcial = ws_resumo.cell(row=linha_valores_parciais, column=7)
-				cell_g_parcial.value = valor_total_almoco_funcionario
+				cell_g_parcial.value = f'=G{linha_precos}*G{linha_totais}'
 				if estilo_g15.has_style:
 					cell_g_parcial.font = copy(estilo_g15.font)
 					cell_g_parcial.border = copy(estilo_g15.border)
@@ -1228,9 +1293,9 @@ def gerar_excel_exportacao(lote_id, unidades_list, data_inicio=None, data_fim=No
 					cell_g_parcial.protection = copy(estilo_g15.protection)
 					cell_g_parcial.alignment = copy(estilo_g15.alignment)
 				
-				# Coluna H: Valor parcial lanche interno
+				# Coluna H: Valor parcial lanche interno = H{linha_precos} * H{linha_totais}
 				cell_h_parcial = ws_resumo.cell(row=linha_valores_parciais, column=8)
-				cell_h_parcial.value = valor_total_lanche_interno
+				cell_h_parcial.value = f'=H{linha_precos}*H{linha_totais}'
 				if estilo_h15.has_style:
 					cell_h_parcial.font = copy(estilo_h15.font)
 					cell_h_parcial.border = copy(estilo_h15.border)
@@ -1239,9 +1304,9 @@ def gerar_excel_exportacao(lote_id, unidades_list, data_inicio=None, data_fim=No
 					cell_h_parcial.protection = copy(estilo_h15.protection)
 					cell_h_parcial.alignment = copy(estilo_h15.alignment)
 				
-				# Coluna I: Valor parcial lanche funcionário
+				# Coluna I: Valor parcial lanche funcionário = I{linha_precos} * I{linha_totais}
 				cell_i_parcial = ws_resumo.cell(row=linha_valores_parciais, column=9)
-				cell_i_parcial.value = valor_total_lanche_funcionario
+				cell_i_parcial.value = f'=I{linha_precos}*I{linha_totais}'
 				if estilo_i15.has_style:
 					cell_i_parcial.font = copy(estilo_i15.font)
 					cell_i_parcial.border = copy(estilo_i15.border)
@@ -1250,9 +1315,9 @@ def gerar_excel_exportacao(lote_id, unidades_list, data_inicio=None, data_fim=No
 					cell_i_parcial.protection = copy(estilo_i15.protection)
 					cell_i_parcial.alignment = copy(estilo_i15.alignment)
 				
-				# Coluna J: Valor parcial jantar interno
+				# Coluna J: Valor parcial jantar interno = J{linha_precos} * J{linha_totais}
 				cell_j_parcial = ws_resumo.cell(row=linha_valores_parciais, column=10)
-				cell_j_parcial.value = valor_total_jantar_interno
+				cell_j_parcial.value = f'=J{linha_precos}*J{linha_totais}'
 				if estilo_j15.has_style:
 					cell_j_parcial.font = copy(estilo_j15.font)
 					cell_j_parcial.border = copy(estilo_j15.border)
@@ -1261,9 +1326,9 @@ def gerar_excel_exportacao(lote_id, unidades_list, data_inicio=None, data_fim=No
 					cell_j_parcial.protection = copy(estilo_j15.protection)
 					cell_j_parcial.alignment = copy(estilo_j15.alignment)
 				
-				# Coluna K: Valor parcial jantar funcionário
+				# Coluna K: Valor parcial jantar funcionário = K{linha_precos} * K{linha_totais}
 				cell_k_parcial = ws_resumo.cell(row=linha_valores_parciais, column=11)
-				cell_k_parcial.value = valor_total_jantar_funcionario
+				cell_k_parcial.value = f'=K{linha_precos}*K{linha_totais}'
 				if estilo_k15.has_style:
 					cell_k_parcial.font = copy(estilo_k15.font)
 					cell_k_parcial.border = copy(estilo_k15.border)
@@ -1312,7 +1377,7 @@ def gerar_excel_exportacao(lote_id, unidades_list, data_inicio=None, data_fim=No
 				else:
 					# Processamento para múltiplas unidades (código simplificado - mantido do original)
 					pass
-	
+			
 			# Continua com o preenchimento da planilha COMPARATIVO
 			# Determinar qual tabela de preços usar para este mês
 			# Se todos os mapas do mês são do predecessor, usar preços do predecessor
@@ -1644,12 +1709,12 @@ def gerar_excel_exportacao(lote_id, unidades_list, data_inicio=None, data_fim=No
 			if not tem_dados:
 				return {'success': False, 'error': 'Nenhum dado para exportar'}
 		
-		# Remover as planilhas modelo originais
+		# Remover as planilhas modelo temporárias
 		if ws1_modelo and ws1_modelo.title in wb.sheetnames:
 			wb.remove(ws1_modelo)
 		if ws_resumo_modelo and ws_resumo_modelo.title in wb.sheetnames:
 			wb.remove(ws_resumo_modelo)
-
+		
 		output = io.BytesIO()
 		wb.save(output)
 		output.seek(0)
@@ -1671,15 +1736,35 @@ def gerar_excel_exportacao(lote_id, unidades_list, data_inicio=None, data_fim=No
 		return {'success': False, 'error': f'Erro ao gerar arquivo: {str(e)}'}
 
 
+def _verificar_lote_tem_delegacia(lote_id):
+	"""Verifica se um lote tem pelo menos uma unidade com flag delegacia=True"""
+	try:
+		from functions.models import Unidade
+		from functions.file_utils import get_db
+		
+		db = get_db()
+		# Consultar unidades do lote que tenham delegacia=True
+		unidade_delegacia = db.session.query(Unidade).filter(
+			Unidade.lote_id == lote_id,
+			Unidade.delegacia == True
+		).first()
+		
+		return unidade_delegacia is not None
+	except Exception as e:
+		print(f"⚠️ Erro ao verificar delegacia do lote {lote_id}: {str(e)}")
+		return False
+
+
 def gerar_excel_exportacao_multiplos_lotes(data_inicio, data_fim):
 	"""
 	Gera arquivo Excel com dados de TODOS os lotes para um período específico.
-	Cada lote terá suas planilhas COMPARATIVO e RESUMO no mesmo arquivo.
+	- COMPARATIVOS: Um por lote (COMPARATIVO LOTE A, COMPARATIVO LOTE B, etc)
+	- RESUMOS: Agrupados por empresa/subempresa/delegacia
 	"""
 	try:
 		from openpyxl import Workbook
 		from openpyxl.formatting.rule import CellIsRule
-		from openpyxl.styles import PatternFill
+		from openpyxl.styles import PatternFill, Border, Side
 		from copy import copy
 	except ImportError as e:
 		return {'success': False, 'error': f'Biblioteca não instalada: {str(e)}'}
@@ -1708,13 +1793,26 @@ def gerar_excel_exportacao_multiplos_lotes(data_inicio, data_fim):
 		wb = Workbook()
 		wb.remove(wb.active)  # Remove a planilha padrão
 		
+		# Dicionários para agrupar os dados dos lotes
+		comparativos = {}  # {lote_nome: wb_lote}
+		resumos_por_categoria = {
+			'empresa': {},      # {empresa_nome: [(lote_nome, ws_resumo), ...]}
+			'sub_empresa': {},  # {sub_empresa_nome: [(lote_nome, ws_resumo), ...]}
+			'delegacia': []     # [(lote_nome, ws_resumo), ...]
+		}
+		
 		# Variável para rastrear se pelo menos um lote foi exportado
 		algum_lote_exportado = False
 		
-		# Iterar sobre cada lote ATIVO e adicionar suas planilhas
+		# Iterar sobre cada lote ATIVO e agrupar suas planilhas
 		for lote in lotes_ativos:
 			lote_id = lote.get('id')
 			lote_nome = lote.get('nome', f'Lote {lote_id}')
+			empresa = lote.get('empresa', 'Sem Empresa')
+			sub_empresa = lote.get('sub_empresa', 'Sem Sub-Empresa')
+			
+			# Verificar se o lote tem delegacia
+			tem_delegacia = _verificar_lote_tem_delegacia(lote_id)
 			
 			print(f"\n📊 Processando {lote_nome} (ID: {lote_id})")
 			
@@ -1730,72 +1828,66 @@ def gerar_excel_exportacao_multiplos_lotes(data_inicio, data_fim):
 			resultado_lote['output'].seek(0)
 			wb_lote = load_workbook(resultado_lote['output'])
 			
-			# Copiar as planilhas deste lote para o workbook principal
-			# Renomear adicionando o nome do lote
+			# Separar COMPARATIVOS e RESUMOS
 			for sheet_name in wb_lote.sheetnames:
 				ws_origem = wb_lote[sheet_name]
 				
-				# Determinar novo nome da planilha
-				# Se o sheet_name já tem sufixo de mês (ex: "COMPARATIVO - OUTUBRO"), remover
-				if ' - ' in sheet_name:
-					base_name = sheet_name.split(' - ')[0]  # "COMPARATIVO" ou "RESUMO"
-				else:
-					base_name = sheet_name
+				# Determinar tipo da sheet (COMPARATIVO ou RESUMO)
+				base_name = sheet_name.split(' - ')[0] if ' - ' in sheet_name else sheet_name
 				
-				# Novo nome: "COMPARATIVO LOTE A" ou "RESUMO LOTE A"
-				novo_nome = f"{base_name} {lote_nome}"
-				
-				# Garantir que o nome não ultrapasse 31 caracteres (limite do Excel)
-				if len(novo_nome) > 31:
-					# Truncar o nome do lote se necessário
-					max_lote_len = 31 - len(base_name) - 1  # -1 para o espaço
-					novo_nome = f"{base_name} {lote_nome[:max_lote_len]}"
-				
-				print(f"  ✓ Adicionando planilha: {novo_nome}")
-				
-				# Criar nova planilha no workbook principal
-				ws_destino = wb.create_sheet(title=novo_nome)
-				
-				# Copiar dados e formatação
-				for row in ws_origem.iter_rows():
-					for cell in row:
-						ws_destino[cell.coordinate].value = cell.value
-						
-						# Copiar formatação
-						if cell.has_style:
-							ws_destino[cell.coordinate].font = copy(cell.font)
-							ws_destino[cell.coordinate].border = copy(cell.border)
-							ws_destino[cell.coordinate].fill = copy(cell.fill)
-							ws_destino[cell.coordinate].number_format = copy(cell.number_format)
-							ws_destino[cell.coordinate].protection = copy(cell.protection)
-							ws_destino[cell.coordinate].alignment = copy(cell.alignment)
-				
-				# Copiar larguras das colunas
-				for col_letter in ws_origem.column_dimensions:
-					if col_letter in ws_origem.column_dimensions:
-						ws_destino.column_dimensions[col_letter].width = ws_origem.column_dimensions[col_letter].width
-				
-				# Copiar alturas das linhas
-				for row_num in ws_origem.row_dimensions:
-					if row_num in ws_origem.row_dimensions:
-						ws_destino.row_dimensions[row_num].height = ws_origem.row_dimensions[row_num].height
-				
-				# Copiar células mescladas
-				for merged_cell_range in ws_origem.merged_cells.ranges:
-					ws_destino.merge_cells(str(merged_cell_range))
-				
-				# Copiar regras de formatação condicional
-				try:
-					for range_string, rules in ws_origem.conditional_formatting._cf_rules.items():
-						for rule in rules:
-							ws_destino.conditional_formatting.add(range_string, rule)
-				except Exception as e:
-					print(f"⚠️ Aviso: Não foi possível copiar formatação condicional: {e}")
-				
-				algum_lote_exportado = True
+				if 'COMPARATIVO' in base_name:
+					# Armazenar COMPARATIVO com nome do lote
+					comparativos[f"COMPARATIVO {lote_nome}"] = ws_origem
+					print(f"  ✓ COMPARATIVO armazenado: COMPARATIVO {lote_nome}")
+					
+				elif 'RESUMO' in base_name:
+					# Agrupar RESUMO por categoria
+					if tem_delegacia:
+						resumos_por_categoria['delegacia'].append((lote_nome, ws_origem))
+						print(f"  ✓ RESUMO armazenado (delegacia): {lote_nome}")
+					elif sub_empresa and sub_empresa != 'Sem Sub-Empresa':
+						if sub_empresa not in resumos_por_categoria['sub_empresa']:
+							resumos_por_categoria['sub_empresa'][sub_empresa] = []
+						resumos_por_categoria['sub_empresa'][sub_empresa].append((lote_nome, ws_origem))
+						print(f"  ✓ RESUMO armazenado (sub-empresa {sub_empresa}): {lote_nome}")
+					elif empresa and empresa != 'Sem Empresa':
+						if empresa not in resumos_por_categoria['empresa']:
+							resumos_por_categoria['empresa'][empresa] = []
+						resumos_por_categoria['empresa'][empresa].append((lote_nome, ws_origem))
+						print(f"  ✓ RESUMO armazenado (empresa {empresa}): {lote_nome}")
+			
+			algum_lote_exportado = True
 		
 		if not algum_lote_exportado:
 			return {'success': False, 'error': 'Nenhum lote com dados para o período selecionado'}
+		
+		# FASE 2: Adicionar COMPARATIVOS primeiro (um por lote)
+		print("\n📋 Adicionando COMPARATIVOS...")
+		for nome_comparativo, ws_comparativo in comparativos.items():
+			_copiar_sheet_para_workbook(wb, ws_comparativo, nome_comparativo)
+			print(f"  ✓ {nome_comparativo} adicionado")
+		
+		# FASE 3: Adicionar RESUMOS agrupados por categoria
+		print("\n📋 Adicionando RESUMOS agrupados...")
+		
+		# RESUMOS por Empresa
+		for empresa_nome, resumos in resumos_por_categoria['empresa'].items():
+			if resumos:
+				nome_sheet = f"RESUMO - {empresa_nome}"
+				_criar_resumo_agrupado(wb, resumos, nome_sheet)
+				print(f"  ✓ {nome_sheet} criado com {len(resumos)} lote(s)")
+		
+		# RESUMOS por Sub-Empresa
+		for sub_empresa_nome, resumos in resumos_por_categoria['sub_empresa'].items():
+			if resumos:
+				nome_sheet = f"RESUMO - {sub_empresa_nome}"
+				_criar_resumo_agrupado(wb, resumos, nome_sheet)
+				print(f"  ✓ {nome_sheet} criado com {len(resumos)} lote(s)")
+		
+		# RESUMO DELEGACIA
+		if resumos_por_categoria['delegacia']:
+			_criar_resumo_agrupado(wb, resumos_por_categoria['delegacia'], "RESUMO DELEGACIA")
+			print(f"  ✓ RESUMO DELEGACIA criado com {len(resumos_por_categoria['delegacia'])} lote(s)")
 		
 		# Salvar workbook consolidado
 		output = io.BytesIO()
@@ -1821,6 +1913,120 @@ def gerar_excel_exportacao_multiplos_lotes(data_inicio, data_fim):
 		}
 	
 	except Exception as e:
+		print(f"❌ Erro na exportação de múltiplos lotes: {str(e)}")
 		import traceback
 		traceback.print_exc()
-		return {'success': False, 'error': f'Erro ao gerar arquivo consolidado: {str(e)}'}
+		return {'success': False, 'error': str(e)}
+
+
+def _copiar_sheet_para_workbook(wb_destino, ws_origem, novo_nome):
+	"""Copia uma sheet completamente com toda formatação"""
+	from copy import copy
+	
+	# Garantir que o nome não ultrapasse 31 caracteres
+	if len(novo_nome) > 31:
+		novo_nome = novo_nome[:31]
+	
+	# Criar nova planilha
+	ws_destino = wb_destino.create_sheet(title=novo_nome)
+	
+	# Copiar dados e formatação
+	for row in ws_origem.iter_rows():
+		for cell in row:
+			ws_destino[cell.coordinate].value = cell.value
+			
+			# Copiar formatação
+			if cell.has_style:
+				ws_destino[cell.coordinate].font = copy(cell.font)
+				ws_destino[cell.coordinate].border = copy(cell.border)
+				ws_destino[cell.coordinate].fill = copy(cell.fill)
+				ws_destino[cell.coordinate].number_format = copy(cell.number_format)
+				ws_destino[cell.coordinate].protection = copy(cell.protection)
+				ws_destino[cell.coordinate].alignment = copy(cell.alignment)
+	
+	# Copiar larguras das colunas
+	for col_letter in ws_origem.column_dimensions:
+		ws_destino.column_dimensions[col_letter].width = ws_origem.column_dimensions[col_letter].width
+	
+	# Copiar alturas das linhas
+	for row_num in ws_origem.row_dimensions:
+		ws_destino.row_dimensions[row_num].height = ws_origem.row_dimensions[row_num].height
+	
+	# Copiar células mescladas
+	for merged_cell_range in ws_origem.merged_cells.ranges:
+		ws_destino.merge_cells(str(merged_cell_range))
+	
+	# Copiar regras de formatação condicional
+	try:
+		for range_string, rules in ws_origem.conditional_formatting._cf_rules.items():
+			for rule in rules:
+				ws_destino.conditional_formatting.add(range_string, rule)
+	except:
+		pass
+	
+	return ws_destino
+
+
+def _criar_resumo_agrupado(wb_destino, resumos_list, nome_sheet):
+	"""
+	Cria uma sheet única com múltiplos resumos, um embaixo do outro,
+	separados por uma linha divisória.
+	resumos_list: lista de tuplas (lote_nome, ws_resumo)
+	"""
+	from copy import copy
+	from openpyxl.styles import Border, Side, Font, PatternFill
+	
+	# Garantir que o nome não ultrapasse 31 caracteres
+	if len(nome_sheet) > 31:
+		nome_sheet = nome_sheet[:31]
+	
+	# Criar nova planilha
+	ws_destino = wb_destino.create_sheet(title=nome_sheet)
+	
+	linha_atual = 1
+	primeiro = True
+	
+	for lote_nome, ws_origem in resumos_list:
+		if not primeiro:
+			# Adicionar linha divisória entre resumos
+			linha_atual += 1  # Pular uma linha
+			
+			# Preencher toda a linha com cor de fundo (divisória)
+			cinza_claro = "CCCCCC"
+			linha_divisoria = linha_atual
+			for col in range(1, 15):  # Colunas A até N
+				cell = ws_destino.cell(row=linha_divisoria, column=col)
+				cell.fill = PatternFill(start_color=cinza_claro, end_color=cinza_claro, fill_type="solid")
+				cell.border = Border(
+					top=Side(style='thin', color='000000'),
+					bottom=Side(style='thin', color='000000'),
+					left=Side(style='thin', color='000000'),
+					right=Side(style='thin', color='000000')
+				)
+			
+			linha_atual += 1
+		
+		# Copiar dados do resumo
+		for row in ws_origem.iter_rows():
+			for col_idx, cell in enumerate(row, 1):
+				ws_destino.cell(row=linha_atual, column=col_idx).value = cell.value
+				
+				# Copiar formatação
+				if cell.has_style:
+					ws_destino.cell(row=linha_atual, column=col_idx).font = copy(cell.font)
+					ws_destino.cell(row=linha_atual, column=col_idx).border = copy(cell.border)
+					ws_destino.cell(row=linha_atual, column=col_idx).fill = copy(cell.fill)
+					ws_destino.cell(row=linha_atual, column=col_idx).number_format = copy(cell.number_format)
+					ws_destino.cell(row=linha_atual, column=col_idx).alignment = copy(cell.alignment)
+			
+			linha_atual += 1
+		
+		primeiro = False
+	
+	# Copiar larguras das colunas da primeira sheet
+	if resumos_list:
+		ws_primeira = resumos_list[0][1]
+		for col_letter in ws_primeira.column_dimensions:
+			ws_destino.column_dimensions[col_letter].width = ws_primeira.column_dimensions[col_letter].width
+	
+	return ws_destino

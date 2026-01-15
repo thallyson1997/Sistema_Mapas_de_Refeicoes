@@ -618,6 +618,15 @@
                     <small style="color: var(--gray-500); font-size: 0.85em; display: block; margin-top: 0.5rem;">Marque se essa unidade recebe alimento de empresa sub-contratada, não da empresa principal.</small>
                 </div>
 
+                <!-- Delegacia -->
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: flex; align-items: center; gap: 0.75rem; font-weight: 500; cursor: pointer;">
+                        <input type="checkbox" id="add-unidade-delegacia" name="delegacia" style="width: 18px; height: 18px; cursor: pointer;">
+                        <span>🏛️ Delegacia</span>
+                    </label>
+                    <small style="color: var(--gray-500); font-size: 0.85em; display: block; margin-top: 0.5rem;">Marque se essa unidade é uma delegacia (e não um presídio/penitenciária).</small>
+                </div>
+
                 <!-- Quantitativos de Refeições -->
                 <div style="margin-bottom: 1.5rem;">
                     <label class="form-label" style="font-weight: 500; display: block; margin-bottom: 1rem;">Quantitativo de Refeições (Anual)</label>
@@ -710,6 +719,15 @@
                         <span>🏭 Alimentada por Sub-contratada</span>
                     </label>
                     <small style="color: var(--gray-500); font-size: 0.85em; display: block; margin-top: 0.5rem;">Marque se essa unidade recebe alimento de empresa sub-contratada, não da empresa principal.</small>
+                </div>
+
+                <!-- Delegacia -->
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: flex; align-items: center; gap: 0.75rem; font-weight: 500; cursor: pointer;">
+                        <input type="checkbox" id="edit-unidade-delegacia" name="delegacia" style="width: 18px; height: 18px; cursor: pointer;">
+                        <span>🏛️ Delegacia</span>
+                    </label>
+                    <small style="color: var(--gray-500); font-size: 0.85em; display: block; margin-top: 0.5rem;">Marque se essa unidade é uma delegacia (e não um presídio/penitenciária).</small>
                 </div>
 
                 <!-- Quantitativos de Refeições -->
@@ -1213,6 +1231,8 @@
                     
                     // Capturar sub_empresa (checkbox)
                     const sub_empresa = document.getElementById('add-unidade-sub-empresa').checked;
+                    // Capturar delegacia (checkbox)
+                    const delegacia = document.getElementById('add-unidade-delegacia').checked;
                     
                     if (!nome) {
                         showNotification('warning', 'Atenção', 'Digite o nome da unidade.');
@@ -1278,7 +1298,8 @@
                                 quantitativos_unidade: JSON.stringify(quantitativos),
                                 valor_contratual_unidade: valor_contratual_unidade,
                                 unidade_principal_id: unidade_principal_id,
-                                sub_empresa: sub_empresa
+                                sub_empresa: sub_empresa,
+                                delegacia: delegacia
                             }),
                             credentials: 'same-origin'
                         });
@@ -1349,6 +1370,8 @@
                     
                     // Capturar sub_empresa (checkbox)
                     const sub_empresa = document.getElementById('edit-unidade-sub-empresa').checked;
+                    // Capturar delegacia (checkbox)
+                    const delegacia = document.getElementById('edit-unidade-delegacia').checked;
                     
                     if (!unidadeId) {
                         showNotification('warning', 'Atenção', 'Selecione uma unidade.');
@@ -1418,7 +1441,8 @@
                                 quantitativos_unidade: JSON.stringify(quantitativos),
                                 valor_contratual_unidade: valor_contratual_unidade,
                                 unidade_principal_id: unidade_principal_id,
-                                sub_empresa: sub_empresa
+                                sub_empresa: sub_empresa,
+                                delegacia: delegacia
                             }),
                             credentials: 'same-origin'
                         });
@@ -2453,6 +2477,11 @@ async function carregarDadosUnidade() {
         // Preencher sub_empresa (checkbox)
         const checkboxSubEmpresa = document.getElementById('edit-unidade-sub-empresa');
         checkboxSubEmpresa.checked = unidade.sub_empresa || false;
+        // Preencher delegacia (checkbox)
+        const checkboxDelegacia = document.getElementById('edit-unidade-delegacia');
+        if (checkboxDelegacia) {
+            checkboxDelegacia.checked = unidade.delegacia || false;
+        }
         
         // Preencher quantitativos
         const quantitativos = unidade.quantitativos_unidade || {};

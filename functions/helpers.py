@@ -515,12 +515,24 @@ def gerar_excel_exportacao(lote_id, unidades_list, data_inicio=None, data_fim=No
 		unit_flags = {}
 		try:
 			from functions.unidades import api_listar_unidades
+			from functions.models import Unidade
 			resultado_unidades = api_listar_unidades(lote_id)
 			if resultado_unidades.get('success'):
 				for u in resultado_unidades.get('unidades', []):
+					nome_subempresa = ''
+					# Se é sub_empresa, buscar o nome da unidade principal
+					if u.get('sub_empresa') and u.get('unidade_principal_id'):
+						try:
+							unidade_principal = Unidade.query.get(u.get('unidade_principal_id'))
+							if unidade_principal:
+								nome_subempresa = unidade_principal.nome
+						except:
+							nome_subempresa = ''
+					
 					unit_flags[u.get('nome', '')] = {
 						'delegacia': u.get('delegacia', False),
-						'sub_empresa': u.get('sub_empresa', False)
+						'sub_empresa': u.get('sub_empresa', False),
+						'nome_subempresa': nome_subempresa
 					}
 		except Exception as e:
 			print(f"⚠️ Erro ao carregar flags das unidades: {e}")
@@ -658,6 +670,18 @@ def gerar_excel_exportacao(lote_id, unidades_list, data_inicio=None, data_fim=No
 			ws1 = wb.copy_worksheet(ws1_modelo)
 			ws1.title = f'COMPARATIVO{sufixo}'
 			
+			# Definir larguras de coluna
+			ws1.column_dimensions['A'].width = 19.5
+			ws1.column_dimensions['B'].width = 30
+			ws1.column_dimensions['C'].width = 10
+			ws1.column_dimensions['D'].width = 12.5
+			# Colunas E a L: 13
+			for col in ['E', 'F', 'G', 'H', 'I', 'J', 'K', 'L']:
+				ws1.column_dimensions[col].width = 13
+			# Colunas M a T: 19
+			for col in ['M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T']:
+				ws1.column_dimensions[col].width = 19
+			
 			# Categorizar mapas por flags da unidade
 			mapas_default, mapas_delegacia, mapas_sub = categorizar_mapas_por_unidade_flags(mapas_do_mes, unit_flags)
 			
@@ -692,6 +716,13 @@ def gerar_excel_exportacao(lote_id, unidades_list, data_inicio=None, data_fim=No
 				if ws_resumo_modelo:
 					ws_resumo = wb.copy_worksheet(ws_resumo_modelo)
 					ws_resumo.title = categoria['nome']
+					
+					# Definir larguras de coluna para RESUMO
+					ws_resumo.column_dimensions['B'].width = 22
+					ws_resumo.column_dimensions['C'].width = 50
+					# Colunas D a K: 30
+					for col in ['D', 'E', 'F', 'G', 'H', 'I', 'J', 'K']:
+						ws_resumo.column_dimensions[col].width = 30
 					
 					precos_ordem = [
 						('cafe', 'interno'),
@@ -742,7 +773,15 @@ def gerar_excel_exportacao(lote_id, unidades_list, data_inicio=None, data_fim=No
 							mes_nome_periodo = meses_pt[mes]
 							periodo_texto = f"{mes_nome_periodo} - {ano}"
 					
-					texto_resumo = f"{categoria['titulo']} {lote_nome} - EMPRESA {empresa_nome} - {periodo_texto}".upper()
+					# Formatar título baseado no tipo de categoria
+					if categoria['tipo'] == 'delegacia':
+						texto_resumo = f"RESUMO FINAL {lote_nome} - DELEGACIA - {periodo_texto}".upper()
+					elif categoria['tipo'] == 'sub_empresa':
+						sub_empresa_nome = lote.get('sub_empresa', 'SUBEMPRESA')
+						texto_resumo = f"RESUMO {lote_nome} - EMPRESA {sub_empresa_nome} - {periodo_texto}".upper()
+					else:  # default
+						texto_resumo = f"RESUMO FINAL {lote_nome} - EMPRESA {empresa_nome} - {periodo_texto}".upper()
+					
 					ws_resumo['B7'] = texto_resumo
 					
 					for merged_range in list(ws_resumo.merged_cells.ranges):
@@ -814,7 +853,6 @@ def gerar_excel_exportacao(lote_id, unidades_list, data_inicio=None, data_fim=No
 				
 				# Pegar estilo da célula B13 para a coluna mesclada
 				estilo_b13 = ws_resumo['B13']
-				
 				# Preencher valores unitários na linha 13 (preços do lote - usar preços corretos para o mês)
 				# D13: Café interno
 				cell_d13 = ws_resumo.cell(row=13, column=4, value=precos_para_resumo.get('cafe', {}).get('interno', 0))
@@ -1736,25 +1774,6 @@ def gerar_excel_exportacao(lote_id, unidades_list, data_inicio=None, data_fim=No
 		return {'success': False, 'error': f'Erro ao gerar arquivo: {str(e)}'}
 
 
-def _verificar_lote_tem_delegacia(lote_id):
-	"""Verifica se um lote tem pelo menos uma unidade com flag delegacia=True"""
-	try:
-		from functions.models import Unidade
-		from functions.file_utils import get_db
-		
-		db = get_db()
-		# Consultar unidades do lote que tenham delegacia=True
-		unidade_delegacia = db.session.query(Unidade).filter(
-			Unidade.lote_id == lote_id,
-			Unidade.delegacia == True
-		).first()
-		
-		return unidade_delegacia is not None
-	except Exception as e:
-		print(f"⚠️ Erro ao verificar delegacia do lote {lote_id}: {str(e)}")
-		return False
-
-
 def gerar_excel_exportacao_multiplos_lotes(data_inicio, data_fim):
 	"""
 	Gera arquivo Excel com dados de TODOS os lotes para um período específico.
@@ -1808,11 +1827,6 @@ def gerar_excel_exportacao_multiplos_lotes(data_inicio, data_fim):
 		for lote in lotes_ativos:
 			lote_id = lote.get('id')
 			lote_nome = lote.get('nome', f'Lote {lote_id}')
-			empresa = lote.get('empresa', 'Sem Empresa')
-			sub_empresa = lote.get('sub_empresa', 'Sem Sub-Empresa')
-			
-			# Verificar se o lote tem delegacia
-			tem_delegacia = _verificar_lote_tem_delegacia(lote_id)
 			
 			print(f"\n📊 Processando {lote_nome} (ID: {lote_id})")
 			
@@ -1832,29 +1846,40 @@ def gerar_excel_exportacao_multiplos_lotes(data_inicio, data_fim):
 			for sheet_name in wb_lote.sheetnames:
 				ws_origem = wb_lote[sheet_name]
 				
-				# Determinar tipo da sheet (COMPARATIVO ou RESUMO)
-				base_name = sheet_name.split(' - ')[0] if ' - ' in sheet_name else sheet_name
-				
-				if 'COMPARATIVO' in base_name:
+				if 'COMPARATIVO' in sheet_name:
 					# Armazenar COMPARATIVO com nome do lote
 					comparativos[f"COMPARATIVO {lote_nome}"] = ws_origem
 					print(f"  ✓ COMPARATIVO armazenado: COMPARATIVO {lote_nome}")
 					
-				elif 'RESUMO' in base_name:
-					# Agrupar RESUMO por categoria
-					if tem_delegacia:
+				elif 'RESUMO' in sheet_name:
+					# Determinar categoria do RESUMO pelo nome da sheet
+					if 'DELEGACIA' in sheet_name:
+						# RESUMO DELEGACIA - tudo junto
 						resumos_por_categoria['delegacia'].append((lote_nome, ws_origem))
-						print(f"  ✓ RESUMO armazenado (delegacia): {lote_nome}")
-					elif sub_empresa and sub_empresa != 'Sem Sub-Empresa':
-						if sub_empresa not in resumos_por_categoria['sub_empresa']:
-							resumos_por_categoria['sub_empresa'][sub_empresa] = []
-						resumos_por_categoria['sub_empresa'][sub_empresa].append((lote_nome, ws_origem))
-						print(f"  ✓ RESUMO armazenado (sub-empresa {sub_empresa}): {lote_nome}")
-					elif empresa and empresa != 'Sem Empresa':
-						if empresa not in resumos_por_categoria['empresa']:
-							resumos_por_categoria['empresa'][empresa] = []
-						resumos_por_categoria['empresa'][empresa].append((lote_nome, ws_origem))
-						print(f"  ✓ RESUMO armazenado (empresa {empresa}): {lote_nome}")
+						print(f"  ✓ RESUMO DELEGACIA armazenado: {lote_nome}")
+						
+					elif 'SUBEMPRESA' in sheet_name or 'SUBEMPRESA' in sheet_name or '(' in sheet_name:
+						# RESUMO (SUBEMPRESA) - extrair nome da subempresa do nome da sheet
+						# Formato: "RESUMO (Nome_da_Subempresa)" ou "RESUMO (Nome_da_Subempresa) - MÊS"
+						import re
+						match = re.search(r'RESUMO\s*\(([^)]+)\)', sheet_name)
+						if match:
+							sub_empresa_nome = match.group(1).strip()
+						else:
+							sub_empresa_nome = 'Sub-Empresa Padrão'
+						
+						if sub_empresa_nome not in resumos_por_categoria['sub_empresa']:
+							resumos_por_categoria['sub_empresa'][sub_empresa_nome] = []
+						resumos_por_categoria['sub_empresa'][sub_empresa_nome].append((lote_nome, ws_origem))
+						print(f"  ✓ RESUMO (SUBEMPRESA) armazenado ({sub_empresa_nome}): {lote_nome}")
+						
+					else:
+						# RESUMO padrão - agrupar por empresa do lote
+						empresa_nome = lote.get('empresa', 'Empresa Padrão')
+						if empresa_nome not in resumos_por_categoria['empresa']:
+							resumos_por_categoria['empresa'][empresa_nome] = []
+						resumos_por_categoria['empresa'][empresa_nome].append((lote_nome, ws_origem))
+						print(f"  ✓ RESUMO armazenado ({empresa_nome}): {lote_nome}")
 			
 			algum_lote_exportado = True
 		
@@ -2007,9 +2032,51 @@ def _criar_resumo_agrupado(wb_destino, resumos_list, nome_sheet):
 			linha_atual += 1
 		
 		# Copiar dados do resumo
+		inicio_dados = linha_atual  # Guardar linha inicial para calcular offset dos merged cells
+		linha_origem = 0  # Rastrear linha da origem
 		for row in ws_origem.iter_rows():
+			linha_origem += 1
 			for col_idx, cell in enumerate(row, 1):
-				ws_destino.cell(row=linha_atual, column=col_idx).value = cell.value
+				cell_value = cell.value
+				
+				# Se é uma fórmula com SUM/SOMA, ajustar as referências de linha
+				if isinstance(cell_value, str) and ('=SUM(' in cell_value.upper()):
+					# Encontrar o padrão =SUM(COLUNA{linha1}:COLUNA{linha2})
+					import re
+					match = re.search(r'=SUM\(([A-Z]+)(\d+):([A-Z]+)(\d+)\)', cell_value, re.IGNORECASE)
+					if match:
+						col1 = match.group(1)
+						lin1_orig = int(match.group(2))
+						col2 = match.group(3)
+						lin2_orig = int(match.group(4))
+						
+						# Calcular novo offset baseado na posição da origem
+						offset = linha_atual - linha_origem
+						lin1_novo = lin1_orig + offset
+						lin2_novo = lin2_orig + offset
+						
+						# Reconstruir a fórmula
+						cell_value = f'=SUM({col1}{lin1_novo}:{col2}{lin2_novo})'
+				
+				# Se é outra fórmula (não SUM), ajustar as referências simples como =D18*D19
+				elif isinstance(cell_value, str) and cell_value.startswith('=') and 'SUM' not in cell_value.upper():
+					import re
+					
+					# Calcular offset
+					offset = linha_atual - linha_origem
+					
+					# Substituir referências simples como D18, D19, etc
+					def ajustar_referencia(match):
+						ref = match.group(0)  # ex: "D18"
+						col = ''.join([c for c in ref if c.isalpha()])
+						lin = int(''.join([c for c in ref if c.isdigit()]))
+						nova_lin = lin + offset
+						return f"{col}{nova_lin}"
+					
+					# Encontrar e substituir todas as referências de célula (letras + dígitos)
+					cell_value = re.sub(r'[A-Z]+\d+', ajustar_referencia, cell_value)
+				
+				ws_destino.cell(row=linha_atual, column=col_idx).value = cell_value
 				
 				# Copiar formatação
 				if cell.has_style:
@@ -2020,6 +2087,35 @@ def _criar_resumo_agrupado(wb_destino, resumos_list, nome_sheet):
 					ws_destino.cell(row=linha_atual, column=col_idx).alignment = copy(cell.alignment)
 			
 			linha_atual += 1
+		
+		# Copiar células mescladas da sheet de origem, recalculando as linhas
+		offset_linhas = inicio_dados - 1  # Offset para recalcular os números de linha
+		for merged_range in ws_origem.merged_cells.ranges:
+			# Parsear o range mesclado (ex: "B2:K2")
+			range_str = str(merged_range)
+			try:
+				# Recalcular as linhas do range
+				from openpyxl.utils import get_column_letter, column_index_from_string
+				partes = range_str.split(':')
+				celula_inicio = partes[0]  # ex: "B2"
+				celula_fim = partes[1] if len(partes) > 1 else partes[0]  # ex: "K2"
+				
+				# Extrair coluna e linha
+				col_inicio_str = ''.join([c for c in celula_inicio if c.isalpha()])
+				lin_inicio = int(''.join([c for c in celula_inicio if c.isdigit()]))
+				
+				col_fim_str = ''.join([c for c in celula_fim if c.isalpha()])
+				lin_fim = int(''.join([c for c in celula_fim if c.isdigit()]))
+				
+				# Recalcular linhas com offset
+				lin_inicio_nova = lin_inicio + offset_linhas
+				lin_fim_nova = lin_fim + offset_linhas
+				
+				# Criar novo range
+				novo_range = f"{col_inicio_str}{lin_inicio_nova}:{col_fim_str}{lin_fim_nova}"
+				ws_destino.merge_cells(novo_range)
+			except Exception as e:
+				print(f"⚠️ Erro ao copiar merged cell {range_str}: {e}")
 		
 		primeiro = False
 	

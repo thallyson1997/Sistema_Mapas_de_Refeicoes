@@ -245,16 +245,11 @@ def api_adicionar_unidade(lote_id, nome, quantitativos_unidade, valor_contratual
 	try:
 		from .models import Lote
 		
-		# DEBUG: Log do valor recebido
-		print(f"DEBUG - Valor recebido para sub_empresa: {sub_empresa}, tipo: {type(sub_empresa)}")
-		
 		# Garantir que sub_empresa é boolean
 		if isinstance(sub_empresa, str):
 			sub_empresa = sub_empresa.lower() in ['true', '1', 'sim']
 		else:
 			sub_empresa = bool(sub_empresa)
-		
-		print(f"DEBUG - Valor após conversão: {sub_empresa}, tipo: {type(sub_empresa)}")
 		
 		# Garantir que delegacia é boolean
 		if isinstance(delegacia, str):
@@ -308,9 +303,6 @@ def api_adicionar_unidade(lote_id, nome, quantitativos_unidade, valor_contratual
 		# Criar data/hora atual no formato ISO com microsegundos
 		criado_em = datetime.now().isoformat()
 		
-		# DEBUG: Valor final antes de salvar
-		print(f"DEBUG - Sobre salvar com sub_empresa: {sub_empresa}, tipo: {type(sub_empresa)}, is bool: {isinstance(sub_empresa, bool)}")
-		
 		# Criar nova unidade
 		nova_unidade = Unidade(
 			id=novo_id,
@@ -348,10 +340,6 @@ def api_adicionar_unidade(lote_id, nome, quantitativos_unidade, valor_contratual
 		
 		db.session.commit()
 		
-		# DEBUG: Verificar se foi salvo
-		unidade_salva = Unidade.query.get(novo_id)
-		print(f"DEBUG - Após commit: sub_empresa = {unidade_salva.sub_empresa if unidade_salva else 'NOT FOUND'}, tipo: {type(unidade_salva.sub_empresa) if unidade_salva else 'N/A'}")
-		
 		return {
 			'success': True,
 			'message': f'Unidade "{nome}" adicionada com sucesso!',
@@ -374,17 +362,12 @@ def api_editar_unidade(unidade_id, nome=None, quantitativos_unidade=None, valor_
 	try:
 		from .models import Lote
 		
-		# DEBUG: Log do valor recebido
-		print(f"DEBUG EDIT - Valor recebido para sub_empresa: {sub_empresa}, tipo: {type(sub_empresa)}")
-		
 		# Garantir que sub_empresa é boolean se fornecido
 		if sub_empresa is not None:
 			if isinstance(sub_empresa, str):
 				sub_empresa = sub_empresa.lower() in ['true', '1', 'sim']
 			else:
 				sub_empresa = bool(sub_empresa)
-		
-		print(f"DEBUG EDIT - Valor após conversão: {sub_empresa}, tipo: {type(sub_empresa)}")
 		
 		# Garantir que delegacia é boolean se fornecido
 		if delegacia is not None:
@@ -478,18 +461,12 @@ def api_editar_unidade(unidade_id, nome=None, quantitativos_unidade=None, valor_
 		# Atualizar sub_empresa se fornecido
 		if sub_empresa is not None:
 			unidade.sub_empresa = sub_empresa
-			print(f"DEBUG EDIT - Atualizando sub_empresa para: {sub_empresa}")
 		
 		# Atualizar delegacia se fornecido
 		if delegacia is not None:
 			unidade.delegacia = delegacia
-			print(f"DEBUG EDIT - Atualizando delegacia para: {delegacia}")
 		
 		db.session.commit()
-		
-		# DEBUG: Verificar se foi salvo
-		unidade_atualizada = Unidade.query.get(unidade_id)
-		print(f"DEBUG EDIT - Após commit: sub_empresa = {unidade_atualizada.sub_empresa if unidade_atualizada else 'NOT FOUND'}")
 		
 		return {
 			'success': True,

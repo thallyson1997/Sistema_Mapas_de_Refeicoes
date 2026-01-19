@@ -141,17 +141,12 @@ def adicionar_siisp_em_mapa(payload):
 	from .mapas import serialize_mapa
 	mapas_existentes = [serialize_mapa(m) for m in mapas_raw]
 	if not mapas_existentes:
-		print(f'❌ DEBUG: Nenhum mapa encontrado para mes={mes}, ano={ano} pelo _load_mapas_partitioned.')
 		return {
 			'success': False,
 			'error': f'Nenhum mapa encontrado para {mes:02d}/{ano}. Adicione dados de refeições primeiro.'
 		}
 
 	unidade_normalizada = ultra_normalizar_nome(unidade)
-	print('🔍 DEBUG SIISP: Buscando mapa para:')
-	print(f'    Unidade: "{unidade}" (normalizada: "{unidade_normalizada}")')
-	print(f'    lote_id: {lote_id} | mes: {mes} | ano: {ano}')
-	print(f'    Total de mapas carregados para o período: {len(mapas_existentes)}')
 	for i, m in enumerate(mapas_existentes):
 		if not isinstance(m, dict):
 			continue

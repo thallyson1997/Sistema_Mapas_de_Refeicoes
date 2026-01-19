@@ -1266,13 +1266,6 @@
     
     if (predecessorData) {
         precosPorLote[predecessorData.id.toString()] = predecessorData.precos;
-        console.log('📋 Lote com predecessor detectado:', {
-            loteAtualId: loteId,
-            predecessorId: predecessorData.id,
-            totalMapas: mapasLote.length,
-            mapasLoteAtual: mapasLote.filter(m => m.lote_id == loteId).length,
-            mapasPredecessor: mapasLote.filter(m => m.lote_id == predecessorData.id).length
-        });
     }
         
         // Variáveis globais para controle dos filtros
@@ -1291,14 +1284,6 @@
             // Verificar qual campo de datas usar (compatibilidade)
             let datasArray = mapa.datas || mapa.data;
             let nomeUnidade = mapa.unidade || mapa.nome_unidade;
-            
-            // DEBUG: Verificar se campos SIISP de funcionários existem
-            console.log('DEBUG: Verificando mapa:', {
-                unidade: nomeUnidade,
-                temCafeFuncSiisp: !!mapa.cafe_funcionario_siisp,
-                primeiroValorCafeFuncSiisp: mapa.cafe_funcionario_siisp ? mapa.cafe_funcionario_siisp[0] : 'UNDEFINED',
-                primeiroValorCafeFunc: mapa.cafe_funcionario ? mapa.cafe_funcionario[0] : 'UNDEFINED'
-            });
             
             if (!datasArray || !Array.isArray(datasArray)) {
                 return; // Skip este mapa se não tiver dados válidos
@@ -1345,18 +1330,12 @@
             // Limpar dados filtrados
             dadosRefeicoes.length = 0;
             
-            console.log('=== APLICANDO FILTROS ===');
-            console.log('Filtros ativos:', filtrosAtivos);
-            console.log('Dados originais total:', dadosOriginais.length);
-            
             // Se não há filtros ativos (nenhum período e sem filtro de unidades), mostrar todos os dados
             if (!filtrosAtivos.dataInicio && !filtrosAtivos.dataFim && filtrosAtivos.unidadesSelecionadas === null) {
-                console.log('Nenhum filtro ativo - mostrando todos os dados');
                 dadosOriginais.forEach(registro => {
                     dadosRefeicoes.push({...registro});
                 });
             } else {
-                console.log('Aplicando filtros específicos...');
                 // Aplicar filtros aos dados originais
                 dadosOriginais.forEach(registro => {
                     let incluir = true;
@@ -1415,9 +1394,6 @@
                     }
                 });
             }
-            
-            console.log('Dados após filtros:', dadosRefeicoes.length);
-            console.log('=== FIM FILTROS ===\n');
             
             // Atualizar tabelas
             carregarTabelaRefeicoes();
@@ -1478,13 +1454,9 @@
 
             // Se houver filtros na URL (após adicionar dados), aplicá-los
             if (unidadeFiltro && mesFiltro && anoFiltro) {
-                console.log('🔍 DEBUG URL Parameters:', 'unidade=', unidadeFiltro, 'mes=', mesFiltro, 'ano=', anoFiltro);
-                
                 // Calcular período do mês/ano especificado
                 const mesNum = parseInt(mesFiltro);
                 const anoNum = parseInt(anoFiltro);
-                
-                console.log('🔍 DEBUG Parsed:', 'mesNum=', mesNum, 'anoNum=', anoNum);
                 
                 // Calcular primeiro e último dia do mês corretamente
                 // Usar Date.UTC para evitar problemas de timezone
@@ -1492,15 +1464,8 @@
                 // Calcular último dia: primeiro dia do próximo mês - 1 dia
                 const ultimoDia = new Date(Date.UTC(anoNum, mesNum, 0));
                 
-                console.log('🔍 DEBUG Dates:', 
-                    'primeiroDia=', primeiroDia.toISOString(), 
-                    'ultimoDia=', ultimoDia.toISOString()
-                );
-                
                 const dataInicioStr = primeiroDia.toISOString().split('T')[0];
                 const dataFimStr = ultimoDia.toISOString().split('T')[0];
-                
-                console.log('🔍 DEBUG Date Strings:', 'dataInicioStr=', dataInicioStr, 'dataFimStr=', dataFimStr);
                 
                 // Atualizar inputs de data
                 const dataInicioInput = document.getElementById('data-inicio');
@@ -1510,10 +1475,6 @@
                     dataFimInput.value = dataFimStr;
                     filtrosAtivos.dataInicio = dataInicioStr;
                     filtrosAtivos.dataFim = dataFimStr;
-                    console.log('🔍 DEBUG Input values set:', 
-                        'dataInicioValue=', dataInicioInput.value, 
-                        'dataFimValue=', dataFimInput.value
-                    );
                 }
                 
                 // Atualizar também os seletores de mês/ano do filtro principal
@@ -1522,7 +1483,6 @@
                 if (mesPeriodoInput && anoPeriodoInput) {
                     mesPeriodoInput.value = mesFiltro;
                     anoPeriodoInput.value = anoFiltro;
-                    console.log('🔍 DEBUG Seletores mes/ano atualizados:', 'mes=', mesFiltro, 'ano=', anoFiltro);
                 }
                 
                 // Atualizar seleção de unidades (será aplicado depois em initUnidadesFilter)
@@ -1550,8 +1510,6 @@
             // Sincronizar após inicialização dos elementos (se veio da URL)
             if (unidadeFiltro && mesFiltro && anoFiltro) {
                 setTimeout(() => {
-                    console.log('⏰ Chamando sincronizarSeletoresPopups após carregamento da URL');
-                    console.log('📌 Valores do filtro:', 'mes-periodo=', document.getElementById('mes-periodo')?.value, 'ano-periodo=', document.getElementById('ano-periodo')?.value);
                     sincronizarSeletoresPopups();
                 }, 500);
             }
@@ -1938,13 +1896,6 @@
                     getClassificacaoSiisp(row.cafeFuncSiisp) : 
                     { class: 'cell-na', display: 'N/A' };
                 
-                // DEBUG: Log dos primeiros 3 dias para café funcionário
-                if (dadosRefeicoes.indexOf(row) < 3) {
-                    console.log(`DEBUG Dia ${dadosRefeicoes.indexOf(row) + 1}:`);
-                    console.log('  row.cafeFuncSiisp:', row.cafeFuncSiisp);
-                    console.log('  cafeFuncClass:', cafeFuncClass);
-                }
-                
                 const almocoFuncClass = temColunasSiisp ? 
                     getClassificacaoSiisp(row.almocoFuncSiisp) : 
                     { class: 'cell-na', display: 'N/A' };
@@ -2261,13 +2212,6 @@
                 return;
             }
             
-            console.log('Dados SIISP coletados:', {
-                unidade: unidade,
-                mes: mes,
-                ano: ano,
-                numerosSiisp: numerosSiisp.substring(0, 100) + '...' // Log truncado
-            });
-            
             // Preparar dados para enviar à API
             const dadosParaApi = {
                 lote_id: loteId,
@@ -2276,8 +2220,6 @@
                 unidade: unidade,
                 dados_siisp: numerosSiisp
             };
-            
-            console.log('Enviando dados SIISP para API:', dadosParaApi);
             
             // Chamar API para adicionar números SIISP
             fetch('/api/adicionar-siisp', {
@@ -2310,9 +2252,6 @@
                     document.getElementById('select-unidade-siisp').value = '';
                     document.getElementById('numeros-siisp').value = '';
                     
-                    // Log de sucesso
-                    console.log('✅ Números SIISP adicionados:', data.registro);
-                    
                     // Recarregar a página para mostrar os novos dados
                     setTimeout(() => {
                         window.location.reload();
@@ -2324,7 +2263,6 @@
                 }
             })
             .catch(error => {
-                console.error('❌ Erro ao adicionar números SIISP:', error);
                 
                 // Mostrar notificação de erro
                 if (error.message.includes('obrigatórios')) {
@@ -2703,20 +2641,13 @@
         document.getElementById('btn-processar-import').addEventListener('click', function() {
             const unidade = document.getElementById('select-unidade-import').value;
             
-            // Debug: verificar se o elemento existe
             const textoElement = document.getElementById('texto-pdf');
-            console.log('🔍 Debug - Elemento texto-pdf encontrado:', textoElement);
             
             // Capturar texto SEM trim() para preservar espaços e quebras de linha
             const textoPdf = textoElement ? textoElement.value : '';
             const mes = document.getElementById('mes-import').value;
             const ano = document.getElementById('ano-import').value;
             const dadosSiisp = document.getElementById('dados-siisp').value.trim();
-            
-            // Debug: verificar se o texto está sendo capturado (mostrar caracteres especiais)
-            console.log('🔍 Debug - Texto capturado (raw):', JSON.stringify(textoPdf));
-            console.log('🔍 Debug - Tamanho do texto:', textoPdf.length);
-            console.log('🔍 Debug - Primeiros 100 chars:', textoPdf.substring(0, 100));
             
             if (!unidade) {
                 showNotification('warning', 'Campo obrigatório', 'Por favor, selecione a unidade.');
@@ -2742,8 +2673,6 @@
                 dados_siisp: dadosSiisp,  // Enviar dados SIISP como string original
                 texto: textoPdf
             };
-            
-            console.log('Enviando dados para API:', dadosParaApi);
             
             // Chamar API para salvar dados
             fetch('/api/adicionar-dados', {
@@ -2798,15 +2727,11 @@
                     setTimeout(() => {
                         window.location.href = `?unidade=${encodeURIComponent(unidade)}&mes=${mes}&ano=${ano}`;
                     }, 1000); // 1 segundo para garantir que a notificação fique visível
-                    
-                    console.log('✅ Dados salvos:', data.registro);
                 } else {
                     showNotification('error', 'Erro ao salvar dados', data.error || 'Erro desconhecido ao processar os dados.');
-                    console.error('❌ Erro da API:', data);
                 }
             })
             .catch(error => {
-                console.error('❌ Erro completo:', error);
                 
                 try {
                     // Tentar fazer parse do erro para ver se é erro de validação
@@ -2828,8 +2753,6 @@
                     // Erro de conexão ou outro tipo
                     showNotification('error', 'Erro de conexão', 'Erro de conexão com o servidor. Verifique sua conexão e tente novamente.');
                 }
-                
-                console.error('❌ Erro de rede:', error);
             });
         });
 
@@ -2865,8 +2788,6 @@
                 return;
             }
             
-            console.log('Dados coletados da tabela:', dadosTabela);
-            
             // Preparar dados para enviar à API
             const dadosParaApi = {
                 lote_id: loteId,
@@ -2875,8 +2796,6 @@
                 unidade: unidade,
                 dados_tabela: dadosTabela
             };
-            
-            console.log('Enviando dados para API de entrada manual:', dadosParaApi);
             
             // Chamar API para salvar dados
             fetch('/api/entrada-manual', {
@@ -2933,8 +2852,6 @@
                 }
             })
             .catch(error => {
-                console.error('❌ Erro ao salvar entrada manual:', error);
-                
                 // Mostrar notificação de erro
                 if (error.message.includes('Lote ID') || error.message.includes('obrigatórios')) {
                     showNotification('error', 'Dados inválidos', error.message);
@@ -3000,8 +2917,6 @@
         
         // Função para executar a exclusão (código movido do evento original)
         function executarExclusao(dadosExclusao, unidade, mes, ano) {
-            console.log('Excluindo dados:', dadosExclusao);
-            
             // Chamar API para excluir dados
             fetch('/api/excluir-dados', {
                 method: 'DELETE',
@@ -3017,7 +2932,6 @@
                 });
             })
             .then(result => {
-                console.log('🔍 Debug - Resposta da API de exclusão:', result);
                 const { data, status, ok } = result;
                 
                 if (ok && data.success) {
@@ -3042,7 +2956,6 @@
                 }
             })
             .catch(error => {
-                console.error('❌ Erro ao excluir dados:', error);
                 showNotification('error', 'Erro de conexão', 'Erro de conexão com o servidor. Verifique sua conexão e tente novamente.');
             });
         }
@@ -3193,10 +3106,7 @@
                 fecharCalendario();
                 
                 // Aplicar filtros e atualizar tabela
-                console.log('Aplicando filtro de período:', dataInicio.value, 'até', dataFim.value);
-                console.log('Dados originais:', dadosOriginais.length, 'registros');
                 aplicarFiltros();
-                console.log('Dados filtrados:', dadosRefeicoes.length, 'registros');
             });
             
             // Atualizar info de dias quando as datas mudarem
@@ -3281,8 +3191,6 @@
             const mes = mesPeriodo.value;
             const ano = anoPeriodo.value;
             
-            console.log('🔄 Sincronizando pop-ups com:', 'mes=', mes, 'ano=', ano);
-            
             // Sincronizar Adicionar Dados (import)
             const mesImport = document.getElementById('mes-import');
             const anoImport = document.getElementById('ano-import');
@@ -3290,7 +3198,6 @@
                 mesImport.value = mes;
                 anoImport.value = ano;
                 atualizarDisplayMesAno('import', mes, ano);
-                console.log('✅ Import sincronizado');
             }
             
             // Sincronizar Entrada Manual
@@ -3300,7 +3207,6 @@
                 mesManual.value = mes;
                 anoManual.value = ano;
                 atualizarDisplayMesAno('manual', mes, ano);
-                console.log('✅ Manual sincronizado');
             }
             
             // Sincronizar Excluir Dados
@@ -3309,7 +3215,6 @@
             if (mesExclusao && anoExclusao) {
                 mesExclusao.value = mes;
                 anoExclusao.value = ano;
-                console.log('✅ Exclusão sincronizado');
             }
             
             // Sincronizar Adicionar SIISP
@@ -3319,7 +3224,6 @@
                 mesSiisp.value = mes;
                 anoSiisp.value = ano;
                 atualizarDisplayMesAno('siisp', mes, ano);
-                console.log('✅ SIISP sincronizado');
             }
         }
         
@@ -3361,8 +3265,6 @@
             const dataFim = document.getElementById('data-fim').value;
             const periodoText = document.getElementById('periodo-text');
             
-            console.log('🔍 DEBUG atualizarDisplayPeriodo:', 'dataInicio=', dataInicio, 'dataFim=', dataFim);
-            
             if (dataInicio && dataFim) {
                 // Usar split para evitar problemas de timezone
                 let anoInicio, mesInicio, diaInicio, anoFim, mesFim, diaFim;
@@ -3373,15 +3275,8 @@
                     [anoFim, mesFim, diaFim] = dataFim.split('-');
                 }
                 
-                console.log('🔍 DEBUG Split dates:', 
-                    'inicio:', diaInicio, '/', mesInicio, '/', anoInicio,
-                    'fim:', diaFim, '/', mesFim, '/', anoFim
-                );
-                
                 const inicioFormatado = `${diaInicio}/${mesInicio}/${anoInicio}`;
                 const fimFormatado = `${diaFim}/${mesFim}/${anoFim}`;
-                
-                console.log('🔍 DEBUG Formatted:', 'inicio=', inicioFormatado, 'fim=', fimFormatado);
                 
                 periodoText.textContent = `${inicioFormatado} - ${fimFormatado}`;
             }
@@ -3416,9 +3311,6 @@
 
             // Depuração: garantir que todos os elementos existem
             if (!unidadesDisplay || !unidadesPopup || !unidadesOverlay || !btnAplicar || !btnCancelar || !btnSelecionarTodas || !btnLimparTodas) {
-                console.error('Filtro de unidades: elemento(s) não encontrado(s)!', {
-                    unidadesDisplay, unidadesPopup, unidadesOverlay, btnAplicar, btnCancelar, btnSelecionarTodas, btnLimparTodas
-                });
                 return;
             }
 
@@ -3447,7 +3339,6 @@
 
             // Abrir popup de unidades
             unidadesDisplay.addEventListener('click', function() {
-                console.log('DEBUG: Clique no filtro de unidades');
                 // Fazer backup das seleções atuais
                 unidadesSelecionadasBackup = getUnidadesSelecionadas();
                 unidadesPopup.style.display = 'block';
@@ -3489,10 +3380,7 @@
                 atualizarDisplayUnidades();
                 fecharUnidadesPopup();
                 // Aplicar filtros e atualizar tabela
-                console.log('Aplicando filtro de unidades:', filtrosAtivos.unidadesSelecionadas);
-                console.log('Dados originais:', dadosOriginais.length, 'registros');
                 aplicarFiltros();
-                console.log('Dados filtrados:', dadosRefeicoes.length, 'registros');
             });
 
             // Selecionar todas as unidades

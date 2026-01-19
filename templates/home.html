@@ -1173,8 +1173,6 @@
             let valorTotal = 0;
             let valorDesvio = 0;
             
-            console.log(`[DEBUG] calcularEstatisticasLote para loteId=${loteId}, mapasDoLote.length=${mapasDoLote.length}`);
-            
             mapasDoLote.forEach(mapa => {
                 unidadesUnicas.add(mapa.nome_unidade);
                 
@@ -1197,8 +1195,6 @@
                 
                 // Calcular total de refeições e valores financeiros para cada dia do mês
                 const dias = Array.isArray(mapa.data) ? mapa.data.length : (Array.isArray(mapa.cafe_interno) ? mapa.cafe_interno.length : 0);
-                
-                console.log(`[DEBUG] Processando mapa loteId=${loteId}, mapa.lote_id=${mapa.lote_id}, mapa.id=${mapa.id}, dias=${dias}, tem cafe_interno=${!!mapa.cafe_interno}`);
                 
                 for (let i = 0; i < dias; i++) {
                     const refeicoesDia = 
@@ -1354,8 +1350,6 @@
                 });
                 
                 const estatisticas = calcularEstatisticasLote(cardLoteId, mapasDoLote);
-                
-                console.log(`[DEBUG] Lote ${cardLoteId}: Estatísticas calculadas:`, estatisticas);
 
                 // Atualizar unidades
                 const unidadesElement = card.querySelector('.unidades-count');

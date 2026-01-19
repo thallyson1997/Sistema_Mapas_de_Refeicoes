@@ -574,7 +574,6 @@
     <script>
         // Mapeamento de lotes para unidades (do backend)
         const lotesUnidadesMap = {{ lotes_unidades|tojson }};
-        console.log('Mapeamento lotes -> unidades:', lotesUnidadesMap);
         
         // Variável global para o gráfico
         let chartInstance = null;
@@ -597,7 +596,6 @@
                 const lotesSelecionados = Array.from(checkboxes).map(cb => cb.value);
                 
                 if (lotesSelecionados.length === 0) {
-                    console.log('⚠️ Nenhum lote selecionado');
                     return;
                 }
                 
@@ -610,17 +608,7 @@
                 if (lotesSelecionados.length === 1) {
                     const unidadesCheckboxes = document.querySelectorAll('.filtro-unidade-checkbox:checked');
                     unidadesSelecionadas = Array.from(unidadesCheckboxes).map(cb => parseInt(cb.value));
-                    console.log('🔍 FRONTEND: 1 lote selecionado, unidades encontradas:', unidadesSelecionadas);
-                } else {
-                    console.log('🔍 FRONTEND: Múltiplos lotes, não enviando unidades');
                 }
-                
-                console.log('📊 Carregando gráfico de refeições:', {
-                    lotes: lotesSelecionados,
-                    unidades: unidadesSelecionadas,
-                    tipo: tipo,
-                    agrupamento: agrupamento
-                });
                 
                 // Fazer requisição à API
                 const response = await fetch('/api/dashboard/grafico-refeicoes', {
@@ -640,18 +628,14 @@
                 
                 // Verificar se houve erro (status HTTP 4xx ou 5xx, ou success: false)
                 if (!response.ok || !data.success) {
-                    console.error('❌ Erro ao carregar dados:', data.error);
                     mostrarNotificacao('Erro', data.error || 'Erro ao carregar dados do gráfico', 'error');
                     return;
                 }
-                
-                console.log('✅ Dados recebidos:', data);
                 
                 // Renderizar gráfico
                 renderizarGraficoRefeicoes(data);
                 
             } catch (error) {
-                console.error('❌ Erro ao carregar gráfico:', error);
                 mostrarNotificacao('Erro', 'Erro ao carregar o gráfico', 'error');
             }
         }
@@ -751,8 +735,6 @@
                     }
                 }
             });
-            
-            console.log('✅ Gráfico renderizado com sucesso');
         }
 
         // ===== Gráfico de Gastos =====
@@ -785,13 +767,11 @@
                 });
                 const data = await response.json();
                 if (!response.ok || !data.success) {
-                    console.error('Erro ao carregar gastos:', data.error);
                     mostrarNotificacao('Erro', data.error || 'Erro ao carregar dados do gráfico de gastos', 'error');
                     return;
                 }
                 renderizarGraficoGastos(data);
             } catch (e) {
-                console.error('Erro gráfico gastos:', e);
                 mostrarNotificacao('Erro', 'Erro inesperado ao carregar gráfico de gastos', 'error');
             }
         }
@@ -1061,11 +1041,8 @@
                     const unidadesText = document.getElementById('unidades-text');
                     unidadesText.textContent = `Todas as unidades (${data.unidades.length})`;
                     unidadesText.style.color = 'var(--gray-900)';
-                    
-                    console.log(`✅ Carregadas ${data.unidades.length} unidades do lote ${loteId}`);
                 }
             } catch (error) {
-                console.error('❌ Erro ao carregar unidades:', error);
             }
         }
         
@@ -1170,8 +1147,6 @@
                 // Fechar popup
                 document.getElementById('lotes-popup').style.display = 'none';
                 document.getElementById('lotes-overlay').style.display = 'none';
-                
-                console.log('Lotes selecionados:', Array.from(checkboxes).map(cb => cb.value));
             });
             
             // Selecionar todos os lotes
@@ -1253,8 +1228,6 @@
                     carregarGraficoRefeicoes();
                     carregarGraficoGastos();
                 }
-                
-                console.log('Unidades selecionadas:', Array.from(checkboxes).map(cb => cb.value));
             });
             
             // Selecionar todas as unidades
@@ -1318,7 +1291,6 @@
                     this.style.boxShadow = '0 2px 4px rgba(59,130,246,0.3)';
                     
                     tipoVisualizacao = this.dataset.tipo;
-                    console.log('📊 Tipo de visualização alterado para:', tipoVisualizacao);
                     
                     // Recarregar gráfico se houver lotes selecionados
                     const checkboxes = document.querySelectorAll('.filtro-lote-checkbox:checked');
@@ -1349,7 +1321,6 @@
                     this.style.boxShadow = '0 2px 4px rgba(59,130,246,0.3)';
                     
                     tipoAgrupamento = this.dataset.agrupamento;
-                    console.log('📦 Tipo de agrupamento alterado para:', tipoAgrupamento);
                     
                     // Recarregar gráfico se houver lotes selecionados
                     const checkboxes = document.querySelectorAll('.filtro-lote-checkbox:checked');
@@ -1381,7 +1352,6 @@
             });
             
             // Não carregar gráfico automaticamente - aguardar seleção de lote
-            console.log('🚀 Página carregada - aguardando seleção de lote...');
             // Exibir placeholder inicial
             document.getElementById('placeholder-refeicoes').style.display = 'flex';
         });

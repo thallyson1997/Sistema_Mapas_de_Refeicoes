@@ -590,7 +590,7 @@ def salvar_mapas_raw(payload):
 								if 'datas' in entry and isinstance(entry['datas'], list):
 									entry['datas'] = [entry['datas'][i] for i in indices_validos if i < len(entry['datas'])]
 							except Exception as e:
-								print(f"[DEBUG] Erro ao recortar arrays após parsing tabular: {e}")
+								pass
 				if used_text_key:
 					try:
 						entry.pop(used_text_key, None)
@@ -652,7 +652,6 @@ def salvar_mapas_raw(payload):
 			# Força preenchimento com zeros se ainda estiver vazio
 			if isinstance(dados_siisp, list) and len(dados_siisp) == 0 and tamanho_real > 0:
 				dados_siisp = [0] * tamanho_real
-			print(f"[DEBUG] dados_siisp a salvar: {dados_siisp}, tamanho_real: {tamanho_real}")
 			mapa_data['dados_siisp'] = json.dumps(dados_siisp)
 
 			# Preencher campos de refeições
@@ -965,7 +964,6 @@ def calcular_metricas_lotes(lotes, mapas):
 		# Expandir para incluir predecessores (como nos relatórios)
 		lotes_ids_para_buscar = [lid]
 		predecessor_id = lote.get('lote_predecessor_id')
-		print(f"[DEBUG] Lote {lid}: predecessor_id inicial = {predecessor_id}")
 		while predecessor_id:
 			lotes_ids_para_buscar.append(str(predecessor_id))
 			lote_predecessor = lotes_por_id.get(predecessor_id)
@@ -974,12 +972,8 @@ def calcular_metricas_lotes(lotes, mapas):
 			else:
 				break
 		
-		if len(lotes_ids_para_buscar) > 1:
-			print(f"[DEBUG] Lote {lid} expandido para incluir predecessores: {lotes_ids_para_buscar}")
-
 		# Para cada mês/ano, agregue os mapas e calcule as métricas (incluindo predecessores)
 		for lote_id_busca in lotes_ids_para_buscar:
-			print(f"[DEBUG] Processando lote_id_busca={lote_id_busca}, encontrou {len(mapas_por_lote_mes.get(lote_id_busca, {}))} meses")
 			# Usar preços do lote correto (cada predecessor pode ter preços diferentes)
 			lote_id_int = int(lote_id_busca) if isinstance(lote_id_busca, str) else lote_id_busca
 			lote_atual = lotes_por_id.get(lote_id_int) if lote_id_busca != lid else lote
@@ -1059,12 +1053,7 @@ def calcular_metricas_lotes(lotes, mapas):
 		totais_custos_por_lote[lote_id] = custo_total
 		totais_desvios_por_lote[lote_id] = desvio_total
 
-		# Mensagem de debug detalhada por mês
-		print(f"[DEBUG] Lote {lote.get('id')}: Refeições por mês:")
-		for mes_ano, total in refeicoes_por_mes.items():
-			print(f"  - {mes_ano}: {total} refeições")
 		media = total_refeicoes / meses_count if meses_count > 0 else 0
-		print(f"[DEBUG] Lote {lote.get('id')}: Soma das refeições = {total_refeicoes}, Meses = {meses_count}, Média = {media:.2f}")
 
 		# Recupera os totais calculados anteriormente
 		lote_id = lote.get('id')

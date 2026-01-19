@@ -329,9 +329,6 @@ def home():
     lotes = dashboard_data.get('lotes', [])
     from functions.mapas import carregar_mapas_db, serialize_mapa
     mapas_dados = carregar_mapas_db()
-    print(f"DEBUG mapas_dados count: {len(mapas_dados)}")
-    for m in mapas_dados:
-        print(f"Mapa: id={m.get('id')}, lote_id={m.get('lote_id')}, mes={m.get('mes')}, ano={m.get('ano')}, unidade={m.get('unidade')}")
     # Agrupar mapas por lote_id
     mapas_por_lote = {}
     for mapa in mapas_dados:
@@ -379,7 +376,6 @@ def lotes():
             total_refeicoes = sum(lote['refeicoes_por_mes'].values())
             num_meses = len(lote['refeicoes_por_mes'])
             media = total_refeicoes / num_meses if num_meses > 0 else 0
-            print(f"[DEBUG] Lote {lote.get('id')}: Soma das refeições = {total_refeicoes}, Meses = {num_meses}, Média = {media:.2f}")
 
     # Calcular refeições por mês para cada lote
     campos_refeicoes = [
@@ -419,8 +415,6 @@ def lote_detalhes(lote_id):
     if lote is None:
         abort(404)
     
-    print(f"🔍 DEBUG lote_detalhes: Lote ID={lote_id}, predecessor_id={lote.get('lote_predecessor_id')}")
-
     # Converter todos os preços para float, inclusive aninhados
     precos = lote.get('precos', {})
     for tipo_refeicao in precos:
@@ -458,10 +452,8 @@ def lote_detalhes(lote_id):
     predecessor_id = lote.get('lote_predecessor_id')
     predecessor_data = None
     
-    print(f"🔍 DEBUG: predecessor_id encontrado: {predecessor_id}")
     
     if predecessor_id:
-        print(f"📋 DEBUG: Buscando dados do predecessor {predecessor_id}")
         # Buscar dados do predecessor
         predecessor_lote = None
         for l in lotes:
@@ -473,7 +465,6 @@ def lote_detalhes(lote_id):
                 continue
         
         if predecessor_lote:
-            print(f"✅ DEBUG: Predecessor encontrado: {predecessor_lote.get('nome')}")
             # Converter preços do predecessor para float
             precos_predecessor = predecessor_lote.get('precos', {})
             for tipo_refeicao in precos_predecessor:
@@ -492,13 +483,8 @@ def lote_detalhes(lote_id):
             # Buscar mapas do predecessor
             mapas_predecessor = carregar_mapas_db({'lote_id': predecessor_id})
             
-            print(f"📊 DEBUG: Encontrados {len(mapas_predecessor)} mapas do predecessor")
-            print(f"📊 DEBUG: Total de mapas do lote atual: {len(mapas_lote)}")
-            
             # Adicionar mapas do predecessor à lista (mantendo lote_id original para cálculos)
             mapas_lote.extend(mapas_predecessor)
-            
-            print(f"📊 DEBUG: Total de mapas após agregação: {len(mapas_lote)}")
             
             # Passar dados do predecessor para o template
             predecessor_data = {
@@ -506,10 +492,6 @@ def lote_detalhes(lote_id):
                 'nome': predecessor_lote.get('nome'),
                 'precos': precos_predecessor
             }
-        else:
-            print(f"❌ DEBUG: Predecessor não encontrado na lista de lotes")
-    else:
-        print(f"ℹ️  DEBUG: Lote não tem predecessor definido")
     
     return render_template('lote-detalhes.html', 
                          lote=lote, 
@@ -542,10 +524,9 @@ def api_adicionar_dados():
                         data_inicio = getattr(lote, 'data_inicio', None)
                         data_fim = getattr(lote, 'data_fim', None)
                 except Exception as e:
-                    print(f"[DEBUG] Erro ao buscar lote: {e}")
+                    pass
             pass
         # num_dias só pode ser calculado corretamente após o processamento dos dados (salvar_mapas_raw)
-        print(f"🔍 DEBUG Adicionar_Dados: lote_id={lote_id}, data_inicio={data_inicio}, data_fim={data_fim}, mes={mes}, ano={ano}")
 
         # Validar se o mês/ano do mapa está dentro do período do lote
         periodo_invalido = False
@@ -560,7 +541,7 @@ def api_adicionar_dados():
                     periodo_invalido = True
                     msg_erro_periodo = f"O mapa ({mes}/{ano}) está fora do período do lote ({data_inicio} a {data_fim}) e não será salvo."
             except Exception as e:
-                print(f"[DEBUG] Erro ao validar período do mapa: {e}")
+                pass
 
         if periodo_invalido:
             # Tenta calcular num_dias do registro processado, se possível
@@ -594,8 +575,6 @@ def api_adicionar_dados():
                 dias_do_mes = [datetime(int(ano), int(mes), d+1) for d in range(calendar.monthrange(int(ano), int(mes))[1])]
                 # Índices dos dias dentro do contrato
                 indices_validos = [i for i, dia in enumerate(dias_do_mes) if data_inicio_dt <= dia <= data_fim_dt]
-                print(f"[DEBUG] Dias do mês: {[d.strftime('%Y-%m-%d') for d in dias_do_mes]}")
-                print(f"[DEBUG] Índices válidos para contrato: {indices_validos}")
                 num_dias_validos = len(indices_validos)
                 # Recortar arrays de refeições e datas
                 campos_refeicoes = [
@@ -606,17 +585,13 @@ def api_adicionar_dados():
                     vals = data.get(campo)
                     if isinstance(vals, list):
                         recortado = [vals[i] for i in indices_validos]
-                        print(f"[DEBUG] {campo} original: {vals}")
-                        print(f"[DEBUG] {campo} recortado: {recortado}")
                         data[campo] = recortado
                 # Recortar campo 'datas' se existir
                 if 'datas' in data and isinstance(data['datas'], list):
                     recortado_datas = [data['datas'][i] for i in indices_validos]
-                    print(f"[DEBUG] datas original: {data['datas']}")
-                    print(f"[DEBUG] datas recortado: {recortado_datas}")
                     data['datas'] = recortado_datas
             except Exception as e:
-                print(f"[DEBUG] Erro ao recortar dados do mapa: {e}")
+                pass
 
         # Preencher dados_siisp com zeros apenas se não enviado ou vazio
         if 'dados_siisp' not in data or not data['dados_siisp']:
@@ -647,8 +622,6 @@ def api_adicionar_dados():
             except Exception:
                 pass
 
-        # DEBUG: Mostrar os dados que serão salvos
-        print("[DEBUG] Dados que serão salvos no banco:")
         campos_refeicoes = [
             'cafe_interno', 'cafe_funcionario', 'almoco_interno', 'almoco_funcionario',
             'lanche_interno', 'lanche_funcionario', 'jantar_interno', 'jantar_funcionario', 'dados_siisp'
@@ -682,7 +655,6 @@ def api_adicionar_dados():
                 registros_processados = 0
                 dias_esperados = 0
 
-            print(f"🔍 DEBUG Adicionar_Dados: lote_id={lote_id}, data_inicio={data_inicio}, data_fim={data_fim}, mes={mes}, ano={ano}, num_dias={num_dias}")
 
             validacao = {
                 'valido': True,
@@ -762,7 +734,6 @@ def api_entrada_manual():
             # Formatar datas para exibir apenas YYYY-MM-DD
             data_inicio_str = data_inicio.strftime('%Y-%m-%d') if data_inicio else None
             data_fim_str = data_fim.strftime('%Y-%m-%d') if data_fim else None
-            print(f"🔍 DEBUG Entrada Manual: lote_id={lote_id}, data_inicio={data_inicio_str}, data_fim={data_fim_str}, mes={mes}, ano={ano}, num_dias={dias_salvos}")
 
             # Calcular total de refeições
             meal_fields = [
@@ -810,14 +781,6 @@ def api_adicionar_siisp():
     try:
         data = request.get_json(force=True, silent=True) or {}
         
-        print('🔍 DEBUG adicionar-siisp - Payload recebido:')
-        print(f'  - unidade: {data.get("unidade")}')
-        print(f'  - mes: {data.get("mes")}')
-        print(f'  - ano: {data.get("ano")}')
-        print(f'  - lote_id: {data.get("lote_id")}')
-        print(f'  - dados_siisp tipo: {type(data.get("dados_siisp"))}')
-        print(f'  - dados_siisp: {data.get("dados_siisp")}')
-        
         res = adicionar_siisp_em_mapa(data)
         
         if res.get('success'):
@@ -853,12 +816,6 @@ def api_adicionar_siisp():
 def api_excluir_dados():
     try:
         data = request.get_json(force=True, silent=True) or {}
-        
-        print('🔍 DEBUG excluir-dados - Payload recebido:')
-        print(f'  - unidade: {data.get("unidade")}')
-        print(f'  - mes: {data.get("mes")}')
-        print(f'  - ano: {data.get("ano")}')
-        print(f'  - lote_id: {data.get("lote_id")}')
         
         res = excluir_mapa(data)
         
@@ -974,14 +931,10 @@ def dashboard():
             num_predecessores = 0
             predecessor_id = lote_obj.lote_predecessor_id
             
-            print(f"🔍 DEBUG relatorios: Lote {lote_dict['nome']} (ID={lote_id}) - predecessor_id={predecessor_id}")
-            
             while predecessor_id:
                 num_predecessores += 1
                 predecessor = db.session.get(Lote, predecessor_id)
                 predecessor_id = predecessor.lote_predecessor_id if predecessor else None
-            
-            print(f"📊 DEBUG: Total de predecessores na cadeia: {num_predecessores}")
             
             # Adicionar indicação de histórico no nome
             lote_dict_modificado = lote_dict.copy()

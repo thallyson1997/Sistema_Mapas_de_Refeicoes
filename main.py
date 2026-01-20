@@ -7,7 +7,7 @@ import io
 import calendar
 from datetime import datetime
 from copy import copy
-from functions.models import db, Usuario
+from functions.models import db, Usuario, Lote
 from functions.utils import (
     cadastrar_novo_usuario,
     validar_cadastro_no_usuario,
@@ -1621,8 +1621,38 @@ def api_get_unidades_lote(lote_id):
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/lote/<int:lote_id>', methods=['GET'])
+def api_get_lote(lote_id):
+    """Endpoint para buscar dados completos de um lote"""
+    try:
+        lote = Lote.query.get(lote_id)
+        if not lote:
+            return jsonify({'success': False, 'error': 'Lote não encontrado'}), 404
+        
+        lote_data = {
+            'id': lote.id,
+            'nome': lote.nome,
+            'empresa': lote.empresa,
+            'sub_empresa': lote.sub_empresa,
+            'numero_contrato': lote.numero_contrato,
+            'numero': lote.numero,
+            'data_inicio': lote.data_inicio,
+            'data_fim': lote.data_fim,
+            'valor_contratual': lote.valor_contratual,
+            'ativo': lote.ativo,
+            'status': lote.status,
+            'descricao': lote.descricao
+        }
+        
+        print(f"✅ Retornando dados do lote {lote_id}")
+        return jsonify(lote_data), 200
+    
+    except Exception as e:
+        print(f"❌ Erro ao buscar lote {lote_id}: {e}")
         import traceback
         traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/relatorios/dados-grafico', methods=['POST'])

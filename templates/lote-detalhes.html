@@ -1425,17 +1425,8 @@
             aplicarFiltros();
         }
 
-        // Verificar autenticação
+        // Inicialização da página
         window.addEventListener('load', function() {
-            const usuarioSalvo = localStorage.getItem('sgmrp_usuario');
-            if (!usuarioSalvo) {
-                showNotification('warning', 'Sessão expirada', 'Redirecionando para a página de login...', false);
-                setTimeout(() => {
-                    window.location.href = 'login.html';
-                }, 2000);
-                return;
-            }
-
             // Verificar parâmetros da URL para ações específicas
             const urlParams = new URLSearchParams(window.location.search);
             const acao = urlParams.get('acao');

@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify, render_template, session, flash, redirect, url_for, abort, send_file
 from flask_sqlalchemy import SQLAlchemy
+from functools import wraps
 import os
 import json
 import re
@@ -65,6 +66,16 @@ try:
     print('✅ Conexão com dados/dados.db funcionando!')
 except Exception as e:
     print(f'❌ Erro ao conectar ao banco: {e}')
+
+# Decorador para proteger rotas que exigem autenticação
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'usuario_id' not in session:
+            flash('Você precisa estar logado para acessar esta página.')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 #FEITOS
 @app.route('/')
@@ -186,6 +197,7 @@ def logout():
     return redirect(url_for('login'))
 
 @app.route('/api/novo-lote', methods=['POST'])
+@login_required
 def api_novo_lote():
     # Endpoint para salvar um novo lote via API
     try:
@@ -321,6 +333,7 @@ def api_listar_unidades_route(lote_id):
         print(f'Erro na rota listar-unidades: {str(e)}')
         return jsonify({'success': False, 'message': f'Erro interno: {str(e)}'}), 500
 @app.route('/home')
+@login_required
 def home():
     #Página inicial
     mostrar_login_sucesso = request.args.get('login') == '1'
@@ -360,6 +373,7 @@ def home():
                            usuario_nome=usuario_nome)
 
 @app.route('/lotes')
+@login_required
 def lotes():
     #Página de listagem de lotes
     data = carregar_lotes_para_dashboard()
@@ -396,6 +410,7 @@ def lotes():
     return render_template('lotes.html', lotes=lotes, empresas=empresas)
 
 @app.route('/lote/<int:lote_id>')
+@login_required
 def lote_detalhes(lote_id):
     #Página de detalhes do lote
     # Forçar recarregamento dos dados para evitar cache
@@ -500,6 +515,7 @@ def lote_detalhes(lote_id):
                          predecessor_data=predecessor_data)
 
 @app.route('/api/adicionar-dados', methods=['POST'])
+@login_required
 def api_adicionar_dados():
     # Endpoint para adicionar dados de mapas via API
     try:
@@ -700,6 +716,7 @@ def api_adicionar_dados():
         return jsonify({'success': False, 'error': 'Erro interno'}), 200
 
 @app.route('/api/entrada-manual', methods=['POST'])
+@login_required
 def api_entrada_manual():
     # Endpoint para adicionar dados de mapas via entrada manual
     try:
@@ -777,6 +794,7 @@ def api_entrada_manual():
         return jsonify({'success': False, 'error': 'Erro interno'}), 200
 
 @app.route('/api/adicionar-siisp', methods=['POST'])
+@login_required
 def api_adicionar_siisp():
     try:
         data = request.get_json(force=True, silent=True) or {}
@@ -813,6 +831,7 @@ def api_adicionar_siisp():
         return jsonify({'success': False, 'error': 'Erro interno'}), 200
 
 @app.route('/api/excluir-dados', methods=['DELETE'])
+@login_required
 def api_excluir_dados():
     try:
         data = request.get_json(force=True, silent=True) or {}
@@ -835,6 +854,7 @@ def api_excluir_dados():
         return jsonify({'success': False, 'error': 'Erro interno'}), 200
 
 @app.route('/exportar-tabela')
+@login_required
 def exportar_tabela():
     """Rota para exportação de dados em formato Excel"""
     # Receber filtros da query string
@@ -868,6 +888,7 @@ def exportar_tabela():
     )
 
 @app.route('/exportar-dashboard')
+@login_required
 def exportar_dashboard():
     """Rota para exportação de todos os lotes de um mês (dashboard)"""
     data_inicio = request.args.get('data_inicio')
@@ -911,6 +932,7 @@ def exportar_dashboard():
     )
 
 @app.route('/dashboard')
+@login_required
 def dashboard():
     #Página de dashboard e análises gráficas
     # Forçar recarregamento direto do banco para evitar cache
@@ -1653,6 +1675,314 @@ def api_get_lote(lote_id):
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/dashboard/grafico-refeicoes-desagregado', methods=['POST'])
+def api_dashboard_grafico_refeicoes_desagregado():
+    """Endpoint para buscar dados desagregados por tipo de refeição (para previsões mais precisas)"""
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        
+        lotes_ids = data.get('lotes', [])
+        unidades_ids = data.get('unidades', [])
+        tipo_agrupamento = data.get('agrupamento', 'total')
+        
+        print(f"\n{'='*80}")
+        print(f"📊 API GRÁFICO REFEIÇÕES DESAGREGADO")
+        print(f"{'='*80}")
+        print(f"Lotes: {lotes_ids}, Unidades: {unidades_ids}, Agrupamento: {tipo_agrupamento}")
+        
+        if not lotes_ids or len(lotes_ids) == 0:
+            return jsonify({'success': False, 'error': 'Nenhum lote selecionado'}), 400
+        
+        lotes_ids = [int(lid) for lid in lotes_ids if lid]
+        unidades_ids = [int(uid) for uid in unidades_ids if uid] if unidades_ids else []
+        
+        from functions.mapas import carregar_mapas_db
+        from functions.unidades import Unidade
+        
+        campos_refeicoes = [
+            'cafe_interno', 'cafe_funcionario',
+            'almoco_interno', 'almoco_funcionario',
+            'lanche_interno', 'lanche_funcionario',
+            'jantar_interno', 'jantar_funcionario'
+        ]
+        
+        # Buscar predecessores e mapear lotes
+        lote_para_grupo = {}
+        def buscar_predecessores_recursivo(lote_id, lote_principal_id):
+            lote = db.session.get(Lote, lote_id)
+            if lote:
+                lote_para_grupo[lote_id] = lote_principal_id
+                if lote.lote_predecessor_id and lote.lote_predecessor_id not in lote_para_grupo:
+                    buscar_predecessores_recursivo(lote.lote_predecessor_id, lote_principal_id)
+        
+        for lote_id in lotes_ids:
+            buscar_predecessores_recursivo(lote_id, lote_id)
+        
+        # Buscar mapas
+        mapas_dados = []
+        for lote_id in lote_para_grupo.keys():
+            mapas = carregar_mapas_db({'lote_id': lote_id})
+            for mapa in mapas:
+                mapa['lote_grupo'] = lote_para_grupo[lote_id]
+                mapas_dados.append(mapa)
+        
+        if not mapas_dados:
+            return jsonify({'success': False, 'error': 'Nenhum dado encontrado'}), 404
+        
+        # Criar mapeamento de unidades
+        unidade_nome_para_id = {}
+        subunidade_para_principal = {}
+        todas_unidades = Unidade.query.all()
+        for u in todas_unidades:
+            unidade_nome_para_id[u.nome] = u.id
+            if u.unidade_principal_id:
+                subunidade_para_principal[u.id] = u.unidade_principal_id
+        
+        # Estrutura: {periodo: {grupo_key: {tipo_refeicao: total}}}
+        periodos_dados = {}
+        
+        for mapa in mapas_dados:
+            ano = mapa.get('ano')
+            mes = mapa.get('mes')
+            lote_grupo = mapa.get('lote_grupo')
+            unidade_nome = mapa.get('unidade')
+            unidade_id = unidade_nome_para_id.get(unidade_nome) if unidade_nome else None
+            
+            if unidade_id and unidade_id in subunidade_para_principal:
+                unidade_id = subunidade_para_principal[unidade_id]
+            
+            if not ano or not mes:
+                continue
+            
+            if unidades_ids and unidade_id and unidade_id not in unidades_ids:
+                continue
+            
+            periodo = f"{ano}-{mes:02d}"
+            
+            if periodo not in periodos_dados:
+                periodos_dados[periodo] = {}
+            
+            # Determinar chave de agrupamento
+            if tipo_agrupamento == 'por-unidade':
+                if not unidade_id:
+                    continue
+                grupo_key = unidade_id
+            else:  # total
+                if not lote_grupo:
+                    continue
+                grupo_key = lote_grupo
+            
+            if grupo_key not in periodos_dados[periodo]:
+                periodos_dados[periodo][grupo_key] = {campo: 0 for campo in campos_refeicoes}
+            
+            # Somar cada tipo de refeição separadamente
+            for campo in campos_refeicoes:
+                valores = mapa.get(campo, [])
+                if isinstance(valores, list):
+                    total_campo = sum(int(v) if v is not None else 0 for v in valores)
+                    periodos_dados[periodo][grupo_key][campo] += total_campo
+        
+        # Ordenar períodos
+        periodos_ordenados = sorted(periodos_dados.keys())
+        
+        # Estruturar resposta
+        resultado = {
+            'success': True,
+            'labels': periodos_ordenados,
+            'dados_por_tipo': {}  # {tipo_refeicao: {periodo: {grupo_key: valor}}}
+        }
+        
+        # Reorganizar para facilitar uso no frontend
+        for campo in campos_refeicoes:
+            resultado['dados_por_tipo'][campo] = {}
+            for periodo in periodos_ordenados:
+                resultado['dados_por_tipo'][campo][periodo] = periodos_dados[periodo]
+                # Converter para estrutura mais simples: {grupo_key: valor}
+                resultado['dados_por_tipo'][campo][periodo] = {
+                    grupo_key: dados[campo] 
+                    for grupo_key, dados in periodos_dados[periodo].items()
+                }
+        
+        print(f"✅ Retornando {len(periodos_ordenados)} períodos com dados desagregados")
+        return jsonify(resultado), 200
+    
+    except Exception as e:
+        print(f"❌ Erro ao buscar dados desagregados: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/dashboard/grafico-gastos-desagregado', methods=['POST'])
+def api_dashboard_grafico_gastos_desagregado():
+    """Endpoint para buscar dados de gastos desagregados por tipo de refeição (para previsões mais precisas)"""
+    try:
+        import json
+        data = request.get_json(force=True, silent=True) or {}
+        
+        lotes_ids = data.get('lotes', [])
+        unidades_ids = data.get('unidades', [])
+        tipo_agrupamento = data.get('agrupamento', 'total')
+        
+        print(f"\n{'='*80}")
+        print(f"📊 API GRÁFICO GASTOS DESAGREGADO")
+        print(f"{'='*80}")
+        print(f"Lotes: {lotes_ids}, Unidades: {unidades_ids}, Agrupamento: {tipo_agrupamento}")
+        
+        if not lotes_ids or len(lotes_ids) == 0:
+            return jsonify({'success': False, 'error': 'Nenhum lote selecionado'}), 400
+        
+        lotes_ids = [int(lid) for lid in lotes_ids if lid]
+        unidades_ids = [int(uid) for uid in unidades_ids if uid] if unidades_ids else []
+        
+        from functions.mapas import carregar_mapas_db
+        from functions.unidades import Unidade
+        
+        campos_refeicoes = [
+            'cafe_interno', 'cafe_funcionario',
+            'almoco_interno', 'almoco_funcionario',
+            'lanche_interno', 'lanche_funcionario',
+            'jantar_interno', 'jantar_funcionario'
+        ]
+        
+        # Buscar predecessores e mapear lotes
+        lote_para_grupo = {}
+        lotes_info = {}
+        mapas_dados = []
+        
+        def buscar_predecessores_recursivo(lote_id, lote_principal_id):
+            lote = db.session.get(Lote, lote_id)
+            if not lote:
+                return
+            lote_para_grupo[lote_id] = lote_principal_id
+            
+            # Guardar preços do lote
+            try:
+                precos = json.loads(lote.precos) if lote.precos else {}
+            except Exception:
+                precos = {}
+            lotes_info[lote_id] = {
+                'id': lote_id,
+                'nome': lote.nome,
+                'precos': precos
+            }
+            
+            # Buscar mapas
+            mapas = carregar_mapas_db({'lote_id': lote_id})
+            for mapa in mapas:
+                mapa['lote_grupo'] = lote_principal_id
+                mapa['lote_id'] = lote_id
+                mapas_dados.append(mapa)
+            
+            if lote.lote_predecessor_id and lote.lote_predecessor_id not in lote_para_grupo:
+                buscar_predecessores_recursivo(lote.lote_predecessor_id, lote_principal_id)
+        
+        for lote_id in lotes_ids:
+            buscar_predecessores_recursivo(lote_id, lote_id)
+        
+        if not mapas_dados:
+            return jsonify({'success': False, 'error': 'Nenhum dado encontrado'}), 404
+        
+        # Criar mapeamento de unidades
+        unidade_nome_para_id = {}
+        subunidade_para_principal = {}
+        todas_unidades = Unidade.query.all()
+        for u in todas_unidades:
+            unidade_nome_para_id[u.nome] = u.id
+            if u.unidade_principal_id:
+                subunidade_para_principal[u.id] = u.unidade_principal_id
+        
+        # Estrutura: {periodo: {grupo_key: {tipo_refeicao: total_gasto}}}
+        periodos_dados = {}
+        
+        for mapa in mapas_dados:
+            ano = mapa.get('ano')
+            mes = mapa.get('mes')
+            lote_grupo = mapa.get('lote_grupo')
+            lote_id_mapa = mapa.get('lote_id')
+            unidade_nome = mapa.get('unidade')
+            unidade_id = unidade_nome_para_id.get(unidade_nome) if unidade_nome else None
+            
+            if unidade_id and unidade_id in subunidade_para_principal:
+                unidade_id = subunidade_para_principal[unidade_id]
+            
+            if not ano or not mes:
+                continue
+            
+            if unidades_ids and unidade_id and unidade_id not in unidades_ids:
+                continue
+            
+            periodo = f"{ano}-{mes:02d}"
+            
+            if periodo not in periodos_dados:
+                periodos_dados[periodo] = {}
+            
+            # Determinar chave de agrupamento
+            if tipo_agrupamento == 'por-unidade':
+                if not unidade_id:
+                    continue
+                grupo_key = unidade_id
+            else:  # total
+                if not lote_grupo:
+                    continue
+                grupo_key = lote_grupo
+            
+            if grupo_key not in periodos_dados[periodo]:
+                periodos_dados[periodo][grupo_key] = {campo: 0.0 for campo in campos_refeicoes}
+            
+            # Pegar preços do lote específico
+            precos = lotes_info.get(lote_id_mapa, {}).get('precos', {})
+            
+            # Calcular gasto de cada tipo de refeição separadamente
+            for campo in campos_refeicoes:
+                valores = mapa.get(campo, [])
+                if isinstance(valores, list):
+                    quantidade_total = sum(int(v) if v is not None else 0 for v in valores)
+                    
+                    # Mapear campo para estrutura hierárquica de preços
+                    # Estrutura: {"cafe": {"interno": "2.24", "funcionario": "2.41"}, ...}
+                    # Campo: "cafe_interno" -> precos['cafe']['interno']
+                    partes = campo.split('_')  # ['cafe', 'interno']
+                    if len(partes) == 2:
+                        tipo_refeicao = partes[0]  # 'cafe'
+                        categoria = partes[1]  # 'interno'
+                        preco = precos.get(tipo_refeicao, {}).get(categoria, 0)
+                        if isinstance(preco, str):
+                            preco = float(preco)
+                        elif not isinstance(preco, (int, float)):
+                            preco = 0
+                    else:
+                        preco = 0
+                    
+                    gasto_campo = quantidade_total * preco
+                    periodos_dados[periodo][grupo_key][campo] += gasto_campo
+        
+        # Ordenar períodos
+        periodos_ordenados = sorted(periodos_dados.keys())
+        
+        # Estruturar resposta
+        resultado = {
+            'success': True,
+            'labels': periodos_ordenados,
+            'dados_por_tipo': {}  # {tipo_refeicao: {periodo: {grupo_key: valor}}}
+        }
+        
+        # Reorganizar para facilitar uso no frontend
+        for campo in campos_refeicoes:
+            resultado['dados_por_tipo'][campo] = {}
+            for periodo in periodos_ordenados:
+                resultado['dados_por_tipo'][campo][periodo] = {
+                    grupo_key: dados[campo] 
+                    for grupo_key, dados in periodos_dados[periodo].items()
+                }
+        
+        print(f"✅ Retornando {len(periodos_ordenados)} períodos com dados de gastos desagregados")
+        return jsonify(resultado), 200
+    
+    except Exception as e:
+        print(f"❌ Erro ao buscar dados de gastos desagregados: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/relatorios/dados-grafico', methods=['POST'])

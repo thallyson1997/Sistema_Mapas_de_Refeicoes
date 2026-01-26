@@ -301,6 +301,12 @@
             border-color: var(--primary-color) !important;
             background: #f5f3ff !important;
         }
+
+        /* Forçar cursor pointer em botões bloqueados para permitir clicks */
+        .btn-agrupamento.bloqueado {
+            cursor: pointer !important;
+            pointer-events: auto !important;
+        }
     </style>
 </head>
 <body>
@@ -406,7 +412,7 @@
                                 <button id="agrupamento-por-lote" class="btn-agrupamento" data-agrupamento="por-lote" style="padding: 0.75rem 1.5rem; font-size: 0.875rem; font-weight: 600; border: none; border-radius: 8px; cursor: pointer; background: transparent; color: var(--gray-600); transition: all 0.3s;">
                                     📦 Por Lote
                                 </button>
-                                <button id="agrupamento-por-unidade" class="btn-agrupamento" data-agrupamento="por-unidade" style="padding: 0.75rem 1.5rem; font-size: 0.875rem; font-weight: 600; border: none; border-radius: 8px; cursor: not-allowed; background: transparent; color: var(--gray-500); transition: all 0.3s; opacity: 0.5;" disabled>
+                                <button id="agrupamento-por-unidade" class="btn-agrupamento bloqueado" data-agrupamento="por-unidade" style="padding: 0.75rem 1.5rem; font-size: 0.875rem; font-weight: 600; border: none; border-radius: 8px; background: transparent; color: var(--gray-500); transition: all 0.3s; opacity: 0.5;">
                                     🏢 Por Unidade
                                 </button>
                             </div>
@@ -597,6 +603,14 @@
         // Função para carregar o gráfico de refeições
         async function carregarGraficoRefeicoes() {
             try {
+                // Resetar estado de previsão se estiver ativo
+                if (previsaoAtivaRefeicoes) {
+                    previsaoAtivaRefeicoes = false;
+                    dadosOriginaisRefeicoes = null;
+                    const btnPrevisao = document.getElementById('btn-previsao-refeicoes');
+                    if (btnPrevisao) btnPrevisao.textContent = '🔮 Previsão';
+                }
+                
                 // Obter lotes selecionados
                 const checkboxes = document.querySelectorAll('.filtro-lote-checkbox:checked');
                 const lotesSelecionados = Array.from(checkboxes).map(cb => cb.value);
@@ -814,6 +828,14 @@
 
         async function carregarGraficoGastos() {
             try {
+                // Resetar estado de previsão se estiver ativo
+                if (previsaoAtivaGastos) {
+                    previsaoAtivaGastos = false;
+                    dadosOriginaisGastos = null;
+                    const btnPrevisao = document.getElementById('btn-previsao-gastos');
+                    if (btnPrevisao) btnPrevisao.textContent = '🔮 Previsão';
+                }
+                
                 const checkboxes = document.querySelectorAll('.filtro-lote-checkbox:checked');
                 const lotesSelecionados = Array.from(checkboxes).map(cb => cb.value);
                 if (lotesSelecionados.length === 0) return;
@@ -1132,119 +1154,163 @@
                     }))
                 };
                 
-                // Se modo acumulado, buscar dados mensais para fazer previsão correta
-                let dadosParaPrevisao = dadosOriginaisRefeicoes;
-                if (tipoVisualizacao === 'acumulada') {
-                    // Buscar dados no modo mensal
-                    const unidadesCheckboxes = document.querySelectorAll('.filtro-unidade-checkbox:checked');
-                    const unidadesSelecionadas = Array.from(unidadesCheckboxes).map(cb => parseInt(cb.value));
-                    
-                    const response = await fetch('/api/dashboard/grafico-refeicoes', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            lotes: [loteId],
-                            unidades: unidadesSelecionadas,
-                            tipo: 'mensal',
-                            agrupamento: tipoAgrupamento
-                        })
-                    });
-                    
-                    if (!response.ok) throw new Error('Erro ao buscar dados mensais');
-                    const resultado = await response.json();
-                    dadosParaPrevisao = resultado;
-                }
+                // Buscar dados desagregados por tipo de refeição
+                const unidadesCheckboxes = document.querySelectorAll('.filtro-unidade-checkbox:checked');
+                const unidadesSelecionadas = Array.from(unidadesCheckboxes).map(cb => parseInt(cb.value));
                 
-                // Para cada dataset, calcular previsão
+                const response = await fetch('/api/dashboard/grafico-refeicoes-desagregado', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        lotes: [loteId],
+                        unidades: unidadesSelecionadas,
+                        agrupamento: tipoAgrupamento
+                    })
+                });
+                
+                if (!response.ok) throw new Error('Erro ao buscar dados desagregados');
+                const dadosDesagregados = await response.json();
+                
+                console.log('📊 Dados desagregados recebidos:', dadosDesagregados);
+                
+                const periodos = dadosDesagregados.labels;
+                const tiposRefeicao = Object.keys(dadosDesagregados.dados_por_tipo);
+                
+                // Para cada dataset atual, calcular previsão baseada em previsões por tipo
                 const novosDatasets = [];
                 chartRefeicoesInstance.data.datasets.forEach((dataset, idx) => {
                     // Adicionar dataset original
                     novosDatasets.push({...dataset});
                     
-                    // Pegar dados correspondentes (mensais se modo acumulado)
-                    const dadosOriginaisMensais = tipoVisualizacao === 'acumulada' 
-                        ? (dadosParaPrevisao.datasets[idx]?.data || dataset.data)
-                        : dataset.data;
-                    
-                    // Remover primeiro mês (outlier) para cálculo
-                    const dadosSemOutlier = dadosOriginaisMensais.slice(1);
-                    
-                    if (dadosSemOutlier.length < 2) {
-                        console.log('Dataset sem dados suficientes após remover outlier');
-                        return; // Precisa de pelo menos 2 pontos
+                    // Determinar grupo_key baseado no tipo de agrupamento
+                    let grupo_key;
+                    if (tipoAgrupamento === 'total') {
+                        grupo_key = parseInt(loteId);
+                    } else {  // por-unidade
+                        // Encontrar unidade_id correspondente ao dataset atual
+                        // Assumindo que datasets têm uma propriedade 'unidade_id' ou podemos inferir do índice
+                        grupo_key = unidadesSelecionadas[idx];
+                        if (!grupo_key) {
+                            console.log('Não foi possível determinar grupo_key para dataset:', dataset.label);
+                            return;
+                        }
                     }
                     
-                    // Calcular regressão linear nos dados mensais
-                    const { slope, intercept } = calcularRegressaoLinear(dadosSemOutlier);
-                    console.log('Regressão calculada:', { slope, intercept });
+                    console.log(`🔍 Calculando previsão para ${dataset.label} (grupo_key: ${grupo_key})`);
                     
-                    // Gerar meses futuros
-                    const ultimaData = chartRefeicoesInstance.data.labels[chartRefeicoesInstance.data.labels.length - 1];
-                    console.log('Última data do gráfico:', ultimaData);
+                    // Para cada tipo de refeição, calcular previsão separada
+                    const previsoesPorTipo = {};
                     
-                    // Parse da data (formato: "Mês/Ano" ex: "Jan/2024")
-                    const [mesStr, anoStr] = ultimaData.split('/');
-                    const mesIdx = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'].indexOf(mesStr);
-                    const ano = anoStr.length === 2 ? '20' + anoStr : anoStr;
-                    const ultimaDataFormatada = `${ano}-${String(mesIdx + 1).padStart(2, '0')}`;
-                    
-                    console.log('Data formatada:', ultimaDataFormatada, 'Data fim lote:', lote.data_fim);
-                    
-                    const mesesFuturos = gerarMesesFuturos(ultimaDataFormatada, lote.data_fim);
-                    console.log('Meses futuros gerados:', mesesFuturos.length, mesesFuturos);
-                    
-                    if (mesesFuturos.length === 0) {
-                        console.log('Nenhum mês futuro para prever');
-                        return;
+                    for (const tipoRefeicao of tiposRefeicao) {
+                        // Extrair série temporal deste tipo para este grupo
+                        const serieTemporalTipo = [];
+                        for (const periodo of periodos) {
+                            const valor = dadosDesagregados.dados_por_tipo[tipoRefeicao][periodo][grupo_key] || 0;
+                            serieTemporalTipo.push(valor);
+                        }
+                        
+                        console.log(`  📈 ${tipoRefeicao}: ${serieTemporalTipo.length} pontos`);
+                        
+                        // Remover primeiro mês (outlier)
+                        const dadosSemOutlier = serieTemporalTipo.slice(1);
+                        
+                        if (dadosSemOutlier.length < 2) {
+                            console.log(`  ⚠️ ${tipoRefeicao}: dados insuficientes`);
+                            previsoesPorTipo[tipoRefeicao] = [];
+                            continue;
+                        }
+                        
+                        // Calcular regressão linear
+                        const { slope, intercept } = calcularRegressaoLinear(dadosSemOutlier);
+                        console.log(`  🔢 ${tipoRefeicao}: slope=${slope.toFixed(2)}, intercept=${intercept.toFixed(2)}`);
+                        
+                        // Gerar meses futuros
+                        const ultimaData = periodos[periodos.length - 1];
+                        const mesesFuturos = gerarMesesFuturos(ultimaData, lote.data_fim);
+                        
+                        // Calcular previsões para este tipo
+                        const previsoesTipo = [];
+                        const baseIndex = serieTemporalTipo.length;
+                        mesesFuturos.forEach((mes, idx) => {
+                            const x = baseIndex + idx;
+                            const previsao = Math.max(0, slope * x + intercept);
+                            previsoesTipo.push(Math.round(previsao));
+                        });
+                        
+                        previsoesPorTipo[tipoRefeicao] = previsoesTipo;
+                        console.log(`  ✅ ${tipoRefeicao}: ${previsoesTipo.length} previsões geradas`);
                     }
                     
-                    // Calcular previsões mensais
-                    const previsoesMensais = [];
-                    const baseIndex = dadosOriginaisMensais.length;
-                    mesesFuturos.forEach((mes, idx) => {
-                        const x = baseIndex + idx;
-                        const previsao = Math.max(0, slope * x + intercept);
-                        previsoesMensais.push(Math.round(previsao));
-                    });
+                    // Somar previsões de todos os tipos para cada mês futuro
+                    const numMesesFuturos = Math.max(...Object.values(previsoesPorTipo).map(arr => arr.length));
+                    const previsoesMensaisSomadas = [];
                     
-                    console.log('Previsões mensais calculadas:', previsoesMensais);
+                    for (let i = 0; i < numMesesFuturos; i++) {
+                        let somaPrevisoes = 0;
+                        for (const tipoRefeicao of tiposRefeicao) {
+                            somaPrevisoes += previsoesPorTipo[tipoRefeicao][i] || 0;
+                        }
+                        previsoesMensaisSomadas.push(somaPrevisoes);
+                    }
+                    
+                    console.log(`  🎯 Previsões mensais somadas: ${previsoesMensaisSomadas}`);
                     
                     // Se modo acumulado, acumular as previsões
-                    let previsoesFinais = previsoesMensais;
+                    let previsoesFinais = previsoesMensaisSomadas;
                     if (tipoVisualizacao === 'acumulada') {
                         const ultimoValorReal = dataset.data[dataset.data.length - 1];
                         previsoesFinais = [];
                         let acumulado = ultimoValorReal;
-                        previsoesMensais.forEach(valorMensal => {
+                        previsoesMensaisSomadas.forEach(valorMensal => {
                             acumulado += valorMensal;
                             previsoesFinais.push(acumulado);
                         });
-                        console.log('Previsões acumuladas:', previsoesFinais);
+                        console.log(`  📊 Previsões acumuladas: ${previsoesFinais.slice(0, 3)}...`);
                     }
-                    
-                    console.log('Previsões finais:', previsoesFinais);
                     
                     // Criar dataset de previsão
                     if (previsoesFinais.length > 0) {
                         const dataPrevisao = [...new Array(dataset.data.length).fill(null), ...previsoesFinais];
-                        dataPrevisao[dataset.data.length - 1] = dataset.data[dataset.data.length - 1]; // Conectar último ponto real
+                        dataPrevisao[dataset.data.length - 1] = dataset.data[dataset.data.length - 1];
                         
-                        console.log('Dataset de previsão criado, tamanho:', dataPrevisao.length);
+                        // Determinar cor baseado no tipo de agrupamento
+                        let corPrevisao, corFundoPrevisao, corPontoPrevisao;
+                        if (tipoAgrupamento === 'total') {
+                            corPrevisao = '#8b5cf6';
+                            corFundoPrevisao = 'rgba(139, 92, 246, 0.1)';
+                            corPontoPrevisao = '#8b5cf6';
+                        } else {
+                            const corOriginal = dataset.borderColor;
+                            if (corOriginal.startsWith('#')) {
+                                const r = parseInt(corOriginal.substr(1, 2), 16);
+                                const g = parseInt(corOriginal.substr(3, 2), 16);
+                                const b = parseInt(corOriginal.substr(5, 2), 16);
+                                const lighten = (val) => Math.min(255, val + (255 - val) * 0.3);
+                                corPrevisao = `rgb(${lighten(r)}, ${lighten(g)}, ${lighten(b)})`;
+                                corFundoPrevisao = `rgba(${lighten(r)}, ${lighten(g)}, ${lighten(b)}, 0.1)`;
+                                corPontoPrevisao = corPrevisao;
+                            } else {
+                                corPrevisao = corOriginal;
+                                corFundoPrevisao = dataset.backgroundColor;
+                                corPontoPrevisao = corOriginal;
+                            }
+                        }
                         
                         novosDatasets.push({
                             label: `${dataset.label} (Previsão)`,
                             data: dataPrevisao,
-                            borderColor: '#8b5cf6',
-                            backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                            borderColor: corPrevisao,
+                            backgroundColor: corFundoPrevisao,
                             borderWidth: 3,
                             borderDash: [10, 5],
                             tension: 0.4,
                             pointRadius: 4,
                             pointHoverRadius: 8,
-                            pointBackgroundColor: '#8b5cf6',
+                            pointBackgroundColor: corPontoPrevisao,
                             pointBorderColor: '#ffffff',
                             pointBorderWidth: 2,
-                            pointHoverBorderWidth: 3
+                            pointHoverBorderWidth: 3,
+                            fill: tipoAgrupamento === 'total'
                         });
                     }
                 });
@@ -1260,8 +1326,6 @@
                     lote.data_fim
                 );
                 
-                console.log('Gerando labels para meses futuros:', mesesFuturos);
-                
                 const labelsFormatados = mesesFuturos.map(data => {
                     const [ano, mes] = data.split('-');
                     const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -1270,16 +1334,12 @@
                 
                 const novosLabels = [...chartRefeicoesInstance.data.labels, ...labelsFormatados];
                 
-                console.log('Labels originais:', chartRefeicoesInstance.data.labels.length);
-                console.log('Labels novos:', novosLabels.length);
-                console.log('Datasets:', novosDatasets.length);
-                
                 // Atualizar gráfico
                 chartRefeicoesInstance.data.labels = novosLabels;
                 chartRefeicoesInstance.data.datasets = novosDatasets;
                 chartRefeicoesInstance.update();
                 
-                console.log('Gráfico atualizado!');
+                console.log('✅ Gráfico atualizado com previsões por tipo de refeição!');
                 
                 previsaoAtivaRefeicoes = true;
                 document.getElementById('btn-previsao-refeicoes').textContent = '❌ Remover Previsão';
@@ -1338,103 +1398,161 @@
                     }))
                 };
                 
-                // Se modo acumulado, buscar dados mensais para fazer previsão correta
-                let dadosParaPrevisao = dadosOriginaisGastos;
-                if (tipoVisualizacao === 'acumulada') {
-                    // Buscar dados no modo mensal
-                    const unidadesCheckboxes = document.querySelectorAll('.filtro-unidade-checkbox:checked');
-                    const unidadesSelecionadas = Array.from(unidadesCheckboxes).map(cb => parseInt(cb.value));
-                    
-                    const response = await fetch('/api/dashboard/grafico-gastos', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            lotes: [loteId],
-                            unidades: unidadesSelecionadas,
-                            tipo: 'mensal',
-                            agrupamento: tipoAgrupamento
-                        })
-                    });
-                    
-                    if (!response.ok) throw new Error('Erro ao buscar dados mensais');
-                    const resultado = await response.json();
-                    dadosParaPrevisao = resultado;
-                }
+                // Buscar dados desagregados por tipo de refeição
+                const unidadesCheckboxes = document.querySelectorAll('.filtro-unidade-checkbox:checked');
+                const unidadesSelecionadas = Array.from(unidadesCheckboxes).map(cb => parseInt(cb.value));
                 
-                // Para cada dataset, calcular previsão
+                const response = await fetch('/api/dashboard/grafico-gastos-desagregado', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        lotes: [loteId],
+                        unidades: unidadesSelecionadas,
+                        agrupamento: tipoAgrupamento
+                    })
+                });
+                
+                if (!response.ok) throw new Error('Erro ao buscar dados desagregados');
+                const dadosDesagregados = await response.json();
+                
+                console.log('💰 Dados de gastos desagregados recebidos:', dadosDesagregados);
+                
+                const periodos = dadosDesagregados.labels;
+                const tiposRefeicao = Object.keys(dadosDesagregados.dados_por_tipo);
+                
+                // Para cada dataset atual, calcular previsão baseada em previsões por tipo
                 const novosDatasets = [];
                 chartGastos.data.datasets.forEach((dataset, idx) => {
                     // Adicionar dataset original
                     novosDatasets.push({...dataset});
                     
-                    // Pegar dados correspondentes (mensais se modo acumulado)
-                    const dadosOriginaisMensais = tipoVisualizacao === 'acumulada' 
-                        ? (dadosParaPrevisao.datasets[idx]?.data || dataset.data)
-                        : dataset.data;
-                    
-                    // Remover primeiro mês (outlier) para cálculo
-                    const dadosSemOutlier = dadosOriginaisMensais.slice(1);
-                    
-                    if (dadosSemOutlier.length < 2) {
-                        return; // Precisa de pelo menos 2 pontos
+                    // Determinar grupo_key baseado no tipo de agrupamento
+                    let grupo_key;
+                    if (tipoAgrupamento === 'total') {
+                        grupo_key = parseInt(loteId);
+                    } else {  // por-unidade
+                        grupo_key = unidadesSelecionadas[idx];
+                        if (!grupo_key) {
+                            console.log('Não foi possível determinar grupo_key para dataset:', dataset.label);
+                            return;
+                        }
                     }
                     
-                    // Calcular regressão linear
-                    const { slope, intercept } = calcularRegressaoLinear(dadosSemOutlier);
+                    console.log(`💰 Calculando previsão de gastos para ${dataset.label} (grupo_key: ${grupo_key})`);
                     
-                    // Gerar meses futuros
-                    const ultimaData = chartGastos.data.labels[chartGastos.data.labels.length - 1];
-                    const [mesStr, anoStr] = ultimaData.split('/');
-                    const mesIdx = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'].indexOf(mesStr);
-                    const ano = anoStr.length === 2 ? '20' + anoStr : anoStr;
-                    const ultimaDataFormatada = `${ano}-${String(mesIdx + 1).padStart(2, '0')}`;
+                    // Para cada tipo de refeição, calcular previsão separada
+                    const previsoesPorTipo = {};
                     
-                    const mesesFuturos = gerarMesesFuturos(ultimaDataFormatada, lote.data_fim);
-                    
-                    if (mesesFuturos.length === 0) {
-                        return;
+                    for (const tipoRefeicao of tiposRefeicao) {
+                        // Extrair série temporal deste tipo para este grupo
+                        const serieTemporalTipo = [];
+                        for (const periodo of periodos) {
+                            const valor = dadosDesagregados.dados_por_tipo[tipoRefeicao][periodo][grupo_key] || 0;
+                            serieTemporalTipo.push(valor);
+                        }
+                        
+                        console.log(`  💸 ${tipoRefeicao}: ${serieTemporalTipo.length} pontos`);
+                        
+                        // Remover primeiro mês (outlier)
+                        const dadosSemOutlier = serieTemporalTipo.slice(1);
+                        
+                        if (dadosSemOutlier.length < 2) {
+                            console.log(`  ⚠️ ${tipoRefeicao}: dados insuficientes`);
+                            previsoesPorTipo[tipoRefeicao] = [];
+                            continue;
+                        }
+                        
+                        // Calcular regressão linear
+                        const { slope, intercept } = calcularRegressaoLinear(dadosSemOutlier);
+                        console.log(`  🔢 ${tipoRefeicao}: slope=${slope.toFixed(2)}, intercept=${intercept.toFixed(2)}`);
+                        
+                        // Gerar meses futuros
+                        const ultimaData = periodos[periodos.length - 1];
+                        const mesesFuturos = gerarMesesFuturos(ultimaData, lote.data_fim);
+                        
+                        // Calcular previsões para este tipo
+                        const previsoesTipo = [];
+                        const baseIndex = serieTemporalTipo.length;
+                        mesesFuturos.forEach((mes, idx) => {
+                            const x = baseIndex + idx;
+                            const previsao = Math.max(0, slope * x + intercept);
+                            previsoesTipo.push(previsao);
+                        });
+                        
+                        previsoesPorTipo[tipoRefeicao] = previsoesTipo;
+                        console.log(`  ✅ ${tipoRefeicao}: ${previsoesTipo.length} previsões geradas`);
                     }
                     
-                    // Calcular previsões mensais
-                    const previsoesMensais = [];
-                    const baseIndex = dadosOriginaisMensais.length;
-                    mesesFuturos.forEach((mes, idx) => {
-                        const x = baseIndex + idx;
-                        const previsao = Math.max(0, slope * x + intercept);
-                        previsoesMensais.push(previsao);
-                    });
+                    // Somar previsões de todos os tipos para cada mês futuro
+                    const numMesesFuturos = Math.max(...Object.values(previsoesPorTipo).map(arr => arr.length));
+                    const previsoesMensaisSomadas = [];
+                    
+                    for (let i = 0; i < numMesesFuturos; i++) {
+                        let somaPrevisoes = 0;
+                        for (const tipoRefeicao of tiposRefeicao) {
+                            somaPrevisoes += previsoesPorTipo[tipoRefeicao][i] || 0;
+                        }
+                        previsoesMensaisSomadas.push(somaPrevisoes);
+                    }
+                    
+                    console.log(`  🎯 Previsões mensais de gastos somadas: [${previsoesMensaisSomadas.slice(0, 3).map(v => v.toFixed(2)).join(', ')}...]`);
                     
                     // Se modo acumulado, acumular as previsões
-                    let previsoesFinais = previsoesMensais;
+                    let previsoesFinais = previsoesMensaisSomadas;
                     if (tipoVisualizacao === 'acumulada') {
                         const ultimoValorReal = dataset.data[dataset.data.length - 1];
                         previsoesFinais = [];
                         let acumulado = ultimoValorReal;
-                        previsoesMensais.forEach(valorMensal => {
+                        previsoesMensaisSomadas.forEach(valorMensal => {
                             acumulado += valorMensal;
                             previsoesFinais.push(acumulado);
                         });
+                        console.log(`  📊 Previsões de gastos acumuladas: [${previsoesFinais.slice(0, 3).map(v => v.toFixed(2)).join(', ')}...]`);
                     }
                     
                     // Criar dataset de previsão
                     if (previsoesFinais.length > 0) {
                         const dataPrevisao = [...new Array(dataset.data.length).fill(null), ...previsoesFinais];
-                        dataPrevisao[dataset.data.length - 1] = dataset.data[dataset.data.length - 1]; // Conectar último ponto real
+                        dataPrevisao[dataset.data.length - 1] = dataset.data[dataset.data.length - 1];
+                        
+                        // Determinar cor baseado no tipo de agrupamento
+                        let corPrevisao, corFundoPrevisao, corPontoPrevisao;
+                        if (tipoAgrupamento === 'total') {
+                            corPrevisao = '#8b5cf6';
+                            corFundoPrevisao = 'rgba(139, 92, 246, 0.1)';
+                            corPontoPrevisao = '#8b5cf6';
+                        } else {
+                            const corOriginal = dataset.borderColor;
+                            if (corOriginal.startsWith('#')) {
+                                const r = parseInt(corOriginal.substr(1, 2), 16);
+                                const g = parseInt(corOriginal.substr(3, 2), 16);
+                                const b = parseInt(corOriginal.substr(5, 2), 16);
+                                const lighten = (val) => Math.min(255, val + (255 - val) * 0.3);
+                                corPrevisao = `rgb(${lighten(r)}, ${lighten(g)}, ${lighten(b)})`;
+                                corFundoPrevisao = `rgba(${lighten(r)}, ${lighten(g)}, ${lighten(b)}, 0.1)`;
+                                corPontoPrevisao = corPrevisao;
+                            } else {
+                                corPrevisao = corOriginal;
+                                corFundoPrevisao = dataset.backgroundColor;
+                                corPontoPrevisao = corOriginal;
+                            }
+                        }
                         
                         novosDatasets.push({
                             label: `${dataset.label} (Previsão)`,
                             data: dataPrevisao,
-                            borderColor: '#8b5cf6',
-                            backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                            borderColor: corPrevisao,
+                            backgroundColor: corFundoPrevisao,
                             borderWidth: 3,
                             borderDash: [10, 5],
                             tension: 0.4,
                             pointRadius: 4,
                             pointHoverRadius: 8,
-                            pointBackgroundColor: '#8b5cf6',
+                            pointBackgroundColor: corPontoPrevisao,
                             pointBorderColor: '#ffffff',
                             pointBorderWidth: 2,
-                            pointHoverBorderWidth: 3
+                            pointHoverBorderWidth: 3,
+                            fill: tipoAgrupamento === 'total'
                         });
                     }
                 });
@@ -1464,6 +1582,14 @@
                     const tamanhoTotal = novosLabels.length;
                     const dadosValorContratual = new Array(tamanhoTotal).fill(valorContratual);
                     
+                    // Formatar valor para exibir no gráfico
+                    const valorFormatado = new Intl.NumberFormat('pt-BR', { 
+                        style: 'currency', 
+                        currency: 'BRL', 
+                        minimumFractionDigits: 0, 
+                        maximumFractionDigits: 0 
+                    }).format(valorContratual);
+                    
                     novosDatasets.push({
                         label: 'Valor Contratual',
                         data: dadosValorContratual,
@@ -1477,14 +1603,81 @@
                         pointBackgroundColor: '#ef4444',
                         pointBorderColor: '#ffffff',
                         pointBorderWidth: 2,
-                        fill: false
+                        fill: false,
+                        datalabels: {
+                            display: true,
+                            align: 'end',
+                            anchor: 'end',
+                            formatter: () => valorFormatado,
+                            color: '#ef4444',
+                            font: {
+                                weight: 'bold',
+                                size: 12
+                            },
+                            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                            borderRadius: 4,
+                            padding: 6
+                        }
                     });
+                }
+                
+                // Plugin customizado para desenhar texto do valor contratual na linha
+                const pluginValorContratual = {
+                    id: 'valorContratualLabel',
+                    afterDatasetsDraw(chart) {
+                        const ctx = chart.ctx;
+                        const datasets = chart.data.datasets;
+                        
+                        datasets.forEach((dataset, datasetIndex) => {
+                            if (dataset.label === 'Valor Contratual' && dataset.datalabels) {
+                                const meta = chart.getDatasetMeta(datasetIndex);
+                                const middleIndex = Math.floor(meta.data.length / 2);
+                                const point = meta.data[middleIndex];
+                                
+                                if (point) {
+                                    const valor = dataset.datalabels.formatter();
+                                    
+                                    ctx.save();
+                                    ctx.font = 'bold 11px Arial';
+                                    ctx.fillStyle = '#ef4444';
+                                    ctx.textAlign = 'center';
+                                    ctx.textBaseline = 'bottom';
+                                    
+                                    const textMetrics = ctx.measureText(valor);
+                                    const textWidth = textMetrics.width;
+                                    const textHeight = 18;
+                                    const padding = 5;
+                                    const x = point.x;
+                                    const y = point.y - 8; // Acima da linha
+                                    
+                                    // Fundo branco com borda
+                                    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+                                    ctx.fillRect(x - textWidth/2 - padding, y - textHeight, textWidth + padding * 2, textHeight);
+                                    ctx.strokeStyle = '#ef4444';
+                                    ctx.lineWidth = 1;
+                                    ctx.strokeRect(x - textWidth/2 - padding, y - textHeight, textWidth + padding * 2, textHeight);
+                                    
+                                    // Texto
+                                    ctx.fillStyle = '#ef4444';
+                                    ctx.fillText(valor, x, y - 3);
+                                    ctx.restore();
+                                }
+                            }
+                        });
+                    }
+                };
+                
+                // Registrar o plugin globalmente se ainda não estiver registrado
+                if (!Chart.registry.plugins.get('valorContratualLabel')) {
+                    Chart.register(pluginValorContratual);
                 }
                 
                 // Atualizar gráfico
                 chartGastos.data.labels = novosLabels;
                 chartGastos.data.datasets = novosDatasets;
                 chartGastos.update();
+                
+                console.log('✅ Gráfico de gastos atualizado com previsões por tipo de refeição!');
                 
                 previsaoAtivaGastos = true;
                 document.getElementById('btn-previsao-gastos').textContent = '❌ Remover Previsão';
@@ -1495,6 +1688,9 @@
                 mostrarNotificacao('Erro', 'Erro ao gerar previsão', 'error');
             }
         }
+
+        // Variável global para guardar o scroll handler do overlay
+        let overlayScrollHandler = null;
 
         // Função para bloquear botões de tipo e agrupamento
         function bloquearBotoesGrafico() {
@@ -1527,13 +1723,87 @@
                 // "Por Unidade" só funciona com 1 lote
                 // "Por Lote" só funciona com 2+ lotes
                 if (btn.id === 'agrupamento-por-unidade' && lotesCount !== 1) {
-                    btn.disabled = true;
+                    btn.classList.add('bloqueado');
                     btn.style.opacity = '0.5';
-                    btn.style.cursor = 'not-allowed';
+                    btn.style.cursor = 'pointer';
+                    btn.style.pointerEvents = 'auto';
+                    btn.removeAttribute('disabled');
+                    
+                    // Se estava selecionado "Por Unidade", mudar para "Total"
+                    if (tipoAgrupamento === 'por-unidade') {
+                        tipoAgrupamento = 'total';
+                        
+                        // Remover estilos ativos de todos os botões de agrupamento
+                        document.querySelectorAll('.btn-agrupamento').forEach(b => {
+                            b.classList.remove('active');
+                            b.style.background = 'transparent';
+                            b.style.color = 'var(--gray-600)';
+                            b.style.boxShadow = 'none';
+                        });
+                        
+                        // Ativar botão "Total"
+                        const btnTotal = document.getElementById('agrupamento-total');
+                        btnTotal.classList.add('active');
+                        btnTotal.style.background = 'var(--primary-color)';
+                        btnTotal.style.color = 'white';
+                        btnTotal.style.boxShadow = '0 2px 4px rgba(59,130,246,0.3)';
+                        
+                        // Recarregar gráficos com o novo agrupamento
+                        carregarGraficoRefeicoes();
+                        carregarGraficoGastos();
+                    }
+                    
+                    // WORKAROUND: Criar overlay transparente para capturar clicks
+                    setTimeout(() => {
+                        const btnTest = document.getElementById('agrupamento-por-unidade');
+                        if (btnTest) {
+                            // Função para posicionar o overlay
+                            const posicionarOverlay = () => {
+                                const rect = btnTest.getBoundingClientRect();
+                                const overlay = document.getElementById('btn-unidade-overlay');
+                                if (overlay) {
+                                    overlay.style.top = rect.top + 'px';
+                                    overlay.style.left = rect.left + 'px';
+                                    overlay.style.width = rect.width + 'px';
+                                    overlay.style.height = rect.height + 'px';
+                                }
+                            };
+                            
+                            const existingOverlay = document.getElementById('btn-unidade-overlay');
+                            if (existingOverlay) existingOverlay.remove();
+                            
+                            const overlay = document.createElement('div');
+                            overlay.id = 'btn-unidade-overlay';
+                            overlay.style.position = 'fixed';
+                            overlay.style.cursor = 'pointer';
+                            overlay.style.zIndex = '99999';
+                            overlay.style.background = 'transparent';
+                            
+                            overlay.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                mostrarNotificacao(
+                                    'Modo bloqueado', 
+                                    'O modo "Por Unidade" só está disponível quando exatamente 1 lote é selecionado. Selecione apenas um lote para usar este modo.', 
+                                    'warning',
+                                    5000
+                                );
+                            }, true);
+                            
+                            document.body.appendChild(overlay);
+                            posicionarOverlay(); // Posicionar inicialmente
+                            
+                            // Atualizar posição quando a página rolar
+                            overlayScrollHandler = () => posicionarOverlay();
+                            window.addEventListener('scroll', overlayScrollHandler, true);
+                        }
+                    }, 100);
                 } else if (btn.id === 'agrupamento-por-lote' && lotesCount === 1) {
-                    btn.disabled = true;
+                    btn.classList.add('bloqueado');
                     btn.style.opacity = '0.5';
-                    btn.style.cursor = 'not-allowed';
+                    btn.style.cursor = 'pointer';
+                    btn.style.pointerEvents = 'auto';
+                    btn.removeAttribute('disabled');
                     
                     // Se estava selecionado "Por Lote", mudar para "Total"
                     if (tipoAgrupamento === 'por-lote') {
@@ -1553,11 +1823,30 @@
                         btnTotal.style.background = 'var(--primary-color)';
                         btnTotal.style.color = 'white';
                         btnTotal.style.boxShadow = '0 2px 4px rgba(59,130,246,0.3)';
+                        
+                        // Recarregar gráficos com o novo agrupamento
+                        carregarGraficoRefeicoes();
+                        carregarGraficoGastos();
                     }
                 } else {
-                    btn.disabled = false;
+                    btn.classList.remove('bloqueado');
                     btn.style.opacity = '1';
                     btn.style.cursor = 'pointer';
+                    btn.style.pointerEvents = 'auto';
+                    btn.removeAttribute('disabled');
+                    
+                    // Remover overlay se existir
+                    if (btn.id === 'agrupamento-por-unidade') {
+                        const overlay = document.getElementById('btn-unidade-overlay');
+                        if (overlay) {
+                            overlay.remove();
+                            // Remover scroll listener
+                            if (overlayScrollHandler) {
+                                window.removeEventListener('scroll', overlayScrollHandler, true);
+                                overlayScrollHandler = null;
+                            }
+                        }
+                    }
                 }
             });
         }
@@ -1757,23 +2046,47 @@
                     lotesText.textContent = lotesSelecionados[0].nextElementSibling.textContent.trim();
                     lotesText.style.color = 'var(--gray-900)';
                     
-                    // Desbloquear botões e carregar gráfico (1 lote)
-                    desbloquearBotoesGrafico(1);
-                    carregarGraficoRefeicoes();
-                    carregarGraficoGastos();
+                    // Resetar previsões ao mudar de lote
+                    if (previsaoAtivaRefeicoes) {
+                        previsaoAtivaRefeicoes = false;
+                        dadosOriginaisRefeicoes = null;
+                        document.getElementById('btn-previsao-refeicoes').textContent = '🔮 Previsão';
+                    }
+                    if (previsaoAtivaGastos) {
+                        previsaoAtivaGastos = false;
+                        dadosOriginaisGastos = null;
+                        document.getElementById('btn-previsao-gastos').textContent = '🔮 Previsão';
+                    }
+                    
+                    // Desbloquear filtro de unidades e carregar unidades PRIMEIRO
+                    desbloquearFiltroUnidades();
+                    
+                    // Carregar unidades e depois carregar gráficos
+                    carregarUnidadesDoLote(loteId).then(() => {
+                        // Desbloquear botões e carregar gráfico (1 lote) - DEPOIS de carregar unidades
+                        desbloquearBotoesGrafico(1);
+                        carregarGraficoRefeicoes();
+                        carregarGraficoGastos();
+                    });
                     
                     // Mostrar botões de previsão (apenas com 1 lote)
                     const btnPrevisaoRefeicoes = document.getElementById('btn-previsao-refeicoes');
                     const btnPrevisaoGastos = document.getElementById('btn-previsao-gastos');
                     if (btnPrevisaoRefeicoes) btnPrevisaoRefeicoes.style.display = 'block';
                     if (btnPrevisaoGastos) btnPrevisaoGastos.style.display = 'block';
-                    
-                    // Desbloquear filtro de unidades e carregar unidades
-                    desbloquearFiltroUnidades();
-                    carregarUnidadesDoLote(loteId);
                 } else {
                     lotesText.textContent = `${count} lotes selecionados`;
                     lotesText.style.color = 'var(--gray-900)';
+                    
+                    // Resetar previsões ao selecionar múltiplos lotes
+                    if (previsaoAtivaRefeicoes) {
+                        previsaoAtivaRefeicoes = false;
+                        dadosOriginaisRefeicoes = null;
+                    }
+                    if (previsaoAtivaGastos) {
+                        previsaoAtivaGastos = false;
+                        dadosOriginaisGastos = null;
+                    }
                     
                     // Desbloquear botões e carregar gráfico (múltiplos lotes)
                     desbloquearBotoesGrafico(count);
@@ -1871,6 +2184,18 @@
                 // Recarregar gráfico sempre que unidades são alteradas (se houver 1 lote selecionado)
                 const lotesCheckboxes = document.querySelectorAll('.filtro-lote-checkbox:checked');
                 if (lotesCheckboxes.length === 1) {
+                    // Resetar previsões ao mudar filtro de unidades
+                    if (previsaoAtivaRefeicoes) {
+                        previsaoAtivaRefeicoes = false;
+                        dadosOriginaisRefeicoes = null;
+                        document.getElementById('btn-previsao-refeicoes').textContent = '🔮 Previsão';
+                    }
+                    if (previsaoAtivaGastos) {
+                        previsaoAtivaGastos = false;
+                        dadosOriginaisGastos = null;
+                        document.getElementById('btn-previsao-gastos').textContent = '🔮 Previsão';
+                    }
+                    
                     carregarGraficoRefeicoes();
                     carregarGraficoGastos();
                 }
@@ -1959,8 +2284,30 @@
             
             // Controlar botões de AGRUPAMENTO (Total vs Por Lote)
             document.querySelectorAll('.btn-agrupamento').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    if (this.disabled) return;
+                btn.addEventListener('click', function(e) {
+                    // Verificar se está bloqueado e mostrar notificação
+                    if (this.classList.contains('bloqueado')) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+                        
+                        if (this.id === 'agrupamento-por-lote') {
+                            mostrarNotificacao(
+                                'Modo bloqueado', 
+                                'O modo "Por Lote" só está disponível quando 2 ou mais lotes são selecionados. Selecione múltiplos lotes para usar este modo.', 
+                                'warning',
+                                5000
+                            );
+                        } else if (this.id === 'agrupamento-por-unidade') {
+                            mostrarNotificacao(
+                                'Modo bloqueado', 
+                                'O modo "Por Unidade" só está disponível quando exatamente 1 lote é selecionado. Selecione apenas um lote para usar este modo.', 
+                                'warning',
+                                5000
+                            );
+                        }
+                        return false;
+                    }
                     
                     // Remover active de todos
                     document.querySelectorAll('.btn-agrupamento').forEach(b => {

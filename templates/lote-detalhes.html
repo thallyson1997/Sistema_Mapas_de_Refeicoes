@@ -6,6 +6,8 @@
     <title>Detalhes do Lote - SGMRP</title>
     <meta name="description" content="Detalhes do lote contratual com mapas de refeições e indicadores">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dark-mode.css') }}">
+    <script src="{{ url_for('static', filename='js/config-loader.js') }}"></script>
     <style>
         /* Notificações estilizadas */
         .notification {
@@ -233,7 +235,7 @@
                         <li><a href="{{ url_for('home') }}">Página Inicial</a></li>
                         <li><a href="{{ url_for('lotes') }}">Lotes</a></li>
                         <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
-                        <li><a href="#configuracoes">Configurações</a></li>
+                        <li><a href="{{ url_for('configuracoes') }}">Configurações</a></li>
                         <li><a href="#" id="logoutLink" style="color: #fed7d7;">Sair</a></li>
                     </ul>
                 </nav>
@@ -3460,11 +3462,6 @@
             if (e.target.closest('a[href="#relatorios"]')) {
                 e.preventDefault();
                 showNotification('warning', 'Módulo em desenvolvimento', 'O módulo de Relatórios será implementado na próxima versão do SGMRP.');
-            }
-            
-            if (e.target.closest('a[href="#configuracoes"]')) {
-                e.preventDefault();
-                showNotification('warning', 'Módulo em desenvolvimento', 'O módulo de Configurações será implementado na próxima versão do SGMRP.');
             }
         });
     </script>

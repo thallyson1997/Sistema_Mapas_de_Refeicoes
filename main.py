@@ -931,6 +931,12 @@ def exportar_dashboard():
         download_name=resultado['filename']
     )
 
+@app.route('/configuracoes')
+@login_required
+def configuracoes():
+    """Página de configurações do sistema"""
+    return render_template('configuracoes.html')
+
 @app.route('/dashboard')
 @login_required
 def dashboard():

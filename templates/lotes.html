@@ -6,6 +6,8 @@
     <title>Lotes Contratuais - SGMRP</title>
     <meta name="description" content="Listagem completa dos lotes contratuais do sistema penitenciário">
     <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/dark-mode.css">
+    <script src="/static/js/config-loader.js"></script>
 </head>
 <body>
     <header>
@@ -17,7 +19,7 @@
                         <li><a href="{{ url_for('home') }}">Página Inicial</a></li>
                         <li><a href="{{ url_for('lotes') }}" class="active">Lotes</a></li>
                         <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
-                        <li><a href="#configuracoes">Configurações</a></li>
+                        <li><a href="{{ url_for('configuracoes') }}">Configurações</a></li>
                         <li><a href="#" id="logoutLink" style="color: #fed7d7;">Sair</a></li>
                     </ul>
                 </nav>
@@ -2037,15 +2039,11 @@
                 observer.observe(el);
             });
 
-            // Placeholder para links de relatórios e configurações
+            // Placeholder para links de relatórios
             document.addEventListener('click', function(e) {
                 if (e.target.closest('a[href="#relatorios"]')) {
                     e.preventDefault();
                     alert('Módulo de Relatórios será implementado na próxima versão do SGMRP.');
-                }
-                if (e.target.closest('a[href="#configuracoes"]')) {
-                    e.preventDefault();
-                    alert('Módulo de Configurações será implementado na próxima versão do SGMRP.');
                 }
             });
         });

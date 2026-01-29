@@ -6,7 +6,9 @@
     <title>Dashboard - SGMRP</title>
     <meta name="description" content="Análise gráfica e dashboard de consumo de refeições">
     <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/dark-mode.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="/static/js/config-loader.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
@@ -319,7 +321,7 @@
                         <li><a href="{{ url_for('home') }}">Página Inicial</a></li>
                         <li><a href="{{ url_for('lotes') }}">Lotes</a></li>
                         <li><a href="{{ url_for('dashboard') }}" class="active">Dashboard</a></li>
-                        <li><a href="#configuracoes">Configurações</a></li>
+                        <li><a href="{{ url_for('configuracoes') }}">Configurações</a></li>
                         <li><a href="#" id="logoutLink" style="color: #fed7d7;">Sair</a></li>
                     </ul>
                 </nav>

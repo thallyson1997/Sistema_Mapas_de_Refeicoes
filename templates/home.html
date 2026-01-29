@@ -6,6 +6,8 @@
     <title>Página Inicial - SGMRP</title>
     <meta name="description" content="Painel principal do Sistema de Gerenciamento de Mapas de Refeições Penitenciário">
     <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/dark-mode.css">
+    <script src="/static/js/config-loader.js"></script>
     <style>
                 /* Modal de Notificações */
                 .modal-overlay {
@@ -185,7 +187,7 @@
                         <li><a href="{{ url_for('home') }}" class="active">Página Inicial</a></li>
                         <li><a href="{{ url_for('lotes') }}">Lotes</a></li>
                         <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
-                        <li><a href="#configuracoes">Configurações</a></li>
+                        <li><a href="{{ url_for('configuracoes') }}">Configurações</a></li>
                         <li><a href="#" id="logoutLink" style="color: #fed7d7;">Sair</a></li>
                     </ul>
                 </nav>
@@ -1604,14 +1606,6 @@
                     const closeButton = notification.querySelector('.notification-close');
                     if (closeButton) closeNotification(closeButton);
                 }, 5000);
-            }
-        });
-
-        // Placeholder para funcionalidades futuras
-        document.addEventListener('click', function(e) {
-            if (e.target.closest('a[href="#configuracoes"]')) {
-                e.preventDefault();
-                alert('Módulo de Configurações será implementado na próxima versão do SGMRP.');
             }
         });
     </script>

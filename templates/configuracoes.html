@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurações - SGMRP</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/dark-mode.css">
+    <style>
+        .config-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .config-section {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .config-section-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--gray-200);
+        }
+
+        .config-section-icon {
+            font-size: 2rem;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border-radius: 12px;
+            color: white;
+        }
+
+        .config-section-title {
+            flex: 1;
+        }
+
+        .config-section-title h2 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: var(--gray-800);
+        }
+
+        .config-section-title p {
+            margin: 0.25rem 0 0 0;
+            font-size: 0.875rem;
+            color: var(--gray-600);
+        }
+
+        .config-option {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.25rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            background: var(--gray-50);
+            transition: all 0.2s;
+        }
+
+        .config-option:hover {
+            background: var(--gray-100);
+            transform: translateX(4px);
+        }
+
+        .config-option-info {
+            flex: 1;
+        }
+
+        .config-option-label {
+            font-weight: 600;
+            color: var(--gray-800);
+            margin-bottom: 0.25rem;
+            font-size: 1rem;
+        }
+
+        .config-option-description {
+            font-size: 0.875rem;
+            color: var(--gray-600);
+            margin: 0;
+        }
+
+        .config-option-control {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--gray-300);
+            transition: 0.4s;
+            border-radius: 34px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+
+        .toggle-switch input:checked + .toggle-slider {
+            background-color: var(--primary-color);
+        }
+
+        .toggle-switch input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .radio-option {
+            position: relative;
+        }
+
+        .radio-option input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .radio-option label {
+            display: block;
+            padding: 0.5rem 1rem;
+            border: 2px solid var(--gray-300);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+            color: var(--gray-700);
+            font-size: 0.875rem;
+        }
+
+        .radio-option input[type="radio"]:checked + label {
+            border-color: var(--primary-color);
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .radio-option label:hover {
+            border-color: var(--secondary-color);
+        }
+
+        .save-indicator {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: white;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+
+        .save-indicator.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .save-indicator.success {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+
+        .page-header {
+            margin-bottom: 2rem;
+        }
+
+        .page-header h1 {
+            font-size: 2rem;
+            color: var(--gray-900);
+            margin-bottom: 0.5rem;
+        }
+
+        .page-header p {
+            color: var(--gray-600);
+            font-size: 1rem;
+        }
+
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.875rem;
+        }
+
+        .breadcrumb a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        .breadcrumb span {
+            color: var(--gray-500);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <a href="{{ url_for('home') }}" class="logo">SGMRP</a>
+                <nav>
+                    <ul>
+                        <li><a href="{{ url_for('home') }}">Página Inicial</a></li>
+                        <li><a href="{{ url_for('lotes') }}">Lotes</a></li>
+                        <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                        <li><a href="{{ url_for('configuracoes') }}" class="active">Configurações</a></li>
+                        <li><a href="#" id="logoutLink" style="color: #fed7d7;">Sair</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="container config-container">
+            <!-- Breadcrumb -->
+            <nav class="breadcrumb" aria-label="Navegação">
+                <a href="{{ url_for('home') }}">Início</a>
+                <span>›</span>
+                <span>Configurações</span>
+            </nav>
+
+            <!-- Page Header -->
+            <div class="page-header">
+                <h1>⚙️ Configurações</h1>
+                <p>Personalize sua experiência no sistema de acordo com suas preferências</p>
+            </div>
+
+            <!-- Seção: Aparência -->
+            <section class="config-section">
+                <div class="config-section-header">
+                    <div class="config-section-icon">
+                        🎨
+                    </div>
+                    <div class="config-section-title">
+                        <h2>Aparência</h2>
+                        <p>Personalize o visual do sistema</p>
+                    </div>
+                </div>
+
+                <!-- Modo Escuro -->
+                <div class="config-option">
+                    <div class="config-option-info">
+                        <div class="config-option-label">🌙 Modo Escuro</div>
+                        <p class="config-option-description">Ative o tema escuro para reduzir o cansaço visual</p>
+                    </div>
+                    <div class="config-option-control">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="dark-mode-toggle">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Densidade de Informação -->
+                <div class="config-option">
+                    <div class="config-option-info">
+                        <div class="config-option-label">📏 Densidade de Informação</div>
+                        <p class="config-option-description">Ajuste o espaçamento entre elementos</p>
+                    </div>
+                    <div class="config-option-control">
+                        <div class="radio-group">
+                            <div class="radio-option">
+                                <input type="radio" id="densidade-compacta" name="densidade" value="compacta">
+                                <label for="densidade-compacta">Compacta</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" id="densidade-normal" name="densidade" value="normal" checked>
+                                <label for="densidade-normal">Normal</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" id="densidade-confortavel" name="densidade" value="confortavel">
+                                <label for="densidade-confortavel">Confortável</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tamanho de Fonte -->
+                <div class="config-option">
+                    <div class="config-option-info">
+                        <div class="config-option-label">🔤 Tamanho de Fonte</div>
+                        <p class="config-option-description">Ajuste o tamanho do texto no sistema</p>
+                    </div>
+                    <div class="config-option-control">
+                        <div class="radio-group">
+                            <div class="radio-option">
+                                <input type="radio" id="fonte-pequena" name="tamanho-fonte" value="pequena">
+                                <label for="fonte-pequena">Pequena</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" id="fonte-normal" name="tamanho-fonte" value="normal" checked>
+                                <label for="fonte-normal">Normal</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" id="fonte-grande" name="tamanho-fonte" value="grande">
+                                <label for="fonte-grande">Grande</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Indicador de Salvamento -->
+    <div class="save-indicator" id="save-indicator">
+        <span style="font-size: 1.25rem;">✓</span>
+        <span>Configurações salvas</span>
+    </div>
+
+    <footer>
+        <div class="container text-center">
+            <p style="margin: 0; color: var(--gray-400); font-size: 0.875rem;">
+                © 2025 SGMRP - Sistema de Gerenciamento de Mapas de Refeições Penitenciário
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        // Aplicar modo escuro ANTES da página carregar (evita flash)
+        (function() {
+            const darkMode = localStorage.getItem('sgmrp_dark_mode') === 'true';
+            if (darkMode) {
+                document.documentElement.classList.add('dark-mode');
+                document.body.classList.add('dark-mode');
+            }
+        })();
+
+        // Carregar configurações salvas
+        function carregarConfiguracoes() {
+            const darkMode = localStorage.getItem('sgmrp_dark_mode') === 'true';
+            const densidade = localStorage.getItem('sgmrp_densidade') || 'normal';
+            const tamanhoFonte = localStorage.getItem('sgmrp_tamanho_fonte') || 'normal';
+
+            // Aplicar dark mode
+            document.getElementById('dark-mode-toggle').checked = darkMode;
+
+            // Aplicar densidade
+            document.querySelector(`input[name="densidade"][value="${densidade}"]`).checked = true;
+
+            // Aplicar tamanho de fonte
+            document.querySelector(`input[name="tamanho-fonte"][value="${tamanhoFonte}"]`).checked = true;
+        }
+
+        // Salvar configuração e mostrar indicador
+        function salvarConfiguracao(chave, valor) {
+            localStorage.setItem(chave, valor);
+            mostrarIndicadorSalvamento();
+        }
+
+        // Mostrar indicador de salvamento
+        function mostrarIndicadorSalvamento() {
+            const indicator = document.getElementById('save-indicator');
+            indicator.classList.add('show', 'success');
+            
+            setTimeout(() => {
+                indicator.classList.remove('show', 'success');
+            }, 2000);
+        }
+
+        // Event listeners
+        document.getElementById('dark-mode-toggle').addEventListener('change', function() {
+            salvarConfiguracao('sgmrp_dark_mode', this.checked);
+            // Aplicar imediatamente
+            if (this.checked) {
+                document.body.classList.add('dark-mode');
+            } else {
+                document.body.classList.remove('dark-mode');
+            }
+        });
+
+        document.querySelectorAll('input[name="densidade"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                salvarConfiguracao('sgmrp_densidade', this.value);
+            });
+        });
+
+        document.querySelectorAll('input[name="tamanho-fonte"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                salvarConfiguracao('sgmrp_tamanho_fonte', this.value);
+            });
+        });
+
+        // Logout
+        document.getElementById('logoutLink').addEventListener('click', function(e) {
+            e.preventDefault();
+            if (confirm('Tem certeza que deseja sair?')) {
+                window.location.href = "{{ url_for('logout') }}";
+            }
+        });
+
+        // Carregar configurações ao iniciar
+        carregarConfiguracoes();
+    </script>
+</body>
+</html>

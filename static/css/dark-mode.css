@@ -1,0 +1,664 @@
+/* --- INDEX PAGE DARK MODE TEXT FIXES --- */
+body.dark-mode .hero-title,
+body.dark-mode .hero-subtitle,
+body.dark-mode .hero-bg h1,
+body.dark-mode .hero-bg p,
+body.dark-mode .hero-btn-group a,
+body.dark-mode .btn-hero-login,
+body.dark-mode .btn-hero-cadastro {
+    color: #e2e8f0 !important;
+}
+
+body.dark-mode .card h3,
+body.dark-mode .card-body h3 {
+    color: #60a5fa !important;
+}
+
+body.dark-mode .card p,
+body.dark-mode .card-body p,
+body.dark-mode .card ul,
+body.dark-mode .card-body ul,
+body.dark-mode .card li,
+body.dark-mode .card-body li {
+    color: #cbd5e0 !important;
+}
+
+body.dark-mode .card-header h3 {
+    color: #60a5fa !important;
+}
+
+body.dark-mode section[style*="background-color: var(--gray-100)"] *,
+body.dark-mode section[style*="background-color: var(--gray-100)"] {
+    color: #e2e8f0 !important;
+}
+
+body.dark-mode section[style*="background-color: var(--primary-color)"] *,
+body.dark-mode section[style*="background-color: var(--primary-color)"] {
+    color: #e2e8f0 !important;
+}
+
+body.dark-mode .container h2,
+body.dark-mode .container h3,
+body.dark-mode .container h4,
+body.dark-mode .container h5,
+body.dark-mode .container h6 {
+    color: #60a5fa !important;
+}
+
+body.dark-mode .container p,
+body.dark-mode .container li {
+    color: #cbd5e0 !important;
+}
+
+body.dark-mode .card [style*="color: var(--gray-600)"] {
+    color: #cbd5e0 !important;
+}
+
+body.dark-mode .card [style*="color: var(--gray-400)"] {
+    color: #a0aec0 !important;
+}
+
+body.dark-mode .card [style*="color: var(--primary-color)"] {
+    color: #60a5fa !important;
+}
+
+body.dark-mode .card [style*="background-color: var(--light-blue)"] {
+    background-color: #23293a !important;
+    color: #60a5fa !important;
+}
+
+body.dark-mode .btn-hero-login {
+    background-color: #374151 !important;
+    color: #60a5fa !important;
+    border: 1px solid #60a5fa !important;
+}
+
+body.dark-mode .btn-hero-cadastro {
+    border: 2px solid #60a5fa !important;
+    color: #60a5fa !important;
+    background-color: transparent !important;
+}
+
+body.dark-mode .btn-hero-login:hover,
+body.dark-mode .btn-hero-cadastro:hover {
+    background-color: #2563eb !important;
+    color: #fff !important;
+}
+
+body.dark-mode .fade-in {
+    color: #e2e8f0 !important;
+}
+/* Modo Escuro - SGMRP */
+
+body.dark-mode {
+    background-color: #1a202c;
+    color: #e2e8f0;
+}
+
+/* Header */
+body.dark-mode header {
+    background: linear-gradient(135deg, #1e3a5f, #2d5a8f);
+    border-bottom-color: #2d3748;
+}
+
+body.dark-mode .logo {
+    color: #ffffff;
+}
+
+body.dark-mode nav ul li a {
+    color: #cbd5e0;
+}
+
+body.dark-mode nav ul li a:hover,
+body.dark-mode nav ul li a.active {
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Cards */
+body.dark-mode .card {
+    background-color: #2d3748;
+    border-color: #4a5568;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+body.dark-mode .card-header {
+    background-color: #374151;
+    border-bottom-color: #4a5568;
+    color: #f7fafc;
+}
+
+body.dark-mode .card-body {
+    background-color: #2d3748;
+}
+
+/* Botões */
+body.dark-mode .btn {
+    background-color: #4a5568;
+    color: #e2e8f0;
+    border-color: #4a5568;
+}
+
+body.dark-mode .btn:hover {
+    background-color: #718096;
+}
+
+body.dark-mode .btn-primary {
+    background: linear-gradient(135deg, #2563eb, #1e40af);
+    color: white;
+}
+
+body.dark-mode .btn-primary:hover {
+    background: linear-gradient(135deg, #1d4ed8, #1e3a8a);
+}
+
+body.dark-mode .btn-secondary {
+    background-color: #4a5568;
+    color: #e2e8f0;
+}
+
+body.dark-mode .btn-secondary:hover {
+    background-color: #718096;
+}
+
+body.dark-mode .btn-danger {
+    background-color: #dc2626;
+    color: white;
+}
+
+body.dark-mode .btn-danger:hover {
+    background-color: #b91c1c;
+}
+
+/* Inputs */
+body.dark-mode input,
+body.dark-mode select,
+body.dark-mode textarea {
+    background-color: #374151;
+    color: #e2e8f0;
+    border-color: #4a5568;
+}
+
+body.dark-mode input:focus,
+body.dark-mode select:focus,
+body.dark-mode textarea:focus {
+    background-color: #4a5568;
+    border-color: #60a5fa;
+}
+
+body.dark-mode input::placeholder,
+body.dark-mode textarea::placeholder {
+    color: #9ca3af;
+}
+
+/* Tabelas */
+body.dark-mode table {
+    background-color: #2d3748;
+    border-color: #4a5568;
+}
+
+body.dark-mode table thead {
+    background-color: #374151;
+    color: #f7fafc;
+}
+
+body.dark-mode table tbody tr {
+    background-color: #2d3748;
+    border-bottom-color: #4a5568;
+}
+
+body.dark-mode table tbody tr:hover {
+    background-color: #374151;
+}
+
+body.dark-mode table tbody tr:nth-child(even) {
+    background-color: #374151;
+}
+
+body.dark-mode table tbody tr:nth-child(even):hover {
+    background-color: #4a5568;
+}
+
+body.dark-mode table td,
+body.dark-mode table th {
+    color: #e2e8f0;
+    border-color: #4a5568;
+}
+
+/* Lote Cards */
+body.dark-mode .lote-card {
+    background-color: #2d3748;
+    border-color: #4a5568;
+}
+
+body.dark-mode .lote-card:hover {
+    background-color: #374151;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+body.dark-mode .lote-numero {
+    background: linear-gradient(135deg, #2563eb, #1e40af);
+}
+
+body.dark-mode .lote-info h3 {
+    color: #f7fafc;
+}
+
+body.dark-mode .lote-info p {
+    color: #cbd5e0;
+}
+
+/* Badges */
+body.dark-mode .badge-status {
+    background-color: #374151;
+    color: #e2e8f0;
+}
+
+body.dark-mode .badge-status.ativo {
+    background-color: #065f46;
+    color: #d1fae5;
+}
+
+body.dark-mode .badge-status.inativo {
+    background-color: #7f1d1d;
+    color: #fecaca;
+}
+
+/* Métricas */
+body.dark-mode .metric-card {
+    background-color: #2d3748;
+    border-color: #4a5568;
+}
+
+body.dark-mode .metric-card:hover {
+    background-color: #374151;
+}
+
+body.dark-mode .metric-label {
+    color: #cbd5e0 !important;
+}
+
+body.dark-mode .metric-value {
+    color: #60a5fa !important;
+}
+
+body.dark-mode .metric-subtitle {
+    color: #9ca3af !important;
+}
+
+/* Garantir que todos os textos dentro de metric-card sejam claros */
+body.dark-mode .metric-card * {
+    color: inherit;
+}
+
+body.dark-mode .metric-card h3,
+body.dark-mode .metric-card h4,
+body.dark-mode .metric-card h5,
+body.dark-mode .metric-card p,
+body.dark-mode .metric-card span,
+body.dark-mode .metric-card div {
+    color: #e2e8f0;
+}
+
+/* Textos dentro de cards com background branco inline */
+body.dark-mode [style*="background: white"] *,
+body.dark-mode [style*="background:white"] * {
+    color: #e2e8f0;
+}
+
+/* Cards de resumo - forçar texto claro */
+body.dark-mode .card h3,
+body.dark-mode .card-body h3 {
+    color: #60a5fa !important;
+}
+
+body.dark-mode .card p[style*="color: var(--gray-600)"],
+body.dark-mode .card-body p[style*="color: var(--gray-600)"] {
+    color: #cbd5e0 !important;
+}
+
+body.dark-mode .card h3[style*="color: var(--primary-color)"],
+body.dark-mode .card-body h3[style*="color: var(--primary-color)"] {
+    color: #60a5fa !important;
+}
+
+body.dark-mode .card h3[style*="color: var(--success-color)"],
+body.dark-mode .card-body h3[style*="color: var(--success-color)"] {
+    color: #10b981 !important;
+}
+
+body.dark-mode .card h3[style*="color: var(--warning-color)"],
+body.dark-mode .card-body h3[style*="color: var(--warning-color)"] {
+    color: #f59e0b !important;
+}
+
+/* Notificações */
+body.dark-mode .notification-content {
+    background-color: #374151;
+    color: #e2e8f0;
+}
+
+body.dark-mode .notification-content.warning {
+    background-color: #78350f;
+    border-left-color: #f59e0b;
+}
+
+body.dark-mode .notification-content.error {
+    background-color: #7f1d1d;
+    border-left-color: #ef4444;
+}
+
+body.dark-mode .notification-content.success {
+    background-color: #065f46;
+    border-left-color: #10b981;
+}
+
+/* Modais */
+body.dark-mode .modal {
+    background-color: rgba(0, 0, 0, 0.7);
+}
+
+body.dark-mode .modal > div {
+    background-color: #2d3748;
+    color: #e2e8f0;
+}
+
+body.dark-mode .modal h3 {
+    color: #f7fafc;
+}
+
+body.dark-mode .modal p {
+    color: #cbd5e0;
+}
+
+/* Pop-ups e Modais customizados */
+body.dark-mode .modal,
+body.dark-mode [id*="modal"],
+body.dark-mode [class*="popup"],
+body.dark-mode [id*="popup"],
+body.dark-mode .export-option,
+body.dark-mode .export-option input:checked + span {
+    background-color: #2d3748 !important;
+    color: #e2e8f0 !important;
+    border-color: #4a5568 !important;
+}
+
+/* Forçar container de pop-up/modal escuro e textos claros */
+body.dark-mode .modal > div,
+body.dark-mode [id*="modal"] > div,
+body.dark-mode [class*="popup"],
+body.dark-mode [id*="popup"] {
+    background: #23293a !important;
+    color: #e2e8f0 !important;
+    border-color: #4a5568 !important;
+}
+
+body.dark-mode [class*="popup"] *,
+body.dark-mode [id*="popup"] *,
+body.dark-mode .modal > div *,
+body.dark-mode [id*="modal"] > div * {
+    color: #e2e8f0 !important;
+}
+
+body.dark-mode .modal h3,
+body.dark-mode [id*="modal"] h3,
+body.dark-mode [class*="popup"] h3,
+body.dark-mode [id*="popup"] h3 {
+    color: #60a5fa !important;
+}
+
+body.dark-mode .modal p,
+body.dark-mode [id*="modal"] p,
+body.dark-mode [class*="popup"] p,
+body.dark-mode [id*="popup"] p {
+    color: #cbd5e0 !important;
+}
+
+body.dark-mode .modal button,
+body.dark-mode [id*="modal"] button,
+body.dark-mode [class*="popup"] button,
+body.dark-mode [id*="popup"] button {
+    background-color: #374151 !important;
+    color: #e2e8f0 !important;
+    border-color: #4a5568 !important;
+}
+body.dark-mode .modal button:hover,
+body.dark-mode [id*="modal"] button:hover,
+body.dark-mode [class*="popup"] button:hover,
+body.dark-mode [id*="popup"] button:hover {
+    background-color: #2563eb !important;
+    color: #fff !important;
+}
+
+/* Overlay escuro para popups */
+body.dark-mode [id*="overlay"],
+body.dark-mode .modal-overlay {
+    background: rgba(0,0,0,0.7) !important;
+}
+
+/* Exportação - opção selecionada */
+body.dark-mode .export-option input:checked + span {
+    color: #60a5fa !important;
+}
+
+/* Footer */
+body.dark-mode footer {
+    background-color: #1a202c;
+    border-top-color: #2d3748;
+}
+
+body.dark-mode footer p {
+    color: #9ca3af;
+}
+
+/* Filtros */
+body.dark-mode .filters {
+    background-color: #2d3748 !important;
+    border-color: #4a5568;
+}
+
+body.dark-mode .filters-row {
+    background-color: transparent;
+}
+
+body.dark-mode .filter-item label {
+    color: #cbd5e0;
+}
+
+/* Containers de filtros compactos */
+body.dark-mode [style*="background: white"] {
+    background: #2d3748 !important;
+}
+
+body.dark-mode .periodo-filter-container,
+body.dark-mode .unidades-filter-container {
+    color: #cbd5e0;
+}
+
+body.dark-mode .periodo-filter-container label,
+body.dark-mode .unidades-filter-container label {
+    color: #cbd5e0 !important;
+}
+
+body.dark-mode .periodo-display,
+body.dark-mode .unidades-display {
+    background-color: #374151;
+    border-color: #4a5568;
+    color: #e2e8f0;
+}
+
+body.dark-mode .periodo-display:hover,
+body.dark_mode .unidades-display:hover {
+    background-color: #4a5568;
+}
+
+/* Calendário Popup */
+body.dark-mode .calendario-popup {
+    background-color: #2d3748;
+    border-color: #4a5568;
+}
+
+body.dark-mode .calendario-popup h4 {
+    color: #f7fafc;
+}
+
+body.dark-mode .calendario-overlay {
+    background-color: rgba(0, 0, 0, 0.7);
+}
+
+/* Checkboxes e Radio Buttons no popup de unidades */
+body.dark-mode .unidade-item {
+    background-color: #374151;
+}
+
+body.dark-mode .unidade-item:hover {
+    background-color: #4a5568;
+}
+
+body.dark-mode .unidade-item label {
+    color: #e2e8f0;
+}
+
+/* Tabs */
+body.dark-mode .tab-button {
+    background-color: #374151;
+    color: #cbd5e0;
+    border-color: #4a5568;
+}
+
+body.dark-mode .tab-button:hover {
+    background-color: #4a5568;
+}
+
+body.dark-mode .tab-button.active {
+    background-color: #2563eb;
+    color: white;
+}
+
+/* Gráficos - Chart.js usa canvas, mas podemos estilizar o container */
+body.dark-mode .chart-container {
+    background-color: #2d3748;
+    border-color: #4a5568;
+}
+
+/* Breadcrumb */
+body.dark-mode .breadcrumb a {
+    color: #60a5fa;
+}
+
+body.dark-mode .breadcrumb span {
+    color: #9ca3af;
+}
+
+/* Página de Configurações */
+body.dark-mode .config-section {
+    background-color: #2d3748;
+}
+
+body.dark-mode .config-option {
+    background-color: #374151;
+}
+
+body.dark-mode .config-option:hover {
+    background-color: #4a5568;
+}
+
+body.dark-mode .config-option-label {
+    color: #f7fafc;
+}
+
+body.dark-mode .config-option-description {
+    color: #cbd5e0;
+}
+
+body.dark-mode .page-header h1 {
+    color: #f7fafc;
+}
+
+body.dark-mode .page-header p {
+    color: #cbd5e0;
+}
+
+body.dark-mode .config-section-title h2 {
+    color: #f7fafc;
+}
+
+body.dark-mode .config-section-title p {
+    color: #cbd5e0;
+}
+
+/* Células especiais da tabela (OK, Warning, Danger) */
+body.dark-mode .cell-ok {
+    background-color: #065f46;
+    color: #d1fae5;
+}
+
+body.dark-mode .cell-warning {
+    background-color: #78350f;
+    color: #fef3c7;
+}
+
+body.dark-mode .cell-danger {
+    background-color: #7f1d1d;
+    color: #fecaca;
+}
+
+body.dark-mode .cell-annotation {
+    background-color: #854d0e;
+    color: #fef3c7;
+}
+
+/* Seção de importação/manual */
+body.dark-mode .tabela-container {
+    border-color: #4a5568;
+}
+
+body.dark-mode .tabela-manual {
+    background-color: #2d3748;
+    border-color: #4a5568;
+}
+
+body.dark-mode .tabela-manual th {
+    background-color: #1e40af;
+}
+
+body.dark-mode .tabela-manual td {
+    border-color: #4a5568;
+}
+
+body.dark-mode .tabela-manual td.data-column {
+    background-color: #374151;
+    color: #cbd5e0;
+}
+
+body.dark-mode .tabela-manual input {
+    background-color: #374151;
+    color: #e2e8f0;
+}
+
+body.dark-mode .tabela-manual input:focus {
+    background-color: #4a5568;
+}
+
+body.dark-mode .tabela-manual input:hover {
+    background-color: #4a5568;
+}
+
+/* Hero section */
+body.dark-mode .hero-bg {
+    background: linear-gradient(135deg, #1e3a5f, #2d5a8f);
+}
+
+/* Stats grid */
+body.dark-mode .stats-grid .stat-card {
+    background-color: #2d3748;
+    border-color: #4a5568;
+}
+
+body.dark-mode .stat-value {
+    color: #60a5fa;
+}
+
+body.dark-mode .stat-label {
+    color: #cbd5e0;
+}

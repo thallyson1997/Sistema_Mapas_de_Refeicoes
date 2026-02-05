@@ -6,6 +6,7 @@
     <title>Configurações - SGMRP</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="stylesheet" href="/static/css/dark-mode.css">
+    <script src="/static/js/config-loader.js"></script>
     <style>
         .config-container {
             max-width: 900px;
@@ -262,10 +263,12 @@
     <main>
         <div class="container config-container">
             <!-- Breadcrumb -->
-            <nav class="breadcrumb" aria-label="Navegação">
-                <a href="{{ url_for('home') }}">Início</a>
-                <span>›</span>
-                <span>Configurações</span>
+            <nav aria-label="Navegação" style="margin-bottom: 2.5rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0.75rem 1.25rem; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                <div style="display: flex; gap: 0.5rem; font-size: 0.95rem; color: var(--gray-500); align-items: center;">
+                    <span><a href="{{ url_for('home') }}" style="color: var(--primary-color); text-decoration: none; font-weight: 500;">Página Inicial</a></span>
+                    <span aria-hidden="true" style="font-size: 1.1em; opacity: 0.7;">/</span>
+                    <span aria-current="page" style="color: var(--primary-color); font-weight: 600;">Configurações</span>
+                </div>
             </nav>
 
             <!-- Page Header -->
@@ -366,14 +369,57 @@
     </footer>
 
     <script>
-        // Aplicar modo escuro ANTES da página carregar (evita flash)
-        (function() {
-            const darkMode = localStorage.getItem('sgmrp_dark_mode') === 'true';
-            if (darkMode) {
-                document.documentElement.classList.add('dark-mode');
-                document.body.classList.add('dark-mode');
+        // Função para aplicar densidade de informação nas classes do HTML/body
+        function aplicarDensidade(valor) {
+            const root = document.documentElement;
+            const body = document.body;
+            const classes = ['density-compact', 'density-normal', 'density-comfortable'];
+
+            classes.forEach(cls => {
+                root.classList.remove(cls);
+                body.classList.remove(cls);
+            });
+
+            let alvo = null;
+            if (valor === 'compacta') {
+                alvo = 'density-compact';
+            } else if (valor === 'normal') {
+                alvo = 'density-normal';
+            } else if (valor === 'confortavel') {
+                alvo = 'density-comfortable';
             }
-        })();
+
+            if (alvo) {
+                root.classList.add(alvo);
+                body.classList.add(alvo);
+            }
+        }
+
+        // Função para aplicar tamanho de fonte nas classes do HTML/body
+        function aplicarTamanhoFonte(valor) {
+            const root = document.documentElement;
+            const body = document.body;
+            const classes = ['font-small', 'font-normal', 'font-large'];
+
+            classes.forEach(cls => {
+                root.classList.remove(cls);
+                body.classList.remove(cls);
+            });
+
+            let alvo = null;
+            if (valor === 'pequena') {
+                alvo = 'font-small';
+            } else if (valor === 'normal') {
+                alvo = 'font-normal';
+            } else if (valor === 'grande') {
+                alvo = 'font-large';
+            }
+
+            if (alvo) {
+                root.classList.add(alvo);
+                body.classList.add(alvo);
+            }
+        }
 
         // Carregar configurações salvas
         function carregarConfiguracoes() {
@@ -387,8 +433,14 @@
             // Aplicar densidade
             document.querySelector(`input[name="densidade"][value="${densidade}"]`).checked = true;
 
+            // Aplicar densidade visualmente
+            aplicarDensidade(densidade);
+
             // Aplicar tamanho de fonte
             document.querySelector(`input[name="tamanho-fonte"][value="${tamanhoFonte}"]`).checked = true;
+
+            // Aplicar tamanho de fonte visualmente
+            aplicarTamanhoFonte(tamanhoFonte);
         }
 
         // Salvar configuração e mostrar indicador
@@ -412,8 +464,10 @@
             salvarConfiguracao('sgmrp_dark_mode', this.checked);
             // Aplicar imediatamente
             if (this.checked) {
+                document.documentElement.classList.add('dark-mode');
                 document.body.classList.add('dark-mode');
             } else {
+                document.documentElement.classList.remove('dark-mode');
                 document.body.classList.remove('dark-mode');
             }
         });
@@ -421,12 +475,14 @@
         document.querySelectorAll('input[name="densidade"]').forEach(radio => {
             radio.addEventListener('change', function() {
                 salvarConfiguracao('sgmrp_densidade', this.value);
+                aplicarDensidade(this.value);
             });
         });
 
         document.querySelectorAll('input[name="tamanho-fonte"]').forEach(radio => {
             radio.addEventListener('change', function() {
                 salvarConfiguracao('sgmrp_tamanho_fonte', this.value);
+                aplicarTamanhoFonte(this.value);
             });
         });
 

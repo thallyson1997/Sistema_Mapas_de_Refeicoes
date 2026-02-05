@@ -783,18 +783,14 @@
                 return;
             }
             container.innerHTML = notificacoesRecentes.map(notif => {
-                const alertClass = notif.tipo === 'danger' ? 'alert-danger' : 
-                                  notif.tipo === 'warning' ? 'alert-warning' : 'alert-info';
                 return `
-                    <div class="alert ${alertClass}" style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.25rem;">
-                        <div style="font-size: 1.5rem;">${notif.icone}</div>
-                        <div style="flex: 1;">
-                            <strong>${notif.titulo}</strong><br>
-                            <span style="font-size: 0.875rem;">${notif.mensagem}</span>
+                    <div class="modal-notification-item ${notif.tipo}" style="margin-bottom: 0.75rem;">
+                        <div class="modal-notification-icon">${notif.icone}</div>
+                        <div class="modal-notification-content">
+                            <div class="modal-notification-title">${notif.titulo}</div>
+                            <div class="modal-notification-message">${notif.mensagem}</div>
                         </div>
-                        <div style="font-size: 0.875rem; color: var(--gray-500);">
-                            ${formatarTempoDecorrido(notif.data)}
-                        </div>
+                        <div class="modal-notification-time">${formatarTempoDecorrido(notif.data)}</div>
                     </div>
                 `;
             }).join('');

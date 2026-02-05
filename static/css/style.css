@@ -547,6 +547,126 @@ footer {
     border: 0;
 }
 
+/* === DENSIDADE DE INFORMAÇÃO === */
+/*
+   As classes abaixo permitem ajustar o espaçamento global do sistema
+   de acordo com a preferência do usuário:
+   - html.density-compact      ("compacta")
+   - html.density-normal       ("normal")
+   - html.density-comfortable  ("confortavel")
+*/
+
+/* Densidade Compacta: menos espaçamento entre elementos */
+html.density-compact body main {
+    padding-top: var(--spacing-4);
+    padding-bottom: var(--spacing-4);
+}
+
+html.density-compact body .card-header,
+html.density-compact body .card-body,
+html.density-compact body .card-footer {
+    padding: var(--spacing-3);
+}
+
+html.density-compact body .filters {
+    padding: var(--spacing-4);
+}
+
+html.density-compact body .filters-row {
+    gap: var(--spacing-3);
+}
+
+html.density-compact body .form-group {
+    margin-bottom: var(--spacing-3);
+}
+
+html.density-compact body .table th,
+html.density-compact body .table td {
+    padding: var(--spacing-2);
+}
+
+html.density-compact body .grid {
+    gap: var(--spacing-4);
+}
+
+html.density-compact body .btn {
+    padding: var(--spacing-2) var(--spacing-4);
+}
+
+html.density-compact body .btn-lg {
+    padding: var(--spacing-3) var(--spacing-5);
+}
+
+html.density-compact body .btn-sm {
+    padding: var(--spacing-1) var(--spacing-2);
+}
+
+/* Densidade Confortável: mais espaçamento entre elementos */
+html.density-comfortable body main {
+    padding-top: var(--spacing-10);
+    padding-bottom: var(--spacing-10);
+}
+
+html.density-comfortable body .card-header,
+html.density-comfortable body .card-body,
+html.density-comfortable body .card-footer {
+    padding: var(--spacing-6);
+}
+
+html.density-comfortable body .filters {
+    padding: var(--spacing-6);
+}
+
+html.density-comfortable body .filters-row {
+    gap: var(--spacing-6);
+}
+
+html.density-comfortable body .form-group {
+    margin-bottom: var(--spacing-6);
+}
+
+html.density-comfortable body .table th,
+html.density-comfortable body .table td {
+    padding: var(--spacing-4);
+}
+
+html.density-comfortable body .grid {
+    gap: var(--spacing-8);
+}
+
+html.density-comfortable body .btn {
+    padding: var(--spacing-4) var(--spacing-6);
+}
+
+html.density-comfortable body .btn-lg {
+    padding: var(--spacing-5) var(--spacing-8);
+}
+
+html.density-comfortable body .btn-sm {
+    padding: var(--spacing-3) var(--spacing-4);
+}
+
+/* === TAMANHO DE FONTE GLOBAL === */
+/*
+   As classes abaixo ajustam o tamanho base da fonte do sistema
+   afetando todos os elementos que usam unidades rem:
+   - html.font-small   ("pequena")
+   - html.font-normal  ("normal")
+   - html.font-large   ("grande")
+*/
+
+html.font-small {
+    font-size: 14px;
+}
+
+html.font-normal {
+    font-size: 16px;
+}
+
+html.font-large {
+    font-size: 18px;
+}
+
 /* === RESPONSIVE DESIGN === */
 @media (max-width: 768px) {
     .container {
